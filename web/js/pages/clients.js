@@ -82,7 +82,7 @@ export async function clientsPage({ main, go, rerender }) {
       const users = members.filter((m) => m.client_id === c.id).length;
       return h('div', { class: 'list-row' },
         h('div', { class: 'grow' }, h('div', { style: { fontWeight: 650 } }, clientTitle(c)),
-          h('div', { class: 'tiny' }, [clientLabel(c) !== clientTitle(c) ? clientLabel(c).replace(clientTitle(c) + ' — ', '') : null, `${scr.length} TV${scr.length === 1 ? '' : 's'}`, `${users} user${users === 1 ? '' : 's'}`, c.notes ? c.notes.slice(0, 60) : null].filter(Boolean).join(' · '))),
+          h('div', { class: 'tiny' }, [c.contact_email && c.contact_email !== clientTitle(c) ? c.contact_email : null, `${scr.length} TV${scr.length === 1 ? '' : 's'}`, `${users} user${users === 1 ? '' : 's'}`, c.notes ? c.notes.slice(0, 60) : null].filter(Boolean).join(' · '))),
         scr.length ? h('span', { class: 'badge ' + (on === scr.length ? 'ok' : on ? 'warn' : 'bad') }, `${on}/${scr.length} online`) : null,
         h('button', { class: 'btn sm ghost icon', title: 'Edit', onclick: () => clientDialog(c) }, icon('edit')),
         h('button', { class: 'btn sm', onclick: () => open(c) }, 'Open'));

@@ -173,15 +173,8 @@ export function colorFor(id, ids) { const i = Math.max(0, ids.indexOf(id)); retu
 // ---------------------------------------------------------------- client labels
 /** Short name: site name, else the client's name. */
 export const clientTitle = (c) => (c ? (c.site_name || '').trim() || c.name : '');
-/** Dropdown label: "Site name — email" (or whatever parts exist). */
-export function clientLabel(c) {
-  if (!c) return '';
-  const site = (c.site_name || '').trim();
-  const email = (c.contact_email || '').trim() || (/@/.test(c.name) ? c.name : '');
-  if (site && email) return `${site} — ${email}`;
-  if (site) return c.name && c.name !== site && !/@/.test(c.name) ? `${site} — ${c.name}` : site;
-  return c.name;
-}
+/** Dropdown label: just the site name (falls back to the client's name). */
+export const clientLabel = (c) => clientTitle(c);
 export const sortClients = (cs) => [...cs].sort((a, b) => clientTitle(a).localeCompare(clientTitle(b)));
 
 // ---------------------------------------------------------------- roles
