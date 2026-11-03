@@ -1,5 +1,5 @@
 import { configured } from './sb.js';
-import { sb, state, h, icon, brandMark, wordmark, toast, errMsg, field, refreshMe, setClient, rpc, role } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { screenPage } from './pages/screen.js';
 import { playlistsPage } from './pages/playlists.js';
@@ -93,12 +93,12 @@ function nav(section) {
 function clientPicker() {
   const cs = state.me.clients;
   if (!cs.length) return null;
-  if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, cs[0].name);
+  if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, clientTitle(cs[0]));
   const s = h('select', {
     'aria-label': 'Client',
     onchange: (e) => { setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; go(['screen', 'playlist'].includes(p) ? p + 's' : (p === 'clients' ? 'screens' : p || 'screens')); render(); },
   });
-  for (const c of cs) s.append(h('option', { value: c.id, selected: c.id === state.clientId }, c.name));
+  for (const c of cs) s.append(h('option', { value: c.id, selected: c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
   return s;
 }
 

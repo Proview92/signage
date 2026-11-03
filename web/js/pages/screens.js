@@ -1,3 +1,4 @@
+import { clientLabel, clientTitle } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, isSlideActive } from '../renderer.js';
 import { licenseBadge } from './license-ui.js';
@@ -41,7 +42,7 @@ export function pairDialog({ fixedClient, clients, onDone }) {
   const name = h('input', { type: 'text', placeholder: 'e.g. Reception TV' });
   const loc = h('input', { type: 'text', placeholder: 'e.g. Ground floor (optional)' });
   let clientId = fixedClient || '';
-  const pick = clients ? select([['', '— Assign later —'], ...clients.map((c) => [c.id, c.name])], clientId, (v) => (clientId = v)) : null;
+  const pick = clients ? select([['', '— Assign later —'], ...clients.map((c) => [c.id, clientLabel(c)])], clientId, (v) => (clientId = v)) : null;
   modal({
     title: 'Add a TV',
     body: [
@@ -73,7 +74,7 @@ export async function screensPage({ main, go }) {
   const paint = () => {
     const { screens, rules, byId } = data;
     const head = h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Screens'), h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'} for ${client.name}`)),
+      h('div', {}, h('h1', {}, 'Screens'), h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'} for ${clientTitle(client)}`)),
       canManage() ? h('button', { class: 'btn primary', onclick: () => pairDialog({ fixedClient: state.clientId, onDone: (s) => go('screen/' + s.id) }) }, icon('plus'), 'Add a TV') : null);
 
     if (!screens.length) {

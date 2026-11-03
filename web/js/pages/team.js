@@ -1,3 +1,4 @@
+import { clientTitle } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, refreshMe } from '../core.js';
 
 export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
@@ -42,8 +43,8 @@ export async function teamPage({ main, rerender }) {
   const paint = () => {
     main.replaceChildren(
       h('div', { class: 'page-head' },
-        h('div', {}, h('h1', {}, 'Team'), h('p', { class: 'muted' }, `People who can manage ${client.name}'s screens.`)),
-        manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, client.name, refresh) }, icon('plus'), 'Invite someone') : null),
+        h('div', {}, h('h1', {}, 'Team'), h('p', { class: 'muted' }, `People who can manage ${clientTitle(client)}'s screens.`)),
+        manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Invite someone') : null),
       h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),
           h('div', { class: 'list' }, members.length ? members.map((m) => h('div', { class: 'list-row' },
@@ -53,7 +54,7 @@ export async function teamPage({ main, rerender }) {
               ? select([['editor', 'Editor'], ['manager', 'Manager']], m.role, async (v) => { await q(sb.from('client_members').update({ role: v }).eq('client_id', state.clientId).eq('user_id', m.user_id)); toast('Role updated'); })
               : h('span', { class: 'badge plain' }, roleLabel[m.role]),
             manage && m.user_id !== state.me.user_id ? h('button', { class: 'btn sm danger', onclick: async () => {
-              if (!(await confirmBox('Remove member?', `${m.email} will lose access to ${client.name}.`, 'Remove'))) return;
+              if (!(await confirmBox('Remove member?', `${m.email} will lose access to ${clientTitle(client)}.`, 'Remove'))) return;
               await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
               refresh();
             } }, 'Remove') : null))
@@ -61,7 +62,7 @@ export async function teamPage({ main, rerender }) {
         manage ? h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Pending invites')),
           h('div', { class: 'list' }, invites.length ? invites.map((i) => h('div', { class: 'list-row' },
             h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, i.email), h('div', { class: 'tiny' }, `${roleLabel[i.role]} · created ${timeAgo(i.created_at)}`)),
-            h('button', { class: 'btn sm', onclick: () => showInviteLink(i, client.name) }, icon('copy'), 'Link'),
+            h('button', { class: 'btn sm', onclick: () => showInviteLink(i, clientTitle(client)) }, icon('copy'), 'Link'),
             h('button', { class: 'btn sm danger', onclick: async () => { await q(sb.from('invites').delete().eq('id', i.id)); refresh(); } }, 'Revoke')))
             : h('div', { class: 'list-row muted small' }, 'No pending invites.'))) : null,
         !manage ? h('div', { class: 'notice info' }, 'Ask a manager if you need to add people or TVs.') : null));

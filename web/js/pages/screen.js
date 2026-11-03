@@ -1,3 +1,4 @@
+import { clientLabel } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
 import { SlidePlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
 import { statusBadges } from './screens.js';
@@ -42,7 +43,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     let target = screen.client_id;
     modal({ title: 'Move to another client', body: [
       h('div', { class: 'notice' }, 'Moving a TV clears its schedule and stops what it is playing. The new client will need to publish content to it.'),
-      field('Client', select(clients.map((c) => [c.id, c.name]), target, (v) => (target = v)))],
+      field('Client', select(clients.map((c) => [c.id, clientLabel(c)]), target, (v) => (target = v)))],
     actions: [{ label: 'Cancel' }, { label: 'Move TV', class: 'primary', onClick: async () => {
       if (target === screen.client_id) return;
       await rpc('assign_screen', { p_screen: id, p_client: target });

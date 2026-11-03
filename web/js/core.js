@@ -170,6 +170,20 @@ export function fmtDuration(sec) {
 export const PALETTE = ['#ff5a1f', '#3157ff', '#12a150', '#a23cf0', '#e0a100', '#0aa5b8', '#e3326b', '#5a6270'];
 export function colorFor(id, ids) { const i = Math.max(0, ids.indexOf(id)); return PALETTE[i % PALETTE.length]; }
 
+// ---------------------------------------------------------------- client labels
+/** Short name: site name, else the client's name. */
+export const clientTitle = (c) => (c ? (c.site_name || '').trim() || c.name : '');
+/** Dropdown label: "Site name — email" (or whatever parts exist). */
+export function clientLabel(c) {
+  if (!c) return '';
+  const site = (c.site_name || '').trim();
+  const email = (c.contact_email || '').trim() || (/@/.test(c.name) ? c.name : '');
+  if (site && email) return `${site} — ${email}`;
+  if (site) return c.name && c.name !== site && !/@/.test(c.name) ? `${site} — ${c.name}` : site;
+  return c.name;
+}
+export const sortClients = (cs) => [...cs].sort((a, b) => clientTitle(a).localeCompare(clientTitle(b)));
+
 // ---------------------------------------------------------------- roles
 export function currentClient() { return state.me?.clients.find((c) => c.id === state.clientId) || null; }
 export function role() { return state.me?.is_admin ? 'admin' : currentClient()?.role || null; }
