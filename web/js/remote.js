@@ -61,7 +61,8 @@ export function createRemoteMenu({ getStatus, onReload }) {
     const items = [
       ['reload', 'Reload content', 'Fetch the latest schedule and media now'],
       ['status', 'Screen status', 'Licence, device and connection details'],
-      isApp ? ['exit', `Exit to home screen${settings.return_minutes ? ` (reopens in ${settings.return_minutes} min)` : ''}`, 'For changing TV settings, Wi-Fi etc.'] : null,
+      isApp ? ['wifi', 'Wi-Fi & network settings', `Connect to a different Wi-Fi network${settings.return_minutes ? ` · player reopens in ${settings.return_minutes} min` : ''}`] : null,
+      isApp ? ['exit', `Exit to home screen${settings.return_minutes ? ` (reopens in ${settings.return_minutes} min)` : ''}`, 'For changing other TV settings'] : null,
       isApp ? ['exit-stay', 'Exit until next restart', 'Stays closed until the TV is switched off and on'] : null,
       isApp ? ['address', 'Change player address', 'Advanced: where this TV loads PROVIEW SIGNAGE from'] : null,
       isApp && st.needsOverlay ? ['overlay', 'Allow automatic reopening', 'Grant “Display over other apps” so the player can reopen itself'] : null,
@@ -77,7 +78,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
     $title.textContent = 'Screen status';
     const rows = [
       ['Screen', st.name || '—'], ['Licence', st.licence || '—'], ['Now playing', st.playing || '—'],
-      ['Connection', st.online ? 'Online' : 'Offline'], ['Device', st.model || '—'], ['App', st.app || '—'],
+      ['Connection', (st.online ? 'Online' : 'Offline') + (native()?.networkType ? ` · ${native().networkType() || '—'}` : '')], ['Device', st.model || '—'], ['App', st.app || '—'],
       ['Auto-reopen', st.isApp ? (settings.return_minutes ? `${settings.return_minutes} min after leaving${st.needsOverlay ? ' (needs permission)' : ''}` : 'Off') : 'Browser player'],
     ];
     $body.innerHTML = `<table class="rm-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
@@ -107,6 +108,13 @@ export function createRemoteMenu({ getStatus, onReload }) {
       case 'status': renderStatus(); break;
       case 'back': renderMenu(); break;
       case 'exit': close(); native()?.exitToHome(settings.return_minutes || 0); break;
+      case 'wifi': {
+        close();
+        const n = native();
+        if (n?.openWifi) n.openWifi(settings.return_minutes || 0);
+        else n?.exitToHome(settings.return_minutes || 0);   // older TV app: go to home screen instead
+        break;
+      }
       case 'exit-stay': close(); native()?.exitToHome(0); break;
       case 'address': close(); native()?.changeAddress(); break;
       case 'overlay': native()?.openOverlayPermission(); break;

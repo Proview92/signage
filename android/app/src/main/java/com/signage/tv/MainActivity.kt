@@ -80,6 +80,8 @@ class MainActivity : Activity() {
             }
         }
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
+        @JavascriptInterface fun openWifi(minutes: Int) = runOnUiThread { openWifiSettings(minutes) }
+        @JavascriptInterface fun networkType(): String = currentNetworkType()
         @JavascriptInterface fun captureScreen() { runOnUiThread { this@MainActivity.captureScreenNow() } }
     }
 
@@ -290,6 +292,42 @@ class MainActivity : Activity() {
         nextReturnMinutes = minutes
         startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
+
+    /** Open the TV's Wi-Fi / network settings (falls back to general settings on TVs without a Wi-Fi page). */
+    private fun openWifiSettings(minutes: Int) {
+        val tries = listOf(
+            Intent(Settings.ACTION_WIFI_SETTINGS),
+            Intent().setClassName("com.android.tv.settings", "com.android.tv.settings.connectivity.NetworkActivity"),
+            Intent().setClassName("com.amazon.tv.settings.v2", "com.amazon.tv.settings.v2.tv.network.NetworkActivity"),
+            Intent(Settings.ACTION_WIRELESS_SETTINGS),
+            Intent(Settings.ACTION_SETTINGS),
+        )
+        for (i in tries) {
+            try {
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                nextReturnMinutes = minutes
+                startActivity(i)
+                return
+            } catch (e: Exception) { nextReturnMinutes = null }
+        }
+        Toast.makeText(this, "This TV doesn't let apps open its network settings. Use Exit to home screen, then open Settings.", Toast.LENGTH_LONG).show()
+    }
+
+    private fun currentNetworkType(): String = try {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        if (Build.VERSION.SDK_INT >= 23) {
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork)
+            when {
+                caps == null -> "Not connected"
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet (cable)"
+                caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
+                else -> "Connected"
+            }
+        } else {
+            @Suppress("DEPRECATION") val ni = cm.activeNetworkInfo
+            @Suppress("DEPRECATION") when { ni == null || !ni.isConnected -> "Not connected"; ni.type == android.net.ConnectivityManager.TYPE_ETHERNET -> "Ethernet (cable)"; ni.type == android.net.ConnectivityManager.TYPE_WIFI -> "Wi-Fi"; else -> "Connected" }
+        }
+    } catch (e: Exception) { "" }
 
     /** Android 10+ only lets apps reopen from the background with "Display over other apps". */
     private fun canStartFromBackground(): Boolean =
