@@ -2,8 +2,13 @@ package com.signage.tv
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlarmManager
 import android.app.AlertDialog
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.text.InputType
+import android.webkit.JavascriptInterface
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -33,7 +38,9 @@ import java.util.Calendar
  * Full-screen kiosk wrapper around the web player (player.html).
  * - starts on boot, keeps the screen on, hides system bars
  * - autoplays video (with sound), recovers from WebView crashes & network errors
- * - press Back 5 times (or Menu) to change the player address
+ * - Back ×5 or Menu opens the PIN-protected screen menu (in the web player);
+ *   a native PIN prompt is the fallback if the player page isn't loaded
+ * - reopens itself N minutes after someone leaves it (admin setting)
  */
 class MainActivity : Activity() {
 
@@ -46,6 +53,32 @@ class MainActivity : Activity() {
 
     private val prefs by lazy { getSharedPreferences("signage", Context.MODE_PRIVATE) }
     private val playerUrl: String get() = prefs.getString("player_url", null) ?: BuildConfig.PLAYER_URL
+    /** Minutes to wait before reopening after the next time we leave; null = use admin setting. */
+    private var nextReturnMinutes: Int? = null
+
+    /** Called from the web player (window.SignageNative). */
+    inner class Bridge {
+        @JavascriptInterface fun setConfig(json: String) {
+            try {
+                val o = org.json.JSONObject(json)
+                prefs.edit()
+                    .putString("pin_hash", o.optString("pin_hash", ""))
+                    .putInt("return_minutes", o.optInt("return_minutes", 5))
+                    .apply()
+            } catch (_: Exception) {}
+        }
+        @JavascriptInterface fun exitToHome(minutes: Int) = runOnUiThread { goHome(minutes) }
+        @JavascriptInterface fun changeAddress() = runOnUiThread { openSettings() }
+        @JavascriptInterface fun canReopen(): Boolean = canStartFromBackground()
+        @JavascriptInterface fun openOverlayPermission() = runOnUiThread {
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            } catch (_: Exception) {
+                Toast.makeText(this@MainActivity, "This TV doesn't offer that setting. The player will still reopen when the TV restarts.", Toast.LENGTH_LONG).show()
+            }
+        }
+        @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,6 +114,7 @@ class MainActivity : Activity() {
             userAgentString = "$userAgentString ProviewSignageTV/${BuildConfig.VERSION_NAME}"
         }
         w.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        w.addJavascriptInterface(Bridge(), "SignageNative")
         w.webChromeClient = object : WebChromeClient() {
             // Avoid the grey "play" placeholder before videos start
             override fun getDefaultVideoPoster() = android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888)
@@ -189,20 +223,88 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_UP) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_BACK -> {
-                    val now = SystemClock.elapsedRealtime()
-                    backPresses = if (now - lastBack < 1500) backPresses + 1 else 1
-                    lastBack = now
-                    if (backPresses >= 5) { backPresses = 0; openSettings() }
-                    return true            // kiosk: Back never closes the player
-                }
-                KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { openSettings(); return true }
+        val code = event.keyCode
+        if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_SETTINGS) {
+            if (event.action == KeyEvent.ACTION_UP) {
+                if (code == KeyEvent.KEYCODE_BACK) {
+                    // If the screen menu is open, Back steps back / closes it.
+                    web?.evaluateJavascript("(window.signageRemote && window.signageRemote.back()) || false") { handled ->
+                        if (handled != "true") countBack()
+                    }
+                } else openScreenMenu()
             }
+            return true   // kiosk: Back/Menu never close the player
         }
-        if (event.keyCode == KeyEvent.KEYCODE_BACK) return true
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun countBack() {
+        val now = SystemClock.elapsedRealtime()
+        backPresses = if (now - lastBack < 1500) backPresses + 1 else 1
+        lastBack = now
+        if (backPresses >= 5) { backPresses = 0; openScreenMenu() }
+    }
+
+    /** Opens the PIN-protected web menu, or a native PIN prompt if the player isn't loaded. */
+    private fun openScreenMenu() {
+        web?.evaluateJavascript("window.signageRemote ? (window.signageRemote.open(), true) : false") { ok ->
+            if (ok != "true") askPin { openSettings() }
+        } ?: askPin { openSettings() }
+    }
+
+    private fun sha256(text: String) =
+        MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    private fun askPin(onOk: () -> Unit) {
+        val input = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            hint = "PIN"
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Enter PIN")
+            .setView(input)
+            .setPositiveButton("OK") { _, _ ->
+                val expected = prefs.getString("pin_hash", null)?.takeIf { it.isNotBlank() } ?: sha256("proview-pin:1234")
+                if (sha256("proview-pin:" + input.text.toString()) == expected) onOk()
+                else Toast.makeText(this, "Wrong PIN", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ------------------------------------------------------------ leave & auto-return
+    private fun goHome(minutes: Int) {
+        nextReturnMinutes = minutes
+        startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    /** Android 10+ only lets apps reopen from the background with "Display over other apps". */
+    private fun canStartFromBackground(): Boolean =
+        Build.VERSION.SDK_INT < 29 || Settings.canDrawOverlays(this)
+
+    private fun returnIntent(): PendingIntent {
+        val i = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0)
+        return PendingIntent.getActivity(this, 42, i, flags)
+    }
+
+    private fun scheduleReturn(minutes: Int) {
+        if (minutes <= 0) return
+        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + minutes * 60_000L, returnIntent())
+    }
+
+    private fun cancelReturn() {
+        (getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(returnIntent())
+    }
+
+    override fun onStart() { super.onStart(); cancelReturn(); nextReturnMinutes = null }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations && !isFinishing) {
+            scheduleReturn(nextReturnMinutes ?: prefs.getInt("return_minutes", 5))
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

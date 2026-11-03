@@ -6,7 +6,8 @@
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
 import { SlidePlayer, resolveSchedule } from './renderer.js';
-import { licenseState } from './license.js';
+import { licenseState, licenseSummary } from './license.js';
+import { createRemoteMenu } from './remote.js';
 
 const qs = new URLSearchParams(location.search);
 const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
@@ -194,11 +195,32 @@ async function poll() {
     if (!data) return boot();
     apply(data);
     $('net').classList.remove('bad');
+    loadSettings();
   } catch { $('net').classList.add('bad'); }
 }
 
 async function heartbeat() {
   try { await sb.rpc('screen_heartbeat', { p_info: { ...deviceInfo(), playing: nowPlaying } }); } catch {}
+}
+
+// ------------------------------------------------------------ remote menu
+const remote = createRemoteMenu({
+  getStatus: () => {
+    let needsOverlay = false;
+    try { needsOverlay = !!window.SignageNative && !window.SignageNative.canReopen(); } catch {}
+    return {
+      name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
+      playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
+      model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay,
+    };
+  },
+  onReload: () => location.reload(),
+});
+async function loadSettings() {
+  try {
+    const { data } = await sb.rpc('get_tv_settings');
+    if (data) remote.setSettings(data);
+  } catch {}
 }
 
 let booting = false;
@@ -209,6 +231,7 @@ async function boot() {
     const row = await register();
     apply(row);
     subscribe();
+    loadSettings();
   } catch (e) {
     console.error(e);
     const cached = JSON.parse(localStorage.getItem(LS.screen) || 'null');

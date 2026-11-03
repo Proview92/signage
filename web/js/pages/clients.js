@@ -10,6 +10,8 @@ export async function clientsPage({ main, go, rerender }) {
     q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at,license_type,license_starts_at,license_expires_at,license_notes,trial_blocked_reason,hardware_id').eq('claimed', true).order('name')),
     q(sb.from('client_members').select('client_id,user_id')),
   ]);
+  const tvSettings = (await sb.from('app_settings').select('pin_is_default,return_minutes,updated_at').eq('id', 1).maybeSingle()).data
+    || { pin_is_default: true, return_minutes: 5 };
   const byClient = (id) => screens.filter((s) => s.client_id === id);
   const unassigned = screens.filter((s) => !s.client_id);
   const cname = Object.fromEntries(clients.map((c) => [c.id, c.name]));
@@ -99,5 +101,29 @@ export async function clientsPage({ main, go, rerender }) {
       h('button', { class: 'btn sm', onclick: () => licenseDialog(s, () => rerender()) }, 'Licence'),
       s.client_id ? h('button', { class: 'btn sm', onclick: () => { setClient(s.client_id); go('screen/' + s.id); } }, 'Manage') : null)))) : null;
 
-  main.replaceChildren(head, h('div', { class: 'stack' }, attention, unassignedCard, clientsCard, allTvs));
+  function remoteDialog() {
+    const pin = h('input', { type: 'password', inputMode: 'numeric', autocomplete: 'new-password', maxLength: 8, placeholder: 'Leave blank to keep the current PIN' });
+    const pin2 = h('input', { type: 'password', inputMode: 'numeric', autocomplete: 'new-password', maxLength: 8, placeholder: 'Type it again' });
+    let mins = String(tvSettings.return_minutes);
+    modal({ title: 'TV remote settings', body: [
+      h('p', { class: 'muted small', style: { margin: 0 } }, 'Pressing Back 5 times (or Menu) on a TV remote asks for this PIN, then opens a menu to reload, see the licence, change the player address or exit to the TV home screen. The same PIN is used on every TV.'),
+      field('New PIN (4–8 digits)', pin), field('Confirm PIN', pin2),
+      field('Reopen the player automatically', select([['0', 'Never'], ['2', 'After 2 minutes'], ['5', 'After 5 minutes'], ['10', 'After 10 minutes'], ['15', 'After 15 minutes'], ['30', 'After 30 minutes'], ['60', 'After 1 hour']], mins, (v) => (mins = v)),
+        'Applies when someone leaves the player with the Home button or “Exit to home screen”.'),
+      h('div', { class: 'tiny' }, 'TVs pick up changes within a minute.')],
+    actions: [{ label: 'Cancel' }, { label: 'Save', class: 'primary', onClick: async () => {
+      const p = pin.value.trim();
+      if (p && !/^\d{4,8}$/.test(p)) throw new Error('The PIN must be 4 to 8 digits');
+      if (p !== pin2.value.trim()) throw new Error('The two PINs don’t match');
+      await rpc('set_tv_settings', { p_pin: p || null, p_return_minutes: Number(mins) });
+      toast('TV remote settings saved'); rerender();
+    } }] });
+  }
+  const remoteCard = h('div', { class: 'card' },
+    h('div', { class: 'card-head' },
+      h('div', {}, h('h2', {}, 'TV remote'), h('div', { class: 'tiny' }, `PIN-protected screen menu · reopens ${tvSettings.return_minutes ? `after ${tvSettings.return_minutes} min` : 'never'}`)),
+      h('button', { class: 'btn sm', onclick: remoteDialog }, 'Change PIN & settings')),
+    tvSettings.pin_is_default ? h('div', { class: 'card-body' }, h('div', { class: 'notice' }, 'TVs are still using the default PIN 1234. Change it so customers and staff can’t open the screen menu.')) : null);
+
+  main.replaceChildren(head, h('div', { class: 'stack' }, attention, unassignedCard, clientsCard, allTvs, remoteCard));
 }
