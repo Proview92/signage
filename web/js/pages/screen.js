@@ -2,17 +2,19 @@ import { clientLabel } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
 import { SlidePlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
 import { statusBadges } from './screens.js';
+import { loadSites, siteSelect } from './sites-ui.js';
 import { licenseBanner, licenseDialog } from './license-ui.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 
 export async function screenPage({ main, params: [id], go, rerender }) {
-  let screen, playlists, rules, byId, player = null, tick = null;
+  let sites = [], screen, playlists, rules, byId, player = null, tick = null;
 
   const load = async () => {
-    [screen, playlists, rules] = await Promise.all([
+    [screen, playlists, rules, sites] = await Promise.all([
       q(sb.from('screens').select('*').eq('id', id).single()),
       q(sb.from('playlists').select('id,name,updated_at,slides,settings').eq('client_id', state.clientId).order('name')),
       q(sb.from('schedule_items').select('*').eq('screen_id', id).order('priority', { ascending: false }).order('created_at')),
+      loadSites(state.clientId).catch(() => []),
     ]);
     byId = Object.fromEntries(playlists.map((p) => [p.id, p]));
   };
@@ -29,11 +31,14 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
   function editDetails() {
     const name = h('input', { type: 'text', value: screen.name });
-    const loc = h('input', { type: 'text', value: screen.location || '' });
-    modal({ title: 'Screen details', body: [field('Name', name), field('Location', loc)], actions: [
+    const loc = h('input', { type: 'text', value: screen.location || '', placeholder: 'e.g. Counter, Window' });
+    let site = screen.site_id || '';
+    modal({ title: 'Screen details', body: [field('Name', name),
+      sites.length ? field('Site', siteSelect(sites, site, (v) => (site = v))) : h('div', { class: 'tiny' }, 'No sites yet: managers can add them on the Screens page.'),
+      field('Position at the site', loc)], actions: [
       { label: 'Cancel' },
       { label: 'Save', class: 'primary', onClick: async () => {
-        await q(sb.from('screens').update({ name: name.value.trim() || 'Screen', location: loc.value.trim() || null }).eq('id', id));
+        await q(sb.from('screens').update({ name: name.value.trim() || 'Screen', location: loc.value.trim() || null, site_id: site || null }).eq('id', id));
         await load(); paint();
       } }] });
   }
@@ -173,7 +178,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
       h('div', {},
         h('div', { class: 'crumb' }, h('a', { href: '#/screens' }, 'Screens'), ' / ', screen.name),
         h('div', { class: 'row' }, h('h1', {}, screen.name), h('button', { class: 'btn ghost icon sm', onclick: editDetails, 'aria-label': 'Edit details' }, icon('edit'))),
-        h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), screen.location ? h('span', { class: 'tiny' }, screen.location) : null)),
+        h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), (() => { const t = [sites.find((x) => x.id === screen.site_id)?.name, screen.location].filter(Boolean).join(' · '); return t ? h('span', { class: 'tiny' }, t) : null; })())),
       h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: reloadTv, title: 'Force the TV app to reload' }, icon('refresh'), 'Reload TV'),
         h('button', { class: 'btn primary', onclick: publish, disabled: licenseState(screen).state === 'expired', title: licenseState(screen).state === 'expired' ? 'Licence expired' : '' }, icon('send'), 'Publish to TV')));

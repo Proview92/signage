@@ -26,6 +26,7 @@ Pushing to `main` redeploys the dashboard automatically. Changes under `android/
 | Area | Features |
 |---|---|
 | **Accounts** | Admin (you) → **Clients** → client users with **Manager** or **Editor** roles. Invite by link. Every client's data is isolated at the database level (row-level security). |
+| **Sites** | A client can have many sites (e.g. branches). Media, playlists and users are shared across the client's sites; each TV belongs to one site. The Screens page groups TVs by site with a site filter; managers and the admin add, rename and remove sites. |
 | **TVs** | Pair with a 6-character code shown on the TV. Admin assigns TVs to clients (or a client's manager pairs their own). Online/offline status, model, last seen, remote reload. |
 | **Media** | Drag-and-drop or camera-roll upload with progress bars. Images and videos stored privately per client. |
 | **Playlists** | Slides from pictures, videos or text. 12 transitions (fade, slide, zoom, flip, blur, wipe, circle…), motion effects (Ken Burns, pan, slow zoom), text overlays with position, size, colour and animation, landscape or portrait, live preview, autosave. |

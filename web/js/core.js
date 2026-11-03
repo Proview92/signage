@@ -170,12 +170,11 @@ export function fmtDuration(sec) {
 export const PALETTE = ['#ff5a1f', '#3157ff', '#12a150', '#a23cf0', '#e0a100', '#0aa5b8', '#e3326b', '#5a6270'];
 export function colorFor(id, ids) { const i = Math.max(0, ids.indexOf(id)); return PALETTE[i % PALETTE.length]; }
 
-// ---------------------------------------------------------------- client labels
-/** Short name: site name, else the client's name. */
-export const clientTitle = (c) => (c ? (c.site_name || '').trim() || c.name : '');
-/** Dropdown label: just the site name (falls back to the client's name). */
-export const clientLabel = (c) => clientTitle(c);
+// ---------------------------------------------------------------- client & site labels
+export const clientTitle = (c) => (c ? c.name || '' : '');
+export const clientLabel = clientTitle;
 export const sortClients = (cs) => [...cs].sort((a, b) => clientTitle(a).localeCompare(clientTitle(b)));
+export const sortSites = (ss) => [...ss].sort((a, b) => a.name.localeCompare(b.name));
 
 // ---------------------------------------------------------------- roles
 export function currentClient() { return state.me?.clients.find((c) => c.id === state.clientId) || null; }

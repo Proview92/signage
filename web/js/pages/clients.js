@@ -4,13 +4,16 @@ import { pairDialog } from './screens.js';
 import { showInviteLink } from './team.js';
 import { licenseBadge, licenseDialog } from './license-ui.js';
 import { licenseState, licenseSummary } from '../license.js';
+import { manageSitesDialog } from './sites-ui.js';
 
 export async function clientsPage({ main, go, rerender }) {
-  let [clients, screens, members] = await Promise.all([
+  let [clients, screens, members, sites] = await Promise.all([
     q(sb.from('clients').select('*').order('name')),
-    q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at,license_type,license_starts_at,license_expires_at,license_notes,trial_blocked_reason,hardware_id').eq('claimed', true).order('name')),
+    q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at,license_type,license_starts_at,license_expires_at,license_notes,trial_blocked_reason,hardware_id,site_id').eq('claimed', true).order('name')),
     q(sb.from('client_members').select('client_id,user_id')),
+    q(sb.from('sites').select('id,client_id,name')),
   ]);
+  const sname = Object.fromEntries(sites.map((x) => [x.id, x.name]));
   const tvSettings = (await sb.from('app_settings').select('pin_is_default,return_minutes,updated_at').eq('id', 1).maybeSingle()).data
     || { pin_is_default: true, return_minutes: 5 };
   clients = sortClients(clients);
@@ -21,17 +24,22 @@ export async function clientsPage({ main, go, rerender }) {
   const open = (c) => { setClient(c.id); go('screens'); };
 
   function clientDialog(c) {
-    const site = h('input', { type: 'text', value: c?.site_name || '', placeholder: 'e.g. Bella Pizza — High Street' });
-    const email = h('input', { type: 'email', value: c?.contact_email || (c && /@/.test(c.name) ? c.name : ''), placeholder: 'owner@client.com' });
-    const name = h('input', { type: 'text', value: c && !/@/.test(c.name) ? c.name : '', placeholder: 'Optional, e.g. Bella Pizza Ltd' });
+    const name = h('input', { type: 'text', value: c?.name || '', placeholder: 'e.g. Bella Pizza' });
+    const email = h('input', { type: 'email', value: c?.contact_email || '', placeholder: 'owner@client.com' });
+    const siteList = h('textarea', { rows: 3, placeholder: 'One per line, e.g.\nHigh Street\nStation Road' });
     const notes = h('textarea', { rows: 2, value: c?.notes || '', placeholder: 'Contact, address, contract…' });
     const sendInvite = h('input', { type: 'checkbox', checked: true });
-    modal({ title: c ? 'Edit client' : 'New client', body: [field('Site name', site, 'Shown in client lists and dropdowns.'), field('Contact email', email), field('Company name', name),
+    modal({ title: c ? 'Edit client' : 'New client', body: [
+      field('Client name', name, 'Shown in client lists and dropdowns.'),
+      field('Contact email', email),
+      c ? h('div', { class: 'row between small' }, h('span', { class: 'muted' }, `${sites.filter((x) => x.client_id === c.id).length} site(s)`),
+            h('button', { class: 'btn sm', type: 'button', onclick: () => manageSitesDialog(c.id, c.name, rerender) }, 'Manage sites…'))
+        : field('Sites', siteList, 'The client’s locations. You can add more later.'),
       field('Notes (only admins see this)', notes),
       c ? null : h('label', { class: 'row small', style: { fontWeight: 600 } }, sendInvite, 'Create a manager invite for the contact email')],
     actions: [
       c ? { label: 'Delete client', class: 'danger', onClick: async () => {
-        if (!(await confirmBox('Delete client?', `This permanently deletes ${clientTitle(c)}'s playlists, media records and schedules. Their TVs become unassigned.`))) return false;
+        if (!(await confirmBox('Delete client?', `This permanently deletes ${clientTitle(c)}'s sites, playlists, media records and schedules. Their TVs become unassigned.`))) return false;
         const { data: files } = await sb.storage.from('media').list(c.id, { limit: 1000 });
         if (files?.length) await sb.storage.from('media').remove(files.map((f) => `${c.id}/${f.name}`));
         await q(sb.from('clients').delete().eq('id', c.id));
@@ -39,13 +47,15 @@ export async function clientsPage({ main, go, rerender }) {
       } } : null,
       { label: 'Cancel' },
       { label: c ? 'Save' : 'Create client', class: 'primary', onClick: async () => {
-        const siteV = site.value.trim(), emailV = email.value.trim().toLowerCase(), nameV = name.value.trim();
-        if (!siteV && !nameV && !emailV) throw new Error('Enter a site name');
+        const nameV = name.value.trim(), emailV = email.value.trim().toLowerCase();
+        if (!nameV) throw new Error('Enter the client name');
         if (emailV && !/^\S+@\S+\.\S+$/.test(emailV)) throw new Error('Enter a valid email address');
-        const row = { name: nameV || siteV || emailV, site_name: siteV || null, contact_email: emailV || null, notes: notes.value || null };
+        const row = { name: nameV, contact_email: emailV || null, notes: notes.value || null };
         if (c) { await q(sb.from('clients').update(row).eq('id', c.id)); }
         else {
           const nc = await q(sb.from('clients').insert(row).select().single());
+          const names = [...new Set(siteList.value.split('\n').map((x) => x.trim()).filter(Boolean))];
+          if (names.length) await q(sb.from('sites').insert(names.map((n) => ({ client_id: nc.id, name: n }))));
           const e = sendInvite.checked ? emailV : '';
           if (e) {
             const inv = await q(sb.from('invites').insert({ client_id: nc.id, email: e, role: 'manager' }).select().single());
@@ -82,8 +92,9 @@ export async function clientsPage({ main, go, rerender }) {
       const users = members.filter((m) => m.client_id === c.id).length;
       return h('div', { class: 'list-row' },
         h('div', { class: 'grow' }, h('div', { style: { fontWeight: 650 } }, clientTitle(c)),
-          h('div', { class: 'tiny' }, [c.contact_email && c.contact_email !== clientTitle(c) ? c.contact_email : null, `${scr.length} TV${scr.length === 1 ? '' : 's'}`, `${users} user${users === 1 ? '' : 's'}`, c.notes ? c.notes.slice(0, 60) : null].filter(Boolean).join(' · '))),
+          h('div', { class: 'tiny' }, [c.contact_email && c.contact_email !== clientTitle(c) ? c.contact_email : null, (() => { const n = sites.filter((x) => x.client_id === c.id).length; return `${n} site${n === 1 ? '' : 's'}`; })(), `${scr.length} TV${scr.length === 1 ? '' : 's'}`, `${users} user${users === 1 ? '' : 's'}`, c.notes ? c.notes.slice(0, 60) : null].filter(Boolean).join(' · '))),
         scr.length ? h('span', { class: 'badge ' + (on === scr.length ? 'ok' : on ? 'warn' : 'bad') }, `${on}/${scr.length} online`) : null,
+        h('button', { class: 'btn sm', onclick: () => manageSitesDialog(c.id, c.name, rerender) }, 'Sites'),
         h('button', { class: 'btn sm ghost icon', title: 'Edit', onclick: () => clientDialog(c) }, icon('edit')),
         h('button', { class: 'btn sm', onclick: () => open(c) }, 'Open'));
     }))) : h('div', { class: 'card empty' }, h('h2', {}, 'Add your first client'),
@@ -97,7 +108,7 @@ export async function clientsPage({ main, go, rerender }) {
   const attention = needs.length ? h('div', { class: 'card' },
     h('div', { class: 'card-head' }, h('h2', {}, 'Licences needing attention'), h('span', { class: 'badge warn' }, needs.length)),
     h('div', { class: 'list' }, needs.map(({ s }) => h('div', { class: 'list-row' },
-      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, cname[s.client_id] || 'Unassigned')),
+      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, [cname[s.client_id] || 'Unassigned', sname[s.site_id]].filter(Boolean).join(' · '))),
       licenseBadge(s),
       h('button', { class: 'btn sm primary', onclick: () => licenseDialog(s, () => rerender()) }, 'Renew…'))))) : null;
 
@@ -105,7 +116,7 @@ export async function clientsPage({ main, go, rerender }) {
     h('div', { class: 'card-head' }, h('h2', {}, 'All TVs')),
     h('div', { class: 'list' }, screens.map((s) => h('div', { class: 'list-row' },
       h('span', { class: 'badge ' + (isOnline(s) ? 'ok' : 'bad') }, isOnline(s) ? 'Online' : 'Offline'),
-      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, [cname[s.client_id] || 'Unassigned', s.location].filter(Boolean).join(' · '))),
+      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, [cname[s.client_id] || 'Unassigned', sname[s.site_id], s.location].filter(Boolean).join(' · '))),
       licenseBadge(s),
       h('button', { class: 'btn sm', onclick: () => licenseDialog(s, () => rerender()) }, 'Licence'),
       s.client_id ? h('button', { class: 'btn sm', onclick: () => { setClient(s.client_id); go('screen/' + s.id); } }, 'Manage') : null)))) : null;
