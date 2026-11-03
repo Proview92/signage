@@ -1,6 +1,6 @@
 // =====================================================================
 //  TV remote menu, driven by a D-pad remote.
-//  Opened by: Back or Menu (Android app), or "M" key (browser).
+//  Opened by: Back pressed 3 times or Menu (Android app), or "M" key (browser).
 //  (A PIN step exists below but is switched off: REQUIRE_PIN = false.)
 // =====================================================================
 const native = () => window.SignageNative || null;

@@ -72,13 +72,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun exitToHome(minutes: Int) = runOnUiThread { goHome(minutes) }
         @JavascriptInterface fun changeAddress() = runOnUiThread { openSettings() }
         @JavascriptInterface fun canReopen(): Boolean = canStartFromBackground()
-        @JavascriptInterface fun openOverlayPermission() = runOnUiThread {
-            try {
-                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-            } catch (_: Exception) {
-                Toast.makeText(this@MainActivity, "This TV doesn't offer that setting. The player will still reopen when the TV restarts.", Toast.LENGTH_LONG).show()
-            }
-        }
+        @JavascriptInterface fun openOverlayPermission() = runOnUiThread { openOverlaySetting() }
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
         @JavascriptInterface fun openWifi(minutes: Int) = runOnUiThread { openWifiSettings(minutes) }
         @JavascriptInterface fun networkType(): String = currentNetworkType()
@@ -98,6 +92,7 @@ class MainActivity : Activity() {
         createWebView()
         load()
         scheduleNightlyReload()
+        handler.postDelayed({ askForOverlayIfNeeded() }, 4000)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -248,14 +243,28 @@ class MainActivity : Activity() {
             if (event.action == KeyEvent.ACTION_UP) {
                 if (code == KeyEvent.KEYCODE_BACK) {
                     // If the screen menu is open, Back steps back / closes it.
+                    // Otherwise it takes 3 Back presses (within 3 seconds) to open the menu.
                     web?.evaluateJavascript("(window.signageRemote && window.signageRemote.back()) || false") { handled ->
-                        if (handled != "true") openScreenMenu()
+                        if (handled != "true") countBackPress()
                     }
                 } else openScreenMenu()
             }
             return true   // kiosk: Back/Menu never close the player
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private var backPresses = 0
+    private var firstBackAt = 0L
+    private var backToast: Toast? = null
+    private fun countBackPress() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - firstBackAt > 3000) { backPresses = 0; firstBackAt = now }
+        backPresses++
+        backToast?.cancel()
+        if (backPresses >= 3) { backPresses = 0; firstBackAt = 0; openScreenMenu(); return }
+        val left = 3 - backPresses
+        backToast = Toast.makeText(this, "Press Back $left more time${if (left == 1) "" else "s"} for the menu", Toast.LENGTH_SHORT).also { it.show() }
     }
 
     /** Opens the web screen menu, or the address dialog if the player page isn't loaded. */
@@ -344,6 +353,40 @@ class MainActivity : Activity() {
             @Suppress("DEPRECATION") when { ni == null || !ni.isConnected -> "Not connected"; ni.type == android.net.ConnectivityManager.TYPE_ETHERNET -> "Ethernet (cable)"; ni.type == android.net.ConnectivityManager.TYPE_WIFI -> "Wi-Fi"; else -> "Connected" }
         }
     } catch (e: Exception) { "" }
+
+    /**
+     * Android doesn't let an app switch on "Display over other apps" by itself, so on start-up
+     * (until it's on) we explain why and open the right settings page; the installer just flips the switch.
+     * Asked at most once a day. Installers can also grant it over ADB:
+     *   adb shell appops set com.signage.tv SYSTEM_ALERT_WINDOW allow
+     */
+    private fun askForOverlayIfNeeded() {
+        if (canStartFromBackground() || isFinishing) return
+        val last = prefs.getLong("overlay_asked_at", 0L)
+        if (System.currentTimeMillis() - last < 24 * 3600_000L) return
+        prefs.edit().putLong("overlay_asked_at", System.currentTimeMillis()).apply()
+        try {
+            AlertDialog.Builder(this)
+                .setTitle("Let PROVIEW SIGNAGE reopen itself")
+                .setMessage("So the player comes back on its own after someone leaves it, turn ON \"Display over other apps\" (sometimes called \"Appear on top\") for PROVIEW SIGNAGE on the next screen, then press Back.")
+                .setPositiveButton("Open setting") { _, _ -> openOverlaySetting() }
+                .setNegativeButton("Not now", null)
+                .show()
+        } catch (_: Exception) {}
+    }
+
+    private fun openOverlaySetting() {
+        val pkg = Uri.parse("package:$packageName")
+        val tries = listOf(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, pkg),
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION),
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg),
+        )
+        for (i in tries) {
+            try { nextReturnMinutes = prefs.getInt("return_minutes", 5); startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return } catch (_: Exception) { nextReturnMinutes = null }
+        }
+        Toast.makeText(this, "This TV doesn't offer that setting. The player will still reopen when the TV restarts.", Toast.LENGTH_LONG).show()
+    }
 
     /** Android 10+ only lets apps reopen from the background with "Display over other apps". */
     private fun canStartFromBackground(): Boolean =
