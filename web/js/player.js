@@ -11,6 +11,7 @@ import { licenseState } from './license.js';
 const qs = new URLSearchParams(location.search);
 const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
 const MODEL = qs.get('model') || '';
+const HW = /^[0-9a-f]{64}$/.test(qs.get('hw') || '') ? qs.get('hw') : '';
 const sb = makeClient('signage-tv');
 const LS = { screen: 'signage.tv.screen', reload: 'signage.tv.reload' };
 const MEDIA_CACHE = 'signage-media-v1';
@@ -82,13 +83,16 @@ async function prefetchAndPrune(c) {
 }
 
 // ------------------------------------------------------------ playback
-function isExpired() { return screen?.claimed && licenseState(screen).state === 'expired'; }
+function isExpired() { return screen?.claimed && ['expired', 'none'].includes(licenseState(screen).state); }
 
 function evaluate() {
   if (isExpired()) {
     if (currentKey !== 'expired') {
       currentKey = 'expired'; player?.clear(); nowPlaying = 'licence expired';
       $('expired-name').textContent = screen.name;
+      const none = licenseState(screen).state === 'none';
+      $('expired-title').textContent = none ? 'Licence required' : 'Licence expired';
+      $('expired-msg').textContent = none ? 'needs a licence before it can play.' : 'has ended.';
       show('expired');
     }
     return;
@@ -147,7 +151,7 @@ function apply(row) {
 function deviceInfo() {
   const dpr = window.devicePixelRatio || 1;
   return {
-    app: APP, model: MODEL || undefined,
+    app: APP, model: MODEL || undefined, hw: HW || undefined,
     resolution: `${Math.round(window.screen.width * dpr)}×${Math.round(window.screen.height * dpr)}`,
     ua: navigator.userAgent.slice(0, 160),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,

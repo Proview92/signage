@@ -13,7 +13,7 @@ export function licenseBanner(screen) {
   if (L.state === 'grace') return h('div', { class: 'notice' }, `This TV's licence expired on ${fmtDate(L.expires)}. It will keep playing for ${L.graceLeft} more day${L.graceLeft === 1 ? '' : 's'}, then show “Licence expired”. ${who}`);
   if (L.state === 'expired') return h('div', { class: 'notice' }, `This TV's licence expired on ${fmtDate(L.expires)} and the ${GRACE_DAYS}-day grace period is over. The TV is showing “Licence expired” and can't be published to. ${who}`);
   if (L.state === 'expiring') return h('div', { class: 'notice info' }, `${L.type === 'trial7' ? 'Trial' : 'Licence'} ends ${fmtDate(L.expires)} (${L.daysLeft} day${L.daysLeft === 1 ? '' : 's'}). ${who}`);
-  if (L.state === 'none') return h('div', { class: 'notice' }, `This TV has no licence. ${who}`);
+  if (L.state === 'none') return h('div', { class: 'notice' }, `This TV has no licence${screen.trial_blocked_reason ? ` (${screen.trial_blocked_reason})` : ''} and isn't playing. ${who}`);
   return null;
 }
 

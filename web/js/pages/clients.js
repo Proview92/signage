@@ -7,7 +7,7 @@ import { licenseState, licenseSummary } from '../license.js';
 export async function clientsPage({ main, go, rerender }) {
   const [clients, screens, members] = await Promise.all([
     q(sb.from('clients').select('*').order('name')),
-    q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at,license_type,license_starts_at,license_expires_at,license_notes').eq('claimed', true).order('name')),
+    q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at,license_type,license_starts_at,license_expires_at,license_notes,trial_blocked_reason,hardware_id').eq('claimed', true).order('name')),
     q(sb.from('client_members').select('client_id,user_id')),
   ]);
   const byClient = (id) => screens.filter((s) => s.client_id === id);

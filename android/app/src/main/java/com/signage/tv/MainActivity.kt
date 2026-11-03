@@ -15,6 +15,7 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.provider.Settings
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -25,6 +26,7 @@ import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
+import java.security.MessageDigest
 import java.util.Calendar
 
 /**
@@ -117,8 +119,22 @@ class MainActivity : Activity() {
         val uri = Uri.parse(playerUrl).buildUpon()
             .appendQueryParameter("app", BuildConfig.VERSION_NAME)
             .appendQueryParameter("model", "${Build.MANUFACTURER} ${Build.MODEL}".trim())
+            .appendQueryParameter("hw", hardwareId())
             .build()
         web?.loadUrl(uri.toString())
+    }
+
+    /**
+     * Stable per-device ID that survives app reinstalls (not factory resets).
+     * Android's ANDROID_ID, hashed so the raw ID never leaves the device.
+     * Requires the APK to always be signed with the same release key.
+     */
+    @SuppressLint("HardwareIds")
+    private fun hardwareId(): String {
+        val raw = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: return ""
+        if (raw.isBlank() || raw == "9774d56d682e549c") return ""   // known bogus emulator/legacy value
+        val digest = MessageDigest.getInstance("SHA-256").digest("proview-signage:$raw".toByteArray())
+        return digest.joinToString("") { "%02x".format(it) }
     }
 
     private fun showOffline() {

@@ -57,7 +57,9 @@ export function pairDialog({ fixedClient, clients, onDone }) {
         if (code.value.trim().length < 6) throw new Error('Enter the 6-character code shown on the TV');
         const s = await rpc('claim_screen', { p_code: code.value, p_name: name.value || null, p_client: clientId || null });
         if (loc.value.trim()) await q(sb.from('screens').update({ location: loc.value.trim() }).eq('id', s.id));
-        toast(`${s.name} paired — 7-day trial started`);
+        if (s.license_type === 'trial7') toast(`${s.name} paired — 7-day trial started`);
+        else if (s.license_type) toast(`${s.name} paired`);
+        else toast(`${s.name} paired, but no free trial: ${s.trial_blocked_reason || 'this device needs a licence'}`, true);
         onDone?.(s);
       } },
     ],

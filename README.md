@@ -30,7 +30,7 @@ Pushing to `main` redeploys the dashboard automatically. Changes under `android/
 | **Media** | Drag-and-drop or camera-roll upload with progress bars. Images and videos stored privately per client. |
 | **Playlists** | Slides from pictures, videos or text. 12 transitions (fade, slide, zoom, flip, blur, wipe, circle…), motion effects (Ken Burns, pan, slow zoom), text overlays with position, size, colour and animation, landscape or portrait, live preview, autosave. |
 | **Schedules** | Per TV: a default playlist plus rules such as *"Breakfast menu, weekdays 07:00–11:00"* or *"Christmas, 1–26 Dec, override"*. Priorities, overnight slots, date ranges, a 7-day timeline view. Individual slides can also have their own time windows. |
-| **Licences** | Per TV: 7-day trial (automatic on pairing), 1, 3, 6, 12, 24 or 36 months, lifetime, or a custom end date. Only the admin can set or renew them, and renewals can stack onto the current end date. After expiry the TV keeps playing for a 7-day grace period with warnings in the dashboard, then shows *Licence expired*, can't be published to and can't download media. **Clients & TVs** lists every licence that needs attention. |
+| **Licences** | Per TV: 7-day trial (automatic on pairing, **once per physical device**: the app sends a hashed Android device ID, so reinstalling doesn't give a new trial; browser players get no automatic trial), 1, 3, 6, 12, 24 or 36 months, lifetime, or a custom end date. Only the admin can set or renew them, and renewals can stack onto the current end date. After expiry the TV keeps playing for a 7-day grace period with warnings in the dashboard, then shows *Licence expired*, can't be published to and can't download media. **Clients & TVs** lists every licence that needs attention. |
 | **Publishing** | Edits stay as drafts until you press **Publish**. TVs update within seconds. |
 | **Reliability** | TVs keep the full schedule and all media cached, so they continue playing and switching on time without internet. They auto-start on boot, recover from crashes and reload nightly. |
 
@@ -73,7 +73,7 @@ Reload the dashboard. You'll see **Clients & TVs**.
 
 **Option B:** open `android/` in Android Studio, set `PLAYER_URL` in `android/gradle.properties`, then **Build → Build APK**.
 
-> The APK is signed with a debug key by default. To use your own key, add the secrets `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS` and `SIGNING_KEY_PASSWORD`.
+> The APK must always be signed with the **same release key**, otherwise updates won't install over older versions and the device ID used for trials changes. The workflow needs two repository secrets: `SIGNING_KEYSTORE_BASE64` (the keystore file, base64-encoded) and `SIGNING_PASSWORD`. Keep a backup of the keystore: if it's lost, every TV has to uninstall and reinstall the app.
 
 ### 6. Install on the TV
 - **Fire TV:** Settings → My Fire TV → Developer options → **Apps from Unknown Sources** (on for "Downloader"). Install the **Downloader** app, enter a link to your APK, and install it.
