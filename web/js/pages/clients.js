@@ -7,7 +7,7 @@ import { licenseState, licenseSummary } from '../license.js';
 import { manageSitesDialog } from './sites-ui.js';
 import { integrationsCards } from './integrations.js';
 import { emergencyDialog, overridesBanner } from './emergency.js';
-import { fmtBytes } from '../core.js';
+import { fmtBytes, fetchAll } from '../core.js';
 
 export async function clientsPage({ main, go, rerender }) {
   let [clients, screens, members, sites] = await Promise.all([
@@ -16,7 +16,7 @@ export async function clientsPage({ main, go, rerender }) {
     q(sb.from('client_members').select('client_id,user_id')),
     q(sb.from('sites').select('id,client_id,name')),
   ]);
-  const media = (await sb.from('media').select('client_id,size_bytes')).data || [];
+  const media = await fetchAll(() => sb.from('media').select('client_id,size_bytes').order('id')).catch(() => []);
   const usage = (cid) => media.filter((m) => m.client_id === cid).reduce((t, m) => t + (Number(m.size_bytes) || 0), 0);
   const sname = Object.fromEntries(sites.map((x) => [x.id, x.name]));
   const tvSettings = (await sb.from('app_settings').select('pin_is_default,return_minutes,updated_at').eq('id', 1).maybeSingle()).data
@@ -137,7 +137,7 @@ export async function clientsPage({ main, go, rerender }) {
           catch (e) { toast(e.message, true); }
         }))));
 
-  const banner = await overridesBanner(rerender);
+  const banner = await overridesBanner(rerender, { everyClient: true });
   const integ = await integrationsCards(rerender);
   main.replaceChildren(head, banner || '', h('div', { class: 'stack' }, attention, unassignedCard, clientsCard, allTvs, remoteCard, integ));
 }

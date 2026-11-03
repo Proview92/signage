@@ -52,7 +52,11 @@ async function cacheGet(path) {
 async function download(path) {
   const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;
-  const res = await fetch(data.signedUrl);
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 10 * 60000);   // never hang forever on a dead connection
+  let res;
+  try { res = await fetch(data.signedUrl, { signal: ctl.signal }); }
+  finally { clearTimeout(t); }
   if (!res.ok) throw new Error('download failed ' + res.status);
   const blob = await res.blob();
   const c = 'caches' in window ? await caches.open(MEDIA_CACHE) : null;
@@ -79,19 +83,23 @@ function allPaths(c) {
   for (const p of Object.values(c?.playlists || {})) for (const s of p.slides || []) if (s.path) set.add(s.path);
   return set;
 }
+let prefetchGen = 0;
 async function prefetchAndPrune(c) {
+  const gen = ++prefetchGen;
   const paths = allPaths(c);
   for (const p of paths) {
+    if (gen !== prefetchGen) return;     // newer content arrived: that run takes over
     try { if (!objectUrls.has(p) && !(await cacheGet(p))) await download(p); } catch (e) { console.warn('prefetch', p, e.message); }
   }
+  if (gen !== prefetchGen) return;
+  // Only ever prune against the latest content.
+  const keep = allPaths(content);
+  for (const [p, u] of objectUrls) if (!keep.has(p)) { URL.revokeObjectURL(u); objectUrls.delete(p); }
   if (!navigator.onLine || !('caches' in window)) return;
   const cache = await caches.open(MEDIA_CACHE);
   for (const req of await cache.keys()) {
     const p = decodeURIComponent(new URL(req.url).pathname.replace(/^\/__media\//, ''));
-    if (!paths.has(p)) {
-      await cache.delete(req);
-      if (objectUrls.has(p)) { URL.revokeObjectURL(objectUrls.get(p)); objectUrls.delete(p); }
-    }
+    if (!keep.has(p)) await cache.delete(req);
   }
 }
 
@@ -274,13 +282,20 @@ async function flushPlays() {
   const b = bucket();
   const rows = Object.values(b);
   if (!rows.length || !navigator.onLine) return;
-  // keep the slide that is playing right now (its seconds aren't final yet)
-  const keep = lastPlay ? { [lastPlay.key]: { ...b[lastPlay.key], plays: 0, seconds: 0 } } : {};
   try {
-    const { error } = await sb.rpc('log_plays', { p_rows: rows.slice(0, 500) });
+    const sent = rows.slice(0, 500);
+    const { error } = await sb.rpc('log_plays', { p_rows: sent });
     if (error) throw error;
-    const rest = Object.fromEntries(Object.entries(b).filter(([k]) => !rows.slice(0, 500).some((r) => `${r.hour}|${r.slide_id}` === k)));
-    localStorage.setItem(LS_PLAYS, JSON.stringify({ ...rest, ...keep }));
+    // Re-read: plays may have been logged while we were uploading. Subtract what was sent.
+    const now = bucket();
+    for (const r of sent) {
+      const k = `${r.hour}|${r.slide_id}`, cur = now[k];
+      if (!cur) continue;
+      cur.plays -= r.plays; cur.seconds -= r.seconds;
+      if (cur.plays <= 0 && cur.seconds <= 0 && !(lastPlay && lastPlay.key === k)) delete now[k];
+      else { cur.plays = Math.max(0, cur.plays); cur.seconds = Math.max(0, cur.seconds); }
+    }
+    localStorage.setItem(LS_PLAYS, JSON.stringify(now));
   } catch {}
 }
 setInterval(flushPlays, 10 * 60000);

@@ -1,8 +1,9 @@
 // Proof-of-play: what played, where and when.
-import { sb, state, h, q, currentClient, clientTitle, fmtDuration } from '../core.js';
+import { sb, state, h, q, fetchAll, currentClient, clientTitle, fmtDuration } from '../core.js';
+import { localDate } from '../renderer.js';
 import { loadSites } from './sites-ui.js';
 
-const isoDate = (d) => d.toISOString().slice(0, 10);
+const isoDate = (d) => localDate(d);   // the user's own calendar day
 
 export async function reportsPage({ main }) {
   const client = currentClient();
@@ -17,16 +18,20 @@ export async function reportsPage({ main }) {
 
   async function run() {
     out.replaceChildren(h('div', { class: 'row muted' }, h('div', { class: 'spinner' }), 'Loading…'));
-    let qry = sb.from('play_stats').select('*').eq('client_id', state.clientId)
-      .gte('hour', new Date(from + 'T00:00:00').toISOString()).lt('hour', new Date(new Date(to + 'T00:00:00').getTime() + 86400000).toISOString())
-      .order('hour', { ascending: true }).limit(20000);
-    if (site) qry = qry.eq('site_id', site);
-    if (screenId) qry = qry.eq('screen_id', screenId);
-    const rows = await q(qry);
+    const end = new Date(to + 'T00:00:00'); end.setDate(end.getDate() + 1);
+    const build = () => {
+      let qry = sb.from('play_stats').select('*').eq('client_id', state.clientId)
+        .gte('hour', new Date(from + 'T00:00:00').toISOString()).lt('hour', end.toISOString())
+        .order('hour', { ascending: true }).order('id', { ascending: true });
+      if (site) qry = qry.eq('site_id', site);
+      if (screenId) qry = qry.eq('screen_id', screenId);
+      return qry;
+    };
+    const rows = await fetchAll(build);
     const sname = Object.fromEntries(screens.map((s) => [s.id, s.name]));
     const siteName = Object.fromEntries(sites.map((s) => [s.id, s.name]));
 
-    const keyOf = { slide: (r) => r.slide_id, screen: (r) => r.screen_id, day: (r) => r.hour.slice(0, 10), playlist: (r) => r.playlist_id || '—' }[group];
+    const keyOf = { slide: (r) => r.slide_id, screen: (r) => r.screen_id, day: (r) => localDate(new Date(r.hour)), playlist: (r) => r.playlist_id || '—' }[group];
     const labelOf = { slide: (r) => r.slide_name || r.slide_type, screen: (r) => sname[r.screen_id] || 'Removed TV', day: (r) => new Date(r.hour).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }), playlist: (r) => r.playlist_name || '—' }[group];
     const agg = new Map();
     for (const r of rows) {

@@ -37,7 +37,7 @@ export function widgetFields(s, change, repaint) {
 
   if (s.type === 'menu') {
     const rows = h('div', { class: 'stack full', style: { gap: '6px' } });
-    const paintRows = () => rows.replaceChildren(...(w.items || []).map((it, i) => h('div', { class: 'row', style: { flexWrap: 'nowrap', gap: '6px' } },
+    const paintRows = () => rows.replaceChildren(...(s.widget?.items || []).map((it, i) => h('div', { class: 'row', style: { flexWrap: 'nowrap', gap: '6px' } },
       h('input', { type: 'text', value: it.name, placeholder: 'Item', style: { flex: '2' }, oninput: (e) => change((x) => { x.widget.items[i].name = e.target.value; }) }),
       h('input', { type: 'text', value: it.price, placeholder: '£0.00', style: { flex: '1', minWidth: '70px' }, oninput: (e) => change((x) => { x.widget.items[i].price = e.target.value; }) }),
       h('input', { type: 'text', value: it.desc || '', placeholder: 'Description (optional)', style: { flex: '3' }, oninput: (e) => change((x) => { x.widget.items[i].desc = e.target.value; }) }),

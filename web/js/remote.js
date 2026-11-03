@@ -4,6 +4,7 @@
 //  (A PIN step exists below but is switched off: REQUIRE_PIN = false.)
 // =====================================================================
 const native = () => window.SignageNative || null;
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const LS_SETTINGS = 'signage.tv.settings';
 const REQUIRE_PIN = false;
 
@@ -68,7 +69,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
       isApp && st.needsOverlay ? ['overlay', 'Allow automatic reopening', 'Grant “Display over other apps” so the player can reopen itself'] : null,
       ['close', 'Close menu', ''],
     ].filter(Boolean);
-    $body.innerHTML = `<div class="rm-list">${items.map(([k, t, s]) => `<button data-k="${k}"><b>${t}</b>${s ? `<span>${s}</span>` : ''}</button>`).join('')}</div>`;
+    $body.innerHTML = `<div class="rm-list">${items.map(([k, t, s]) => `<button data-k="${esc(k)}"><b>${esc(t)}</b>${s ? `<span>${esc(s)}</span>` : ''}</button>`).join('')}</div>`;
     focus = 0; paintFocus();
   }
 
@@ -81,7 +82,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
       ['Connection', (st.online ? 'Online' : 'Offline') + (native()?.networkType ? ` · ${native().networkType() || '—'}` : '')], ['Device', st.model || '—'], ['App', st.app || '—'],
       ['Auto-reopen', st.isApp ? (settings.return_minutes ? `${settings.return_minutes} min after leaving${st.needsOverlay ? ' (needs permission)' : ''}` : 'Off') : 'Browser player'],
     ];
-    $body.innerHTML = `<table class="rm-table">${rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('')}</table>
+    $body.innerHTML = `<table class="rm-table">${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>
       <div class="rm-list"><button data-k="back"><b>Back</b></button></div>`;
     focus = 0; paintFocus();
   }

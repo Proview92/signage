@@ -87,7 +87,10 @@ async function forecast(w) {
   const key = `signage.wx.${w.lat},${w.lon},${w.unit}`;
   try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && Date.now() - c.t < 30 * 60000) return c.d; } catch {}
   const u = `https://api.open-meteo.com/v1/forecast?latitude=${w.lat}&longitude=${w.lon}&current=temperature_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7${w.unit === 'f' ? '&temperature_unit=fahrenheit' : ''}`;
-  const d = await (await fetch(u)).json();
+  const r = await fetch(u);
+  if (!r.ok) throw new Error('weather ' + r.status);
+  const d = await r.json();
+  if (!d?.current) throw new Error('weather: no data');
   try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d })); } catch {}
   return d;
 }

@@ -25,7 +25,11 @@ export function previewExpiry(type, { extend = false, current = null, custom = n
   const base = extend && current && new Date(current) > now ? new Date(current) : now;
   const d = new Date(base);
   if (type === 'trial7') d.setDate(d.getDate() + 7);
-  else d.setMonth(d.getMonth() + MONTHS[type]);
+  else {
+    const day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + MONTHS[type]);
+    d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  }
   return d;
 }
 

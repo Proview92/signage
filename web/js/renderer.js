@@ -435,14 +435,18 @@ export class SlidePlayer {
   async show(idx, my = ++this.token, activeCount = 1) {
     const slide = this.slides[idx];
     let url = null;
-    if (slide.type === 'image' || slide.type === 'video') {
-      try { url = await this.opts.resolveUrl(slide); } catch (e) { console.warn('media failed', e); }
+    const isMedia = slide.type === 'image' || slide.type === 'video';
+    if (isMedia) {
+      // Don't let a slow/stalled download freeze the screen: give up after 20s
+      // (the download carries on in the background for next time).
+      try { url = await Promise.race([this.opts.resolveUrl(slide), new Promise((r) => setTimeout(() => r(null), 20000))]); }
+      catch (e) { console.warn('media failed', e); }
     }
     if (my !== this.token) return;
     const el = buildSlide(slide, url, { mutedOverride: this.opts.mutedOverride });
     el.style.opacity = '0';           // laid out & decoding, but not visible yet
     this.host.stage.appendChild(el);
-    const ok = await waitReady(el);
+    const ok = isMedia && !url ? false : await waitReady(el);   // missing file → skip the slide
     if (my !== this.token) { el.remove(); return; }
     if (!ok && (slide.type === 'image' || slide.type === 'video') && this.slides.length > 1) {
       el.remove();
@@ -512,10 +516,12 @@ export class SlidePlayer {
 
 // Render a single static frame (used for thumbnails).
 export function renderStill(container, slide, url, orientation = 'landscape') {
+  container.__sgStill?.destroy();          // stop the previous stage's resize watcher
   container.replaceChildren();
   const st = createStage(container, orientation);
   const el = buildSlide(slide, url, { forPreview: true, mutedOverride: true });
   st.stage.appendChild(el);
+  container.__sgStill = st;
   return st;
 }
 

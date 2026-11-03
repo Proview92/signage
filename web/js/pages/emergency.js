@@ -67,10 +67,10 @@ export async function emergencyDialog({ onDone } = {}) {
 }
 
 /** Banner listing active messages with an End button (or null). */
-export async function overridesBanner(onChange) {
+export async function overridesBanner(onChange, { everyClient = false } = {}) {
   let list = [];
   try { list = await activeOverrides(); } catch { return null; }
-  if (state.clientId && !state.me.is_admin) list = list.filter((o) => o.scope === 'all' || o.client_id === state.clientId);
+  if (state.clientId && !everyClient) list = list.filter((o) => o.scope === 'all' || o.client_id === state.clientId);
   if (!list.length) return null;
   const sites = state.clientId ? await loadSites(state.clientId).catch(() => []) : [];
   return h('div', { class: 'stack', style: { gap: '8px', marginBottom: '16px' } }, list.map((o) => {

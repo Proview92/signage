@@ -188,7 +188,7 @@ export async function screensPage({ main, go }) {
       h('div', {}, h('h1', {}, 'Screens'),
         h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} site${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
       h('div', { class: 'row' }, filterSel,
-        h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message'),
+        canManage() || !currentClient()?.require_approval ? h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message') : null,
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Sites') : null,
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
 

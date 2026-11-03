@@ -16,7 +16,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     [screen, playlists, rules, sites] = await Promise.all([
       q(sb.from('screens').select('*').eq('id', id).single()),
       q(sb.from('playlists').select('id,name,updated_at,slides,settings').eq('client_id', state.clientId).order('name')),
-      q(sb.from('schedule_items').select('*').eq('screen_id', id).order('priority', { ascending: false }).order('created_at')),
+      q(sb.from('schedule_items').select('*').eq('screen_id', id).order('priority', { ascending: false }).order('created_at', { ascending: false })),
       loadSites(state.clientId).catch(() => []),
     ]);
     byId = Object.fromEntries(playlists.map((p) => [p.id, p]));
@@ -64,7 +64,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     actions: [{ label: 'Cancel' }, { label: 'Move TV', class: 'primary', onClick: async () => {
       if (target === screen.client_id) return;
       await rpc('assign_screen', { p_screen: id, p_client: target });
-      toast('TV moved'); setClient(target); go('screen/' + id);
+      toast('TV moved'); setClient(target); rerender();
     } }] });
   }
 

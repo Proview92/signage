@@ -1,11 +1,11 @@
-import { sb, state, h, icon, q, toast, modal, field, confirmBox, mediaUrls, fmtBytes, fmtDuration, timeAgo, errMsg, BUCKET } from '../core.js';
+import { sb, state, h, icon, q, fetchAll, toast, modal, field, confirmBox, promptBox, mediaUrls, fmtBytes, fmtDuration, timeAgo, errMsg, BUCKET } from '../core.js';
 
 import { shrinkImage } from '../imgfit.js';
 
 const cfg = window.SIGNAGE_CONFIG || {};
 
 async function listMedia() {
-  return q(sb.from('media').select('*').eq('client_id', state.clientId).order('created_at', { ascending: false }));
+  return fetchAll(() => sb.from('media').select('*').eq('client_id', state.clientId).order('created_at', { ascending: false }).order('id'));
 }
 
 function readMeta(file) {
@@ -180,9 +180,9 @@ export async function mediaPage({ main }) {
       h('button', { class: 'chip' + (!folder ? ' on' : ''), onclick: () => setFolder('') }, `All files (${items.length})`),
       ...fs.map((f) => h('button', { class: 'chip' + (folder === f ? ' on' : ''), onclick: () => setFolder(f) }, `📁 ${f} (${items.filter((m) => m.folder === f).length})`)),
       items.some((m) => !m.folder) && fs.length ? h('button', { class: 'chip' + (folder === '__none' ? ' on' : ''), onclick: () => setFolder('__none') }, `Not in a folder (${items.filter((m) => !m.folder).length})`) : null,
-      h('button', { class: 'chip', onclick: () => {
-        const n = prompt('New folder name');
-        if (n && n.trim()) { setFolder(n.trim()); toast('Folder ready: uploads go into it, or move files in from their details'); }
+      h('button', { class: 'chip', onclick: async () => {
+        const n = await promptBox('New folder', 'Folder name', { placeholder: 'e.g. Christmas', okLabel: 'Create folder' });
+        if (n) { setFolder(n); toast('Folder ready: uploads go into it, or move files in from their details'); }
       } }, '+ New folder')].filter(Boolean));
   }
 

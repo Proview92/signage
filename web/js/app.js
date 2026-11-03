@@ -1,5 +1,5 @@
 import { configured } from './sb.js';
-import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role , promptBox } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { screenPage } from './pages/screen.js';
 import { playlistsPage } from './pages/playlists.js';
@@ -28,10 +28,11 @@ const routes = [
   [/^clients$/, clientsPage, 'clients'],
 ];
 
-let cleanup = null;
+let cleanup = null, renderSeq = 0;
 export function go(path) { location.hash = '#/' + path; }
 
 async function render() {
+  const my = ++renderSeq;
   cleanup?.(); cleanup = null;
   const path = location.hash.replace(/^#\/?/, '');
 
@@ -75,13 +76,15 @@ async function render() {
   main.append(h('div', { class: 'row', style: { gap: '10px', color: '#888' } }, h('div', { class: 'spinner' }), 'Loading…'));
   try {
     const out = await page({ main, params: match.slice(1), go, rerender: render });
+    // Navigated away while this page was loading: tidy it up straight away.
+    if (my !== renderSeq) { if (typeof out === 'function') out(); return; }
     if (typeof out === 'function') cleanup = out;
   } catch (e) {
     console.error(e);
     main.replaceChildren(errorPage(e));
   }
 }
-window.addEventListener('hashchange', render);
+window.addEventListener('hashchange', () => { document.querySelectorAll('.modal-back').forEach((m) => (m._close ? m._close() : m.remove())); render(); });
 
 // ------------------------------------------------------------ shell
 function nav(section) {
@@ -103,7 +106,7 @@ function clientPicker() {
   if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, clientTitle(cs[0]));
   const s = h('select', {
     'aria-label': 'Client',
-    onchange: (e) => { setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; go(['screen', 'playlist'].includes(p) ? p + 's' : (p === 'clients' ? 'screens' : p || 'screens')); render(); },
+    onchange: (e) => { setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p === 'clients' ? 'screens' : p || 'screens')); if (location.hash === to) render(); else location.hash = to; },
   });
   for (const c of cs) s.append(h('option', { value: c.id, selected: c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
   return s;
@@ -283,8 +286,8 @@ function errorPage(e) {
     const had = !!state.session;
     state.session = session;
     if (event === 'PASSWORD_RECOVERY') {
-      const p = prompt('Choose a new password (8+ characters):');
-      if (p) sb.auth.updateUser({ password: p }).then(({ error }) => toast(error ? errMsg(error) : 'Password updated', !!error));
+      promptBox('Choose a new password', 'New password (8+ characters)', { type: 'password', okLabel: 'Save password', minLength: 8 })
+        .then((p) => p && sb.auth.updateUser({ password: p }).then(({ error }) => toast(error ? errMsg(error) : 'Password updated', !!error)));
     }
     if (had !== !!session) { state.me = null; render(); }
   });

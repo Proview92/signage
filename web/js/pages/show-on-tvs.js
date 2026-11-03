@@ -103,7 +103,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
       const rule = mode === 'times' ? form.read() : null;
       if (mode === 'always') {
         const picked = screens.filter((s) => chosen.has(s.id));
-        const conflicts = picked.filter((s) => s.default_playlist_id && s.default_playlist_id !== playlist.id && !(s.also_playlist_ids || []).includes(playlist.id));
+        const conflicts = picked.filter((s) => s.default_playlist_id && s.default_playlist_id !== playlist.id);
         let how = 'replace';
         if (conflicts.length) { how = await replaceOrAdd(playlist, conflicts, plName); if (!how) return false; }
         if (how === 'replace') {
@@ -111,7 +111,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
         } else {
           const empty = picked.filter((s) => !s.default_playlist_id).map((s) => s.id);
           if (empty.length) await q(sb.from('screens').update({ default_playlist_id: playlist.id }).in('id', empty));
-          for (const s of conflicts) await q(sb.from('screens').update({ also_playlist_ids: [...(s.also_playlist_ids || []), playlist.id] }).eq('id', s.id));
+          for (const s of conflicts) if (!(s.also_playlist_ids || []).includes(playlist.id)) await q(sb.from('screens').update({ also_playlist_ids: [...(s.also_playlist_ids || []), playlist.id] }).eq('id', s.id));
         }
       } else await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, playlist_id: playlist.id, screen_id: sid, client_id: state.clientId }))));
       const res = await publishScreens(screens.filter((s) => chosen.has(s.id)));

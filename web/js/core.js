@@ -113,9 +113,22 @@ export function modal({ title, body, actions = [], wide = false, onClose }) {
       h('button', { class: 'btn ghost icon', onclick: close, 'aria-label': 'Close' }, icon('x'))),
     h('div', { class: 'modal-body' }, body),
     actions.length ? foot : null));
+  back._close = close;
   document.body.append(back);
   setTimeout(() => back.querySelector('input,select,textarea')?.focus(), 30);
   return { close, el: back };
+}
+
+/** Ask for a line of text in the site's own dialog. Resolves to the text, or null if cancelled. */
+export function promptBox(title, label, { type = 'text', placeholder = '', okLabel = 'OK', minLength = 1 } = {}) {
+  return new Promise((resolve) => {
+    let done = false;
+    const input = h('input', { type, placeholder, autocomplete: type === 'password' ? 'new-password' : 'off' });
+    const ok = () => { const v = input.value.trim(); if (v.length < minLength) throw new Error(minLength > 1 ? `Use at least ${minLength} characters` : 'Please fill this in'); done = true; resolve(v); };
+    const m = modal({ title, body: field(label, input), onClose: () => { if (!done) resolve(null); },
+      actions: [{ label: 'Cancel' }, { label: okLabel, class: 'primary', onClick: ok }] });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { try { ok(); m.close(); } catch (err) { toast(errMsg(err), true); } } });
+  });
 }
 
 export function confirmBox(title, text, okLabel = 'Delete', danger = true) {
@@ -211,6 +224,16 @@ export async function q(promise) {
   return data;
 }
 export const rpc = (fn, args) => q(sb.rpc(fn, args));
+/** Fetch every row (Supabase returns at most 1000 per request). build() must return a fresh query. */
+export async function fetchAll(build, max = 50000) {
+  const out = [];
+  for (let i = 0; i < max; i += 1000) {
+    const rows = await q(build().range(i, i + 999));
+    out.push(...rows);
+    if (rows.length < 1000) break;
+  }
+  return out;
+}
 
 /**
  * Publish a screen or playlist. If the client requires approval and the user
@@ -258,6 +281,7 @@ export function needsPublish(screen, rules, playlistsById) {
   const hasDraft = screen.default_playlist_id || rules.some((r) => r.enabled);
   if (!pub) return !!hasDraft;
   if (screen.schedule_updated_at && new Date(screen.schedule_updated_at) > pub) return true;
-  const ids = [screen.default_playlist_id, ...rules.map((r) => r.playlist_id)].filter(Boolean);
-  return ids.some((id) => playlistsById[id] && new Date(playlistsById[id].updated_at) > pub);
+  const ids = [screen.default_playlist_id, ...(screen.also_playlist_ids || []), ...rules.map((r) => r.playlist_id)].filter(Boolean);
+  const side = ids.map((id) => playlistsById[id]?.settings?.side_playlist_id).filter(Boolean);
+  return [...ids, ...side].some((id) => playlistsById[id] && new Date(playlistsById[id].updated_at) > pub);
 }

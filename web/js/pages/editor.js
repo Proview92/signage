@@ -17,16 +17,19 @@ export async function editorPage({ main, params: [id], go }) {
 
   // ------------------------------------------------ saving
   const status = h('span', { class: 'tiny' }, 'All changes saved');
+  let savingP = null;
   const save = async () => {
     clearTimeout(saveTimer);
-    if (!dirty || saving) return;
+    while (savingP) await savingP.catch(() => {});   // let a save in progress finish first
+    if (!dirty) return;
+    let done; savingP = new Promise((r) => (done = r));
     saving = true; dirty = false; status.textContent = 'Saving…';
     try {
       await q(sb.from('playlists').update({ name: pl.name, slides: pl.slides, settings: pl.settings }).eq('id', id));
       status.textContent = pl.settings.auto_publish ? 'Saved · updating TVs…' : 'All changes saved';
       if (pl.settings.auto_publish) autoPublish();
     } catch (e) { dirty = true; status.textContent = 'Not saved'; toast(errMsg(e), true); }
-    saving = false;
+    saving = false; savingP = null; done();
     if (dirty) schedule();
   };
   const schedule = () => { dirty = true; status.textContent = 'Unsaved changes…'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 700); };
@@ -156,7 +159,7 @@ export async function editorPage({ main, params: [id], go }) {
         h('div', { class: 'acts' }));
       return row;
     }),
-    h('div', { class: 'row', style: { padding: '6px 2px', gap: '6px' } },
+    h('div', { class: 'row', style: { padding: '6px 2px', gap: '6px', flexWrap: 'wrap' } },
       h('button', { class: 'btn sm', onclick: addMedia }, icon('media'), 'Add media'),
       h('button', { class: 'btn sm', onclick: addText }, icon('text'), 'Text slide'),
       h('button', { class: 'btn sm', onclick: addWidget }, icon('plus'), 'Widget')));
@@ -306,5 +309,5 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'stack' }, h('div', { class: 'card pad' }, previewBox), h('div', { class: 'card' }, inspEl))));
   paint();
 
-  return () => { save(); player?.stop(); window.removeEventListener('beforeunload', beforeUnload); };
+  return () => { save(); clearTimeout(previewTimer); player?.stop(); window.removeEventListener('beforeunload', beforeUnload); };
 }
