@@ -80,7 +80,7 @@ class MainActivity : Activity() {
             }
         }
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
-        @JavascriptInterface fun captureScreen() = runOnUiThread { captureScreen() }
+        @JavascriptInterface fun captureScreen() { runOnUiThread { this@MainActivity.captureScreenNow() } }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -250,7 +250,7 @@ class MainActivity : Activity() {
 
     // ------------------------------------------------------------ screenshots
     /** Captures what's on screen (incl. video on Android 8+) and hands a JPEG data URL to the web player. */
-    private fun captureScreen() {
+    private fun captureScreenNow() {
         val w = web ?: return
         val width = w.width.coerceAtLeast(1)
         val height = w.height.coerceAtLeast(1)
