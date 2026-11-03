@@ -1,5 +1,5 @@
 import { configured } from './sb.js';
-import { sb, state, h, icon, brandMark, toast, errMsg, field, refreshMe, setClient, rpc, role } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, toast, errMsg, field, refreshMe, setClient, rpc, role } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { screenPage } from './pages/screen.js';
 import { playlistsPage } from './pages/playlists.js';
@@ -9,7 +9,7 @@ import { teamPage } from './pages/team.js';
 import { clientsPage } from './pages/clients.js';
 
 const root = document.getElementById('root');
-const APP = window.SIGNAGE_CONFIG?.APP_NAME || 'Signage';
+const APP = window.SIGNAGE_CONFIG?.APP_NAME || 'PROVIEW SIGNAGE';
 document.title = APP;
 
 // ------------------------------------------------------------ routing
@@ -107,7 +107,7 @@ function shell(section, main) {
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
 
   const side = h('aside', { class: 'side' },
-    h('div', { class: 'brand' }, brandMark(), APP),
+    h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
     h('div', { class: 'client-pick' }, clientPicker()),
     h('nav', { class: 'nav' },
       n.items.map(([k, l, i]) => link(k, l, i)),
@@ -117,7 +117,7 @@ function shell(section, main) {
       h('div', { class: 'tiny' }, n.r === 'admin' ? 'Administrator' : n.r === 'manager' ? 'Manager' : 'Editor'),
       h('button', { class: 'btn sm', onclick: signOut }, icon('logout'), 'Sign out')));
 
-  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), APP), clientPicker(),
+  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(),
     h('button', { class: 'btn ghost icon', style: { color: '#fff' }, onclick: signOut, 'aria-label': 'Sign out' }, icon('logout')));
   const tabs = h('nav', { class: 'tabbar' },
     n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),
@@ -187,13 +187,13 @@ async function authPage(inviteToken) {
       }
       submit.disabled = false;
     },
-  }, h('div', { class: 'brand', style: { color: 'var(--ink)', padding: 0, marginBottom: '10px' } }, brandMark(), APP),
+  }, h('div', { class: 'brand', style: { color: 'var(--ink)', padding: 0, marginBottom: '10px' } }, brandMark(), wordmark(APP)),
     title, sub, msg, field('Email', email), field('Password', pass), submit,
     h('div', { class: 'row between' }, swap, forgot));
 
   return h('div', { class: 'auth' },
     h('div', { class: 'auth-art' },
-      h('div', { class: 'brand', style: { padding: 0 } }, brandMark(), APP),
+      h('div', { class: 'brand', style: { padding: 0 } }, brandMark(), wordmark(APP)),
       h('h2', {}, 'Every screen, on schedule — from your phone.'),
       h('div', { class: 'tv' }),
       h('div', { class: 'muted', style: { color: '#9a9aa4' } }, 'Upload, build slides, schedule and publish to your TVs.')),

@@ -43,7 +43,7 @@ export function pairDialog({ fixedClient, clients, onDone }) {
   modal({
     title: 'Add a TV',
     body: [
-      h('div', { class: 'notice info' }, 'Open the Signage app on the TV. It shows a 6-character code — type it below.'),
+      h('div', { class: 'notice info' }, 'Open the PROVIEW SIGNAGE app on the TV. It shows a 6-character code — type it below.'),
       field('Pairing code', code),
       field('Screen name', name),
       field('Location', loc),
@@ -75,7 +75,7 @@ export async function screensPage({ main, go }) {
     if (!screens.length) {
       return main.replaceChildren(head, h('div', { class: 'card empty' },
         h('h2', {}, 'No TVs yet'),
-        h('p', {}, canManage() ? 'Install the Signage app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.' : 'Your manager hasn’t added any TVs to this account yet.'),
+        h('p', {}, canManage() ? 'Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.' : 'Your manager hasn’t added any TVs to this account yet.'),
         canManage() ? h('button', { class: 'btn primary', onclick: () => pairDialog({ fixedClient: state.clientId, onDone: (s) => go('screen/' + s.id) }) }, icon('plus'), 'Add a TV') : null));
     }
 

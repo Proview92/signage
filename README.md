@@ -1,4 +1,4 @@
-# Signage: digital signage for multiple clients
+# PROVIEW SIGNAGE: digital signage for multiple clients
 
 Upload pictures and videos from a phone or computer, build slideshows with transitions and effects, schedule them per TV, and publish to Android TV / Fire TV screens. You (the admin) manage every client. Each client gets their own logins and only sees their own TVs.
 
@@ -77,8 +77,8 @@ Reload the dashboard. You'll see **Clients & TVs**.
 ### 6. Install on the TV
 - **Fire TV:** Settings → My Fire TV → Developer options → **Apps from Unknown Sources** (on for "Downloader"). Install the **Downloader** app, enter a link to your APK, and install it.
 - **Android TV / Google TV:** enable unknown sources, then sideload with a file manager or `adb install signage-tv.apk`.
-- Open **Signage** and the TV shows a pairing code.
-- On **Google TV**, allow *Display over other apps* for Signage (Settings → Apps → Special app access) so it auto-starts after a power cut.
+- Open **PROVIEW SIGNAGE** and the TV shows a pairing code.
+- On **Google TV**, allow *Display over other apps* for PROVIEW SIGNAGE (Settings → Apps → Special app access) so it auto-starts after a power cut.
 
 On the TV, press **Back 5×** (or **Menu**) to change the player address without rebuilding. Press **OK** to show what's playing.
 

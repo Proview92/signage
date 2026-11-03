@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Signage Player</title>
+  <title>PROVIEW SIGNAGE Player</title>
   <link rel="stylesheet" href="css/stage.css" />
   <style>
     html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden; cursor: none;
@@ -31,6 +31,8 @@
     #info { position: fixed; left: 2vh; bottom: 2vh; z-index: 10; background: rgba(0,0,0,.7); padding: 1.2vh 2vh; border-radius: 1vh; font-size: 2vh; display: none; }
     #info.on { display: block; }
     #error { background: #111; }
+    .wm { font-size: 2.6vh; letter-spacing: .18em; color: #fff; margin-top: -0.6vh; }
+    .wm b { font-weight: 850; } .wm span { color: #ff5a1f; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -38,6 +40,7 @@
 
   <div id="pair" class="view center">
     <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2-5 5-5-5"/><rect x="2" y="7" width="20" height="15" rx="2"/></svg></div>
+    <div class="wm"><b>PROVIEW</b> <span>SIGNAGE</span></div>
     <h1>Pair this screen</h1>
     <div id="code">······</div>
     <div class="steps">
@@ -56,6 +59,7 @@
   <div id="stage" class="view"></div>
 
   <div id="error" class="view center">
+    <div class="wm"><b>PROVIEW</b> <span>SIGNAGE</span></div>
     <h1>Can’t start the player</h1>
     <p id="error-msg"></p>
     <p style="font-size:2vh">Retrying automatically…</p>

@@ -4,5 +4,5 @@
 window.SIGNAGE_CONFIG = {
   SUPABASE_URL: 'https://zbuyafrdhbgqyaepiajm.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_ys-mwZpA0RqfYsMM3Sg91Q_7JnQannF',
-  APP_NAME: 'Signage',
+  APP_NAME: 'PROVIEW SIGNAGE',
 };

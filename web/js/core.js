@@ -65,6 +65,11 @@ export function icon(name) {
   return s;
 }
 export const brandMark = () => h('div', { class: 'brand-mark' }, icon('tv'));
+// "PROVIEW SIGNAGE" → bold first word + accent second word
+export function wordmark(name) {
+  const [first, ...rest] = String(name).split(' ');
+  return h('span', { class: 'wordmark' }, h('b', {}, first), rest.length ? h('span', {}, ' ' + rest.join(' ')) : null);
+}
 
 // ---------------------------------------------------------------- UI
 export function toast(msg, bad = false) {

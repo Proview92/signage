@@ -76,7 +76,7 @@ class MainActivity : Activity() {
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             loadWithOverviewMode = true
             useWideViewPort = true
-            userAgentString = "$userAgentString SignageTV/${BuildConfig.VERSION_NAME}"
+            userAgentString = "$userAgentString ProviewSignageTV/${BuildConfig.VERSION_NAME}"
         }
         w.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         w.webChromeClient = object : WebChromeClient() {
