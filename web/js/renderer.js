@@ -138,6 +138,25 @@ export function resolveSchedule(content, now = new Date()) {
   return { playlistId: d && content.playlists?.[d] ? d : null, rule: null };
 }
 
+/**
+ * What should be on air, including "add-on" playlists that play after the
+ * default one (content.also). Returns { playlistId, rule, key, pl, name }.
+ */
+export function onAirPlaylist(content, now = new Date()) {
+  const r = resolveSchedule(content, now);
+  if (!content) return { ...r, key: null, pl: null, name: null };
+  const also = (content.also || []).filter((id) => content.playlists?.[id] && id !== r.playlistId);
+  if (r.rule || !also.length) {
+    const pl = r.playlistId ? content.playlists[r.playlistId] : null;
+    return { ...r, key: r.playlistId, pl, name: pl?.name || null };
+  }
+  const ids = [r.playlistId, ...also].filter(Boolean);
+  const main = content.playlists[ids[0]];
+  const name = ids.map((i) => content.playlists[i].name).join(' + ');
+  return { playlistId: ids[0], rule: null, key: ids.join('+'), name,
+    pl: { name, settings: main.settings, slides: ids.flatMap((i) => (content.playlists[i].slides || []).map((s) => ({ ...s, _pl: i }))) } };
+}
+
 export function describeRule(r) {
   const days = !r.days || !r.days.length || r.days.length === 7 ? 'Every day'
     : (JSON.stringify([...r.days].sort()) === '[1,2,3,4,5]' ? 'Weekdays'

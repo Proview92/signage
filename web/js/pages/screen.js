@@ -1,6 +1,6 @@
 import { clientLabel } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
-import { SlidePlayer, LayoutPlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
+import { SlidePlayer, LayoutPlayer, onAirPlaylist, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
 import { statusBadges } from './screens.js';
 import { publishOrRequest } from '../core.js';
 import { ruleForm } from './rule-form.js';
@@ -129,8 +129,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
   function startPreview(box) {
     player?.stop();
-    const { playlistId } = resolveSchedule(screen.content);
-    const pl = playlistId && screen.content.playlists[playlistId];
+    const { pl } = onAirPlaylist(screen.content);
     box.replaceChildren();
     if (!pl) { box.append(h('div', { class: 'thumb' }, h('div', { class: 'blank' }, screen.content ? 'Nothing scheduled right now' : 'Nothing published yet'))); return; }
     const stage = h('div', { class: 'preview-box' + (pl.settings?.orientation === 'portrait' ? ' portrait' : '') });
@@ -142,8 +141,8 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
   function paint() {
     const draft = draftContent(screen, rules, byId);
-    const live = resolveSchedule(screen.content);
-    const liveName = live.playlistId ? screen.content.playlists[live.playlistId]?.name : null;
+    const live = onAirPlaylist(screen.content);
+    const liveName = live.name;
     const dinfo = screen.device_info || {};
 
     const head = h('div', { class: 'page-head' },
@@ -169,11 +168,26 @@ export async function screenPage({ main, params: [id], go, rerender }) {
       await load(); paint(); goLive();
     });
 
+    function alsoBox() {
+      const also = (screen.also_playlist_ids || []).filter((x) => byId[x]);
+      const save = async (list) => { await q(sb.from('screens').update({ also_playlist_ids: list }).eq('id', id)); await load(); paint(); goLive(); };
+      const others = playlists.filter((p) => p.id !== screen.default_playlist_id && !also.includes(p.id));
+      return h('div', { class: 'stack', style: { gap: '6px' } },
+        h('div', { class: 'small', style: { fontWeight: 600, color: 'var(--ink-2)' } }, 'Also plays after it (add-ons)'),
+        also.length ? h('div', { class: 'chips' }, also.map((pid) => h('span', { class: 'chip on', style: { display: 'inline-flex', gap: '6px', alignItems: 'center' } }, byId[pid].name,
+          h('button', { type: 'button', title: 'Remove', style: { background: 'none', border: 0, color: 'inherit', cursor: 'pointer', padding: 0, fontSize: '15px' },
+            onclick: () => save(also.filter((x) => x !== pid)) }, '×'))))
+          : h('div', { class: 'tiny' }, 'None. The default playlist plays on its own.'),
+        screen.default_playlist_id && others.length ? h('div', {}, h('select', { style: { width: 'auto' }, onchange: (e) => e.target.value && save([...also, e.target.value]) },
+          h('option', { value: '' }, '+ Add another playlist…'), others.map((p) => h('option', { value: p.id }, p.name)))) : null);
+    }
+
     const sched = h('div', { class: 'card' },
       h('div', { class: 'card-head' }, h('div', {}, h('h2', {}, 'Schedule'), h('div', { class: 'tiny' }, 'Times are the TV’s local time. Changes go live on the TV straight away.')),
         h('button', { class: 'btn sm primary', onclick: () => ruleDialog() }, icon('plus'), 'Add rule')),
       h('div', { class: 'card-body stack' },
         field('Default playlist', defSel, 'Plays whenever no schedule rule applies.'),
+        alsoBox(),
         h('div', {}, h('h3', { style: { marginBottom: '10px' } }, 'Next 7 days'), weekView(draft))),
       h('div', { class: 'list' },
         rules.length ? rules.map((r) => h('div', { class: 'rule' + (r.enabled ? '' : ' off') },

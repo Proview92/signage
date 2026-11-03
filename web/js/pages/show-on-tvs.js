@@ -23,9 +23,34 @@ export function publishSummary({ ok, pending, failed }) {
   return parts.join(' · ') || 'Nothing to update';
 }
 
+/** Ask whether to replace or add on. Resolves 'replace' | 'add' | null. */
+function replaceOrAdd(playlist, conflicts, plName) {
+  return new Promise((resolve) => {
+    let done = false;
+    modal({
+      title: 'These TVs already have a playlist',
+      body: [
+        h('p', { class: 'muted small', style: { margin: 0 } }, `${conflicts.length} of the TVs you picked already show something. What should happen to it?`),
+        h('div', { class: 'list card', style: { maxHeight: '30vh', overflow: 'auto' } }, conflicts.map((s) => h('div', { class: 'list-row' },
+          h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name),
+            h('div', { class: 'tiny' }, 'Now playing: ' + [s.default_playlist_id, ...(s.also_playlist_ids || [])].map((i) => plName[i]).filter(Boolean).join(' + ')))))),
+        h('div', { class: 'grid2' },
+          h('div', { class: 'card pad' }, h('h3', {}, 'Replace'), h('div', { class: 'tiny', style: { marginTop: '4px' } }, `Stop the current playlist and play only “${playlist.name}”.`)),
+          h('div', { class: 'card pad' }, h('h3', {}, 'Add on'), h('div', { class: 'tiny', style: { marginTop: '4px' } }, `Keep the current playlist and play “${playlist.name}” after it, in a loop.`))),
+      ],
+      onClose: () => { if (!done) resolve(null); },
+      actions: [
+        { label: 'Cancel', onClick: () => { done = true; resolve(null); } },
+        { label: 'Add on', onClick: () => { done = true; resolve('add'); } },
+        { label: 'Replace', class: 'primary', onClick: () => { done = true; resolve('replace'); } },
+      ],
+    });
+  });
+}
+
 export async function showOnTvsDialog(playlist, { onDone } = {}) {
   const [screens, sites, rules, playlists] = await Promise.all([
-    q(sb.from('screens').select('id,name,site_id,location,default_playlist_id,last_seen,license_type,license_expires_at').eq('client_id', state.clientId).order('name')),
+    q(sb.from('screens').select('id,name,site_id,location,default_playlist_id,also_playlist_ids,last_seen,license_type,license_expires_at').eq('client_id', state.clientId).order('name')),
     loadSites(state.clientId).catch(() => []),
     q(sb.from('schedule_items').select('screen_id,playlist_id').eq('client_id', state.clientId)),
     q(sb.from('playlists').select('id,name').eq('client_id', state.clientId)),
@@ -51,7 +76,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
         return h('label', { class: 'row', style: { padding: '8px 10px', borderRadius: '8px', background: chosen.has(s.id) ? 'var(--accent-soft)' : '#faf9f6', flexWrap: 'nowrap', opacity: blocked ? '.55' : '1' } },
           h('input', { type: 'checkbox', checked: chosen.has(s.id), disabled: blocked, onchange: (e) => { e.target.checked ? chosen.add(s.id) : chosen.delete(s.id); paint(); } }),
           h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name),
-            h('div', { class: 'tiny' }, blocked ? 'Licence needed' : s.default_playlist_id ? `Now: ${plName[s.default_playlist_id] || '—'}` : 'Nothing playing yet')),
+            h('div', { class: 'tiny' }, blocked ? 'Licence needed' : s.default_playlist_id ? `Now: ${[s.default_playlist_id, ...(s.also_playlist_ids || [])].map((i) => plName[i]).filter(Boolean).join(' + ') || '—'}` : 'Nothing playing yet')),
           h('span', { class: 'badge ' + (isOnline(s) ? 'ok' : 'bad') }, isOnline(s) ? 'Online' : 'Offline'));
       }));
   }).filter(Boolean));
@@ -76,8 +101,19 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
       const ids = [...chosen];
       if (!ids.length) throw new Error('Tick at least one TV');
       const rule = mode === 'times' ? form.read() : null;
-      if (mode === 'always') await q(sb.from('screens').update({ default_playlist_id: playlist.id }).in('id', ids));
-      else await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, playlist_id: playlist.id, screen_id: sid, client_id: state.clientId }))));
+      if (mode === 'always') {
+        const picked = screens.filter((s) => chosen.has(s.id));
+        const conflicts = picked.filter((s) => s.default_playlist_id && s.default_playlist_id !== playlist.id && !(s.also_playlist_ids || []).includes(playlist.id));
+        let how = 'replace';
+        if (conflicts.length) { how = await replaceOrAdd(playlist, conflicts, plName); if (!how) return false; }
+        if (how === 'replace') {
+          await q(sb.from('screens').update({ default_playlist_id: playlist.id, also_playlist_ids: [] }).in('id', ids));
+        } else {
+          const empty = picked.filter((s) => !s.default_playlist_id).map((s) => s.id);
+          if (empty.length) await q(sb.from('screens').update({ default_playlist_id: playlist.id }).in('id', empty));
+          for (const s of conflicts) await q(sb.from('screens').update({ also_playlist_ids: [...(s.also_playlist_ids || []), playlist.id] }).eq('id', s.id));
+        }
+      } else await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, playlist_id: playlist.id, screen_id: sid, client_id: state.clientId }))));
       const res = await publishScreens(screens.filter((s) => chosen.has(s.id)));
       toast(publishSummary(res), res.failed.length > 0);
       onDone?.();

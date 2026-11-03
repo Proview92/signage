@@ -5,7 +5,7 @@
 //  3. Caches all media locally so it keeps playing when offline
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
-import { LayoutPlayer, resolveSchedule } from './renderer.js';
+import { LayoutPlayer, onAirPlaylist } from './renderer.js';
 import { licenseState, licenseSummary } from './license.js';
 import { createRemoteMenu } from './remote.js';
 
@@ -100,8 +100,9 @@ function evaluate() {
   }
   if (currentKey === 'expired') currentKey = null;
   if (!content) return;
-  const { playlistId, rule } = resolveSchedule(content);
-  const key = playlistId ? `${playlistId}:${content.version}` : `none:${content.version}`;
+  const air = onAirPlaylist(content);
+  const { playlistId, rule } = air;
+  const key = playlistId ? `${air.key}:${content.version}` : `none:${content.version}`;
   if (key === currentKey) return;
   currentKey = key;
   show('stage');
@@ -109,10 +110,11 @@ function evaluate() {
   if (!player) player = new LayoutPlayer($('stage'), {
     resolveUrl,
     lookup: (id) => content?.playlists?.[id] || null,
-    onChange: ({ index, slide }) => { nowPlaying = slide ? `${content?.playlists?.[onAirId]?.name} #${index + 1}` : 'idle'; playLog?.(onAirId, slide); },
+    onChange: ({ index, slide }) => { nowPlaying = slide ? `${onAirName} #${index + 1}` : 'idle'; playLog?.(slide?._pl || onAirId, slide); },
   });
   if (!playlistId) { player.clear(); nowPlaying = 'idle'; return; }
-  const pl = content.playlists[playlistId];
+  const pl = air.pl;
+  onAirName = air.name;
   console.log('[signage] now playing', pl.name, rule?.label || '(default)');
   player.stop();
   player.load(pl);
@@ -120,6 +122,7 @@ function evaluate() {
 }
 let nowPlaying = '';
 let onAirId = null;
+let onAirName = '';
 let playLog = null;   // set by proof-of-play logger
 
 function apply(row) {

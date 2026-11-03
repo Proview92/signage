@@ -1,7 +1,7 @@
 import { clientLabel, clientTitle } from '../core.js';
 import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, mediaUrl, needsPublish, currentClient } from '../core.js';
-import { renderStill, resolveSchedule, isSlideActive } from '../renderer.js';
+import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive } from '../renderer.js';
 import { licenseBadge } from './license-ui.js';
 import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
@@ -22,8 +22,7 @@ export async function loadClientData(clientId) {
 export function screenThumb(screen, contentOverride) {
   const box = h('div', { class: 'thumb' });
   const content = contentOverride ?? screen.content;
-  const { playlistId } = resolveSchedule(content);
-  const pl = playlistId && content.playlists[playlistId];
+  const { pl } = onAirPlaylist(content);
   const slide = pl?.slides?.find((s) => isSlideActive(s)) || pl?.slides?.[0];
   if (!slide) {
     box.append(h('div', { class: 'blank' }, screen.content ? 'Nothing scheduled right now' : 'Nothing published yet'));
@@ -160,6 +159,7 @@ export async function screensPage({ main, go }) {
       h('option', { value: '__new' }, '+ Create a playlist…'));
     return h('div', { class: 'small muted row', style: { gap: '6px', flexWrap: 'nowrap' }, onclick: (e) => { e.preventDefault(); e.stopPropagation(); } },
       h('span', {}, 'Playing'), sel,
+      (s.also_playlist_ids || []).length ? h('span', { class: 'tiny', title: (s.also_playlist_ids || []).map((i) => data.byId[i]?.name).filter(Boolean).join(', ') }, `+${s.also_playlist_ids.length}`) : null,
       rule?.label && now ? h('span', { class: 'tiny', title: 'A schedule rule is on air right now' }, `⏱ ${rule.label}`) : null);
   };
 
