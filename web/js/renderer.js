@@ -586,7 +586,7 @@ export class LayoutPlayer {
 
 function paintTicker(el, t) {
   el.replaceChildren();
-  Object.assign(el.style, { background: t.bg || '#ff5a1f', color: t.color || '#ffffff', display: 'flex', alignItems: 'center',
+  Object.assign(el.style, { background: t.bg || '#3f6fd0', color: t.color || '#ffffff', display: 'flex', alignItems: 'center',
     fontFamily: '"Inter","Segoe UI",system-ui,Roboto,Arial,sans-serif', fontSize: '50px', fontWeight: '700', whiteSpace: 'nowrap' });
   const track = document.createElement('div');
   Object.assign(track.style, { display: 'inline-flex', willChange: 'transform' });

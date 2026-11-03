@@ -71,8 +71,8 @@ export function widgetFields(s, change, repaint) {
 
 /** Playlist layout: full screen, side panel, ticker. */
 export function layoutDialog(pl, playlists, onSave) {
-  const st = { layout: 'full', ticker: { text: '', speed: 'normal', bg: '#ff5a1f', color: '#ffffff' }, ...pl.settings };
-  st.ticker = { speed: 'normal', bg: '#ff5a1f', color: '#ffffff', ...(pl.settings.ticker || {}) };
+  const st = { layout: 'full', ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff' }, ...pl.settings };
+  st.ticker = { speed: 'normal', bg: '#3f6fd0', color: '#ffffff', ...(pl.settings.ticker || {}) };
   const others = playlists.filter((p) => p.id !== pl.id);
   const sideWrap = h('div', { class: 'stack' });
   const tickWrap = h('div', { class: 'stack' });

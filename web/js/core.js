@@ -66,7 +66,7 @@ export function icon(name) {
   s.innerHTML = P[name] || '';
   return s;
 }
-export const brandMark = () => h('div', { class: 'brand-mark' }, icon('tv'));
+export const brandMark = () => h('div', { class: 'brand-mark', role: 'img', 'aria-label': 'PROVIEW' });
 // "PROVIEW SIGNAGE" → bold first word + accent second word
 export function wordmark(name) {
   const [first, ...rest] = String(name).split(' ');
@@ -169,7 +169,7 @@ export function fmtDuration(sec) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return m ? `${m}m ${String(s).padStart(2, '0')}s` : `${s}s`;
 }
-export const PALETTE = ['#ff5a1f', '#3157ff', '#12a150', '#a23cf0', '#e0a100', '#0aa5b8', '#e3326b', '#5a6270'];
+export const PALETTE = ['#4a8fe0', '#3157ff', '#12a150', '#a23cf0', '#e0a100', '#0aa5b8', '#e3326b', '#5a6270'];
 export function colorFor(id, ids) { const i = Math.max(0, ids.indexOf(id)); return PALETTE[i % PALETTE.length]; }
 
 // ---------------------------------------------------------------- client & site labels
