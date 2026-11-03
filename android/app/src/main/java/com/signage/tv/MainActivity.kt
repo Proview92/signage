@@ -154,6 +154,7 @@ class MainActivity : Activity() {
     }
 
     private fun load() {
+        offline = false
         val uri = Uri.parse(playerUrl).buildUpon()
             .appendQueryParameter("app", BuildConfig.VERSION_NAME)
             .appendQueryParameter("model", "${Build.MANUFACTURER} ${Build.MODEL}".trim())
@@ -175,14 +176,25 @@ class MainActivity : Activity() {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
+    private var offline = false
+
     private fun showOffline() {
+        offline = true
         val html = """
-            <html><body style="margin:0;background:#000;color:#fff;font-family:sans-serif;display:flex;
-            align-items:center;justify-content:center;height:100vh;text-align:center">
-            <div><h1 style="font-size:5vh;margin:0 0 2vh">Waiting for network…</h1>
-            <p style="font-size:2.6vh;color:#aaa">Retrying automatically. Player address:<br>${playerUrl}</p></div>
-            </body></html>""".trimIndent()
-        web?.loadDataWithBaseURL(null, html, "text/html", "utf-8", null)
+            <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+            <body style="margin:0;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;
+            height:100vh;text-align:center;background:radial-gradient(ellipse at 30% 20%,#1f2638,#0b0c12 70%)">
+            <div>
+              <img src="logo.png" style="height:11vh;width:auto">
+              <div style="font-size:2.6vh;letter-spacing:.18em;margin:1.4vh 0 4vh"><b>PROVIEW</b>
+                <span style="background:linear-gradient(90deg,#62b0ec,#8b88dc);-webkit-background-clip:text;background-clip:text;color:transparent">SIGNAGE</span></div>
+              <h1 style="font-size:5vh;margin:0 0 2vh">Waiting for network…</h1>
+              <p style="font-size:2.6vh;color:#aab;margin:0 0 4vh">Retrying automatically.</p>
+              <div style="display:inline-block;padding:1.8vh 4vh;border-radius:1.4vh;font-size:2.6vh;font-weight:700;
+                background:linear-gradient(135deg,#2f84d4,#5a5fbb)">Press OK to open Wi-Fi settings</div>
+              <p style="font-size:1.8vh;color:#667;margin-top:5vh">Player address: ${playerUrl}</p>
+            </div></body></html>""".trimIndent()
+        web?.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null)
         handler.removeCallbacks(retry)
         handler.postDelayed(retry, 15_000)
     }
@@ -228,6 +240,10 @@ class MainActivity : Activity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
+        if (offline && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+            if (event.action == KeyEvent.ACTION_UP) openWifiSettings(prefs.getInt("return_minutes", 5))
+            return true
+        }
         if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_SETTINGS) {
             if (event.action == KeyEvent.ACTION_UP) {
                 if (code == KeyEvent.KEYCODE_BACK) {
