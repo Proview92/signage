@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signage Player</title>
+  <link rel="stylesheet" href="css/stage.css" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden; cursor: none;
+      font-family: "Inter", "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif; }
+    body.cursor { cursor: default; }
+    .view { position: fixed; inset: 0; display: none; }
+    .view.on { display: flex; }
+    #stage { display: block; visibility: hidden; }
+    #stage.on { visibility: visible; }
+    .center { flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2.2vh; padding: 5vw; }
+    #pair { background: radial-gradient(ellipse at 30% 20%, #2a2a33, #0c0c0f 70%); }
+    .logo { width: 7vh; height: 7vh; border-radius: 1.6vh; background: #ff5a1f; display: grid; place-items: center; }
+    .logo svg { width: 4vh; height: 4vh; }
+    h1 { font-size: 4.4vh; margin: 0; font-weight: 750; letter-spacing: -.02em; }
+    p { font-size: 2.6vh; margin: 0; color: #b8b8c2; max-width: 70vw; line-height: 1.4; }
+    #code { font: 800 16vh/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .12em; padding: 3vh 5vh;
+      background: #fff; color: #111; border-radius: 3vh; margin: 2vh 0; box-shadow: 0 2vh 8vh rgba(255,90,31,.25); }
+    .steps { display: flex; gap: 4vw; font-size: 2.2vh; color: #d6d6de; margin-top: 2vh; }
+    .steps b { display: inline-grid; place-items: center; width: 3.4vh; height: 3.4vh; border-radius: 50%; background: #ff5a1f; color: #fff; margin-right: 1vh; font-size: 1.8vh; }
+    .url { color: #fff; font-weight: 700; }
+    .spinner { width: 5vh; height: 5vh; border: .6vh solid #333; border-top-color: #ff5a1f; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #net { position: fixed; right: 1.4vh; bottom: 1.4vh; width: 1.2vh; height: 1.2vh; border-radius: 50%; background: transparent; z-index: 10; }
+    #net.bad { background: #d92d20; box-shadow: 0 0 0 .4vh rgba(217,45,32,.3); }
+    #info { position: fixed; left: 2vh; bottom: 2vh; z-index: 10; background: rgba(0,0,0,.7); padding: 1.2vh 2vh; border-radius: 1vh; font-size: 2vh; display: none; }
+    #info.on { display: block; }
+    #error { background: #111; }
+  </style>
+</head>
+<body>
+  <div id="boot" class="view center on"><div class="spinner"></div></div>
+
+  <div id="pair" class="view center">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2-5 5-5-5"/><rect x="2" y="7" width="20" height="15" rx="2"/></svg></div>
+    <h1>Pair this screen</h1>
+    <div id="code">······</div>
+    <div class="steps">
+      <div><b>1</b>On your phone or computer open <span class="url" id="dash-url"></span></div>
+      <div><b>2</b>Go to <span class="url">Screens → Add a TV</span></div>
+      <div><b>3</b>Enter the code above</div>
+    </div>
+  </div>
+
+  <div id="wait" class="view center">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+    <h1>“<span id="wait-name"></span>” is paired</h1>
+    <p>Choose a playlist or schedule for this screen in the dashboard and press Publish. It will appear here automatically.</p>
+  </div>
+
+  <div id="stage" class="view"></div>
+
+  <div id="error" class="view center">
+    <h1>Can’t start the player</h1>
+    <p id="error-msg"></p>
+    <p style="font-size:2vh">Retrying automatically…</p>
+  </div>
+
+  <div id="net" title="Offline"></div>
+  <div id="info"><span id="screen-name"></span> — <span id="info-text"></span></div>
+
+  <script src="config.js"></script>
+  <script type="module" src="js/player.js"></script>
+</body>
+</html>

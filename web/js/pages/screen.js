@@ -1,0 +1,240 @@
+import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
+import { SlidePlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
+import { statusBadges } from './screens.js';
+
+export async function screenPage({ main, params: [id], go, rerender }) {
+  let screen, playlists, rules, byId, player = null, tick = null;
+
+  const load = async () => {
+    [screen, playlists, rules] = await Promise.all([
+      q(sb.from('screens').select('*').eq('id', id).single()),
+      q(sb.from('playlists').select('id,name,updated_at,slides,settings').eq('client_id', state.clientId).order('name')),
+      q(sb.from('schedule_items').select('*').eq('screen_id', id).order('priority', { ascending: false }).order('created_at')),
+    ]);
+    byId = Object.fromEntries(playlists.map((p) => [p.id, p]));
+  };
+  await load();
+  if (screen.client_id !== state.clientId) { setClient(screen.client_id); return rerender(); }
+
+  const plIds = () => playlists.map((p) => p.id);
+
+  async function publish() {
+    await rpc('publish_screen', { p_screen: id });
+    toast('Published — the TV will update in a few seconds');
+    await load(); paint();
+  }
+
+  function editDetails() {
+    const name = h('input', { type: 'text', value: screen.name });
+    const loc = h('input', { type: 'text', value: screen.location || '' });
+    modal({ title: 'Screen details', body: [field('Name', name), field('Location', loc)], actions: [
+      { label: 'Cancel' },
+      { label: 'Save', class: 'primary', onClick: async () => {
+        await q(sb.from('screens').update({ name: name.value.trim() || 'Screen', location: loc.value.trim() || null }).eq('id', id));
+        await load(); paint();
+      } }] });
+  }
+
+  async function assignDialog() {
+    const clients = state.me.clients;
+    let target = screen.client_id;
+    modal({ title: 'Move to another client', body: [
+      h('div', { class: 'notice' }, 'Moving a TV clears its schedule and stops what it is playing. The new client will need to publish content to it.'),
+      field('Client', select(clients.map((c) => [c.id, c.name]), target, (v) => (target = v)))],
+    actions: [{ label: 'Cancel' }, { label: 'Move TV', class: 'primary', onClick: async () => {
+      if (target === screen.client_id) return;
+      await rpc('assign_screen', { p_screen: id, p_client: target });
+      toast('TV moved'); setClient(target); go('screen/' + id);
+    } }] });
+  }
+
+  async function unpair() {
+    if (!(await confirmBox('Remove this TV?', 'The TV will go back to showing a pairing code. Its schedule will be deleted.', 'Remove TV'))) return;
+    await rpc('unpair_screen', { p_screen: id });
+    toast('TV removed'); go('screens');
+  }
+
+  async function reloadTv() {
+    await q(sb.from('screens').update({ reload_at: new Date().toISOString() }).eq('id', id));
+    toast('Reload sent to the TV');
+  }
+
+  function ruleDialog(rule) {
+    if (!playlists.length) { toast('Create a playlist first', true); return go('playlists'); }
+    const r = rule ? { ...rule } : { playlist_id: playlists[0].id, label: '', days: [1, 2, 3, 4, 5], start_time: '09:00', end_time: '17:00', start_date: null, end_date: null, priority: 10, enabled: true };
+    r.days = r.days?.length ? [...r.days] : [0, 1, 2, 3, 4, 5, 6];
+    let allDay = !r.start_time && !r.end_time;
+
+    const label = h('input', { type: 'text', value: r.label || '', placeholder: 'e.g. Breakfast menu' });
+    const pl = select(playlists.map((p) => [p.id, p.name]), r.playlist_id, (v) => (r.playlist_id = v));
+    const chips = h('div', { class: 'chips' });
+    const paintChips = () => chips.replaceChildren(
+      ...[1, 2, 3, 4, 5, 6, 0].map((d) => h('button', { type: 'button', class: 'chip' + (r.days.includes(d) ? ' on' : ''), onclick: () => { r.days = r.days.includes(d) ? r.days.filter((x) => x !== d) : [...r.days, d]; paintChips(); } }, DAY_NAMES[d])),
+      h('span', { style: { width: '8px' } }),
+      ...[['Weekdays', [1, 2, 3, 4, 5]], ['Weekends', [0, 6]], ['Every day', [0, 1, 2, 3, 4, 5, 6]]].map(([l, ds]) =>
+        h('button', { type: 'button', class: 'btn sm ghost', onclick: () => { r.days = ds; paintChips(); } }, l)));
+    paintChips();
+
+    const st = h('input', { type: 'time', value: r.start_time?.slice(0, 5) || '09:00' });
+    const et = h('input', { type: 'time', value: r.end_time?.slice(0, 5) || '17:00' });
+    const times = h('div', { class: 'grid2' }, field('From', st), field('Until', et, 'Can run past midnight, e.g. 22:00–02:00'));
+    const ad = h('input', { type: 'checkbox', checked: allDay, onchange: (e) => { allDay = e.target.checked; times.classList.toggle('hidden', allDay); } });
+    times.classList.toggle('hidden', allDay);
+    const sd = h('input', { type: 'date', value: r.start_date || '' });
+    const ed = h('input', { type: 'date', value: r.end_date || '' });
+    const prio = select([['0', 'Normal'], ['10', 'High'], ['100', 'Override everything']], String(r.priority >= 100 ? 100 : r.priority >= 10 ? 10 : 0), (v) => (r.priority = Number(v)));
+
+    modal({
+      title: rule ? 'Edit schedule rule' : 'Add schedule rule',
+      body: [
+        field('Play this playlist', pl),
+        field('Label', label),
+        field('On these days', chips),
+        h('label', { class: 'row small', style: { fontWeight: 600 } }, ad, 'All day'),
+        times,
+        h('div', { class: 'grid2' }, field('Starting on (optional)', sd), field('Ending on (optional)', ed)),
+        field('Priority', prio, 'When rules overlap, the higher priority plays. Use “Override” for one-off events.'),
+      ],
+      actions: [
+        rule ? { label: 'Delete', class: 'danger', onClick: async () => { await q(sb.from('schedule_items').delete().eq('id', rule.id)); await load(); paint(); } } : null,
+        { label: 'Cancel' },
+        { label: rule ? 'Save rule' : 'Add rule', class: 'primary', onClick: async () => {
+          if (!r.days.length) throw new Error('Pick at least one day');
+          if (sd.value && ed.value && ed.value < sd.value) throw new Error('End date is before start date');
+          if (!allDay && st.value === et.value) throw new Error('Start and end time are the same');
+          const row = {
+            screen_id: id, client_id: state.clientId, playlist_id: r.playlist_id,
+            label: label.value.trim() || null,
+            days: r.days.length === 7 ? null : [...r.days].sort(),
+            start_time: allDay ? null : st.value, end_time: allDay ? null : et.value,
+            start_date: sd.value || null, end_date: ed.value || null,
+            priority: r.priority, enabled: r.enabled ?? true,
+          };
+          if (rule) await q(sb.from('schedule_items').update(row).eq('id', rule.id));
+          else await q(sb.from('schedule_items').insert(row));
+          await load(); paint();
+        } },
+      ].filter(Boolean),
+    });
+  }
+
+  function weekView(content) {
+    const wrap = h('div', { class: 'week' });
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const now = new Date();
+    for (let d = 0; d < 7; d++) {
+      const day = new Date(start); day.setDate(start.getDate() + d);
+      const track = h('div', { class: 'track' });
+      let segStart = 0, cur;
+      const STEP = 15;
+      for (let m = 0; m <= 1440; m += STEP) {
+        const t = new Date(day); t.setMinutes(m);
+        const pid = m < 1440 ? resolveSchedule(content, t).playlistId : '__end';
+        if (m === 0) { cur = pid; continue; }
+        if (pid !== cur) {
+          if (cur) {
+            const w = (m - segStart) / 1440 * 100;
+            track.append(h('div', { class: 'seg-bar', title: `${byId[cur]?.name} ${fmtM(segStart)}–${fmtM(m)}`, style: { left: (segStart / 1440 * 100) + '%', width: w + '%', background: colorFor(cur, plIds()) } }, w > 9 ? byId[cur]?.name || '' : ''));
+          }
+          segStart = m; cur = pid;
+        }
+      }
+      if (d === 0) track.append(h('div', { class: 'now-line', style: { left: ((now.getHours() * 60 + now.getMinutes()) / 1440 * 100) + '%' } }));
+      wrap.append(h('div', { class: 'day' }, d === 0 ? 'Today' : day.toLocaleDateString(undefined, { weekday: 'short' })), track);
+    }
+    wrap.append(h('div'), h('div', { class: 'hours' }, ['00', '06', '12', '18', '24'].map((x) => h('span', {}, x))));
+    return wrap;
+  }
+  const fmtM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+  function startPreview(box) {
+    player?.stop();
+    const { playlistId } = resolveSchedule(screen.content);
+    const pl = playlistId && screen.content.playlists[playlistId];
+    box.replaceChildren();
+    if (!pl) { box.append(h('div', { class: 'thumb' }, h('div', { class: 'blank' }, screen.content ? 'Nothing scheduled right now' : 'Nothing published yet'))); return; }
+    const stage = h('div', { class: 'preview-box' + (pl.settings?.orientation === 'portrait' ? ' portrait' : '') });
+    box.append(stage);
+    player = new SlidePlayer(stage, { resolveUrl: (s) => mediaUrl(s.path), mutedOverride: true });
+    player.load(pl);
+    player.start();
+  }
+
+  function paint() {
+    const draft = draftContent(screen, rules, byId);
+    const live = resolveSchedule(screen.content);
+    const liveName = live.playlistId ? screen.content.playlists[live.playlistId]?.name : null;
+    const dinfo = screen.device_info || {};
+
+    const head = h('div', { class: 'page-head' },
+      h('div', {},
+        h('div', { class: 'crumb' }, h('a', { href: '#/screens' }, 'Screens'), ' / ', screen.name),
+        h('div', { class: 'row' }, h('h1', {}, screen.name), h('button', { class: 'btn ghost icon sm', onclick: editDetails, 'aria-label': 'Edit details' }, icon('edit'))),
+        h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), screen.location ? h('span', { class: 'tiny' }, screen.location) : null)),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', onclick: reloadTv, title: 'Force the TV app to reload' }, icon('refresh'), 'Reload TV'),
+        h('button', { class: 'btn primary', onclick: publish }, icon('send'), 'Publish to TV')));
+
+    const preview = h('div');
+    const onair = h('div', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h2', {}, 'On air now'), h('span', { class: 'tiny' }, screen.published_at ? `Published ${timeAgo(screen.published_at)}` : 'Never published')),
+      h('div', { class: 'card-body stack' },
+        preview,
+        h('div', { class: 'onair' }, h('span', { class: 'live' }, 'LIVE'),
+          h('div', { class: 'grow' }, h('div', { style: { fontWeight: 700 } }, liveName || 'Nothing playing'),
+            h('div', { class: 'tiny', style: { color: '#aaa' } }, live.rule ? `${live.rule.label || 'Schedule rule'} · ${describeRule(live.rule)}` : liveName ? 'Default playlist' : 'Set a default playlist or add a rule, then publish')))));
+
+    const defSel = select([['', '— Nothing (blank screen) —'], ...playlists.map((p) => [p.id, p.name])], screen.default_playlist_id || '', async (v) => {
+      await q(sb.from('screens').update({ default_playlist_id: v || null }).eq('id', id));
+      await load(); paint();
+    });
+
+    const sched = h('div', { class: 'card' },
+      h('div', { class: 'card-head' }, h('div', {}, h('h2', {}, 'Schedule'), h('div', { class: 'tiny' }, 'Times are the TV’s local time. Changes go live when you publish.')),
+        h('button', { class: 'btn sm primary', onclick: () => ruleDialog() }, icon('plus'), 'Add rule')),
+      h('div', { class: 'card-body stack' },
+        field('Default playlist', defSel, 'Plays whenever no schedule rule applies.'),
+        h('div', {}, h('h3', { style: { marginBottom: '10px' } }, 'Next 7 days'), weekView(draft))),
+      h('div', { class: 'list' },
+        rules.length ? rules.map((r) => h('div', { class: 'rule' + (r.enabled ? '' : ' off') },
+          h('div', { class: 'dot', style: { background: colorFor(r.playlist_id, plIds()) } }),
+          h('div', { style: { minWidth: 0 } },
+            h('div', { style: { fontWeight: 650 } }, r.label || byId[r.playlist_id]?.name || 'Rule',
+              r.priority >= 100 ? h('span', { class: 'badge plain', style: { marginLeft: '8px' } }, 'Override') : r.priority >= 10 ? h('span', { class: 'badge plain', style: { marginLeft: '8px' } }, 'High') : null),
+            h('div', { class: 'small muted' }, `${byId[r.playlist_id]?.name || '?'} · ${describeRule({ ...r, start_time: r.start_time?.slice(0, 5), end_time: r.end_time?.slice(0, 5) })}`)),
+          h('div', { class: 'row', style: { gap: '4px' } },
+            h('label', { class: 'row tiny', title: 'Enabled' }, h('input', { type: 'checkbox', checked: r.enabled, onchange: async (e) => { await q(sb.from('schedule_items').update({ enabled: e.target.checked }).eq('id', r.id)); await load(); paint(); } })),
+            h('button', { class: 'btn sm', onclick: () => ruleDialog(r) }, 'Edit'))))
+          : h('div', { class: 'list-row muted small' }, 'No rules yet — the default playlist plays all the time.')));
+
+    const device = h('div', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h2', {}, 'Device')),
+      h('div', { class: 'card-body stack small' },
+        h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Last seen'), timeAgo(screen.last_seen)),
+        dinfo.model ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Model'), dinfo.model) : null,
+        dinfo.resolution ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Resolution'), dinfo.resolution) : null,
+        dinfo.app ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'App'), dinfo.app) : null,
+        dinfo.playing ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Reported playing'), dinfo.playing) : null,
+        h('div', { class: 'row', style: { marginTop: '6px' } },
+          state.me.is_admin ? h('button', { class: 'btn sm', onclick: assignDialog }, 'Move to client…') : null,
+          canManage() ? h('button', { class: 'btn sm danger', onclick: unpair }, icon('trash'), 'Remove TV') : null)));
+
+    main.replaceChildren(head, h('div', { class: 'split' },
+      h('div', { class: 'stack' }, onair, device),
+      h('div', { class: 'stack' }, sched)));
+    startPreview(preview);
+  }
+  paint();
+
+  // keep the status fresh & follow schedule changes in the preview
+  let lastPid = resolveSchedule(screen.content).playlistId;
+  tick = setInterval(async () => {
+    try {
+      const s = await q(sb.from('screens').select('last_seen,device_info,content,published_at,schedule_updated_at').eq('id', id).single());
+      const pid = resolveSchedule(s.content).playlistId;
+      Object.assign(screen, s);
+      if (pid !== lastPid) { lastPid = pid; paint(); }
+    } catch {}
+  }, 30000);
+  return () => { clearInterval(tick); player?.stop(); };
+}

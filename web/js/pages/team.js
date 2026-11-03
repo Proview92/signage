@@ -1,0 +1,71 @@
+import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, refreshMe } from '../core.js';
+
+export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
+
+export function showInviteLink(inv, clientName) {
+  const link = inviteLink(inv.token);
+  const subject = encodeURIComponent(`You're invited to manage ${clientName}'s screens`);
+  const body = encodeURIComponent(`Hi,\n\nYou've been invited to manage the digital signage screens for ${clientName}.\n\nOpen this link and create your account with ${inv.email}:\n${link}\n`);
+  modal({ title: 'Invite ready', body: [
+    h('p', { class: 'muted', style: { margin: 0 } }, `Send this link to ${inv.email}. They sign up with that email address and get ${inv.role === 'manager' ? 'manager' : 'editor'} access to ${clientName}.`),
+    h('div', { class: 'copy-box' }, h('input', { type: 'text', value: link, readOnly: true, onclick: (e) => e.target.select() }), h('button', { class: 'btn', onclick: () => copyText(link) }, icon('copy'), 'Copy')),
+    h('a', { class: 'btn', href: `mailto:${inv.email}?subject=${subject}&body=${body}` }, icon('send'), 'Open in email app')],
+  actions: [{ label: 'Done', class: 'primary' }] });
+}
+
+export function inviteDialog(clientId, clientName, onDone) {
+  const email = h('input', { type: 'email', placeholder: 'name@company.com' });
+  let role = 'editor';
+  modal({ title: `Invite someone to ${clientName}`, body: [
+    field('Email address', email),
+    field('Access', select([['editor', 'Editor — media, playlists & schedules'], ['manager', 'Manager — also add TVs and invite people']], role, (v) => (role = v)))],
+  actions: [{ label: 'Cancel' }, { label: 'Create invite', class: 'primary', onClick: async () => {
+    const e = email.value.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('Enter a valid email address');
+    const inv = await q(sb.from('invites').insert({ client_id: clientId, email: e, role }).select().single());
+    onDone?.();
+    setTimeout(() => showInviteLink(inv, clientName), 50);
+  } }] });
+}
+
+const roleLabel = { manager: 'Manager', editor: 'Editor' };
+
+export async function teamPage({ main, rerender }) {
+  const client = currentClient();
+  const manage = canManage();
+  const load = async () => Promise.all([
+    rpc('list_members', { p_client: state.clientId }),
+    manage ? q(sb.from('invites').select('*').eq('client_id', state.clientId).is('accepted_at', null).order('created_at', { ascending: false })) : [],
+  ]);
+  let [members, invites] = await load();
+
+  const paint = () => {
+    main.replaceChildren(
+      h('div', { class: 'page-head' },
+        h('div', {}, h('h1', {}, 'Team'), h('p', { class: 'muted' }, `People who can manage ${client.name}'s screens.`)),
+        manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, client.name, refresh) }, icon('plus'), 'Invite someone') : null),
+      h('div', { class: 'stack' },
+        h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),
+          h('div', { class: 'list' }, members.length ? members.map((m) => h('div', { class: 'list-row' },
+            h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.email || 'Unknown', m.user_id === state.me.user_id ? h('span', { class: 'tiny' }, '  (you)') : null),
+              h('div', { class: 'tiny' }, 'Joined ' + timeAgo(m.created_at))),
+            manage && m.user_id !== state.me.user_id
+              ? select([['editor', 'Editor'], ['manager', 'Manager']], m.role, async (v) => { await q(sb.from('client_members').update({ role: v }).eq('client_id', state.clientId).eq('user_id', m.user_id)); toast('Role updated'); })
+              : h('span', { class: 'badge plain' }, roleLabel[m.role]),
+            manage && m.user_id !== state.me.user_id ? h('button', { class: 'btn sm danger', onclick: async () => {
+              if (!(await confirmBox('Remove member?', `${m.email} will lose access to ${client.name}.`, 'Remove'))) return;
+              await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
+              refresh();
+            } }, 'Remove') : null))
+            : h('div', { class: 'list-row muted small' }, state.me.is_admin ? 'No client users yet. Invite the client’s staff so they can manage their own screens.' : 'No members.'))),
+        manage ? h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Pending invites')),
+          h('div', { class: 'list' }, invites.length ? invites.map((i) => h('div', { class: 'list-row' },
+            h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, i.email), h('div', { class: 'tiny' }, `${roleLabel[i.role]} · created ${timeAgo(i.created_at)}`)),
+            h('button', { class: 'btn sm', onclick: () => showInviteLink(i, client.name) }, icon('copy'), 'Link'),
+            h('button', { class: 'btn sm danger', onclick: async () => { await q(sb.from('invites').delete().eq('id', i.id)); refresh(); } }, 'Revoke')))
+            : h('div', { class: 'list-row muted small' }, 'No pending invites.'))) : null,
+        !manage ? h('div', { class: 'notice info' }, 'Ask a manager if you need to add people or TVs.') : null));
+  };
+  const refresh = async () => { [members, invites] = await load(); paint(); };
+  paint();
+}
