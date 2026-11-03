@@ -251,8 +251,14 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* notifications bell */
-.bell { font-size: 16px; width: 34px; height: 34px; }
-.bell-dot { position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; border-radius: 8px; background: var(--bad); color: #fff; font: 700 10px/16px var(--font); padding: 0 4px; }
-.topbar .bell { margin-left: 4px; }
+.bell-row { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 9px; text-decoration: none; color: var(--side-ink); font-weight: 550; cursor: pointer; }
+.bell-row:hover { background: #1f1f25; color: #fff; }
+.bell-row svg, .bell svg { color: #62b0ec; }
+.bell-row .bell-dot { margin-left: auto; }
+.bell { position: relative; width: 36px; height: 36px; margin-left: 4px; }
+.bell svg { width: 20px; height: 20px; }
+.bell .bell-dot { position: absolute; top: 1px; right: -2px; }
+.bell-dot { min-width: 18px; height: 18px; border-radius: 9px; background: var(--accent-grad); color: #fff; font: 700 11px/18px var(--font); padding: 0 5px; text-align: center; }
+.bell-dot.hidden { display: none; }
 @media (max-width: 820px) { .tabbar { overflow-x: auto; } .tabbar a { min-width: 64px; } }
 .quick-pl { padding: 4px 8px; font-size: 13px; border-radius: 7px; max-width: 70%; }

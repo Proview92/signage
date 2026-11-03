@@ -114,17 +114,18 @@ function shell(section, main) {
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
 
   const side = h('aside', { class: 'side' },
-    h('div', { class: 'brand', style: { justifyContent: 'space-between' } }, h('div', { class: 'row', style: { gap: '10px', flexWrap: 'nowrap' } }, brandMark(), wordmark(APP)), bell()),
+    h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
     h('div', { class: 'client-pick' }, clientPicker()),
     h('nav', { class: 'nav' },
       n.items.map(([k, l, i]) => link(k, l, i)),
+      bell('row'),
       n.admin ? [h('div', { class: 'nav-sep' }, 'Admin'), link('clients', 'Clients & TVs', 'clients')] : null),
     h('div', { class: 'side-foot' },
       h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, state.me.email),
       h('div', { class: 'tiny' }, n.r === 'admin' ? 'Administrator' : n.r === 'manager' ? 'Manager' : 'Editor'),
       h('button', { class: 'btn sm', onclick: signOut }, icon('logout'), 'Sign out')));
 
-  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(), bell(),
+  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(), bell('icon'),
     h('button', { class: 'btn ghost icon', style: { color: '#fff' }, onclick: signOut, 'aria-label': 'Sign out' }, icon('logout')));
   const tabs = h('nav', { class: 'tabbar' },
     n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),
@@ -134,39 +135,49 @@ function shell(section, main) {
 }
 
 // ------------------------------------------------------------ notifications bell
-function bell() {
-  const key = 'signage.notif.read.' + state.me.user_id;
-  const btn = h('button', { class: 'btn ghost icon bell', title: 'Notifications', style: { color: '#c9c9d1', position: 'relative' } }, '🔔');
+// Notifications: one shared loader feeds the sidebar row and the mobile top-bar button.
+const bellViews = new Set();
+let bellItems = [];
+function bellKey() { return 'signage.notif.read.' + state.me.user_id; }
+function paintBells() {
+  const last = localStorage.getItem(bellKey()) || '';
+  const unread = bellItems.filter((n) => n.created_at > last).length;
+  for (const dot of bellViews) {
+    dot.textContent = unread > 9 ? '9+' : String(unread);
+    dot.classList.toggle('hidden', !unread);
+  }
+}
+async function loadBells() {
+  try {
+    let qry = sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
+    if (!state.me.is_admin && state.clientId) qry = qry.eq('client_id', state.clientId);
+    bellItems = await q(qry);
+    paintBells();
+  } catch {}
+}
+function openNotifications() {
+  localStorage.setItem(bellKey(), new Date().toISOString());
+  paintBells();
+  const names = Object.fromEntries(state.me.clients.map((c) => [c.id, c.name]));
+  const ico = { offline: '🔴', online: '🟢', licence_14d: '🟡', licence_3d: '🟠', licence_expired: '⛔', payment: '💳' };
+  modal({ title: 'Notifications', body: [bellItems.length ? h('div', { class: 'list' }, bellItems.map((n) => h('div', { class: 'list-row', style: { cursor: n.screen_id ? 'pointer' : 'default' },
+    onclick: () => { if (n.screen_id && n.client_id) { setClient(n.client_id); document.querySelector('.modal-back')?.remove(); go('screen/' + n.screen_id); } } },
+    h('div', { style: { width: '22px' } }, ico[n.kind] || '•'),
+    h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, n.title), h('div', { class: 'tiny' }, [n.body, state.me.is_admin && names[n.client_id]].filter(Boolean).join(' · '))),
+    h('span', { class: 'tiny' }, timeAgo(n.created_at)))))
+    : h('p', { class: 'muted' }, 'No notifications yet. You’ll see offline TVs, licence reminders and payments here.')] });
+}
+/** variant 'row' = sidebar menu row, 'icon' = mobile top-bar button */
+function bell(variant = 'row') {
   const dot = h('span', { class: 'bell-dot hidden' });
-  btn.append(dot);
-  let items = [];
-  const load = async () => {
-    try {
-      let qry = sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
-      if (!state.me.is_admin && state.clientId) qry = qry.eq('client_id', state.clientId);
-      items = await q(qry);
-      const last = localStorage.getItem(key) || '';
-      const unread = items.filter((n) => n.created_at > last).length;
-      dot.textContent = unread > 9 ? '9+' : String(unread);
-      dot.classList.toggle('hidden', !unread);
-    } catch {}
-  };
-  btn.onclick = () => {
-    localStorage.setItem(key, new Date().toISOString());
-    dot.classList.add('hidden');
-    const names = Object.fromEntries(state.me.clients.map((c) => [c.id, c.name]));
-    const ico = { offline: '🔴', online: '🟢', licence_14d: '🟡', licence_3d: '🟠', licence_expired: '⛔', payment: '💳' };
-    modal({ title: 'Notifications', body: [items.length ? h('div', { class: 'list' }, items.map((n) => h('div', { class: 'list-row', style: { cursor: n.screen_id ? 'pointer' : 'default' },
-      onclick: () => { if (n.screen_id && n.client_id) { setClient(n.client_id); document.querySelector('.modal-back')?.remove(); go('screen/' + n.screen_id); } } },
-      h('div', { style: { width: '22px' } }, ico[n.kind] || '•'),
-      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, n.title), h('div', { class: 'tiny' }, [n.body, state.me.is_admin && names[n.client_id]].filter(Boolean).join(' · '))),
-      h('span', { class: 'tiny' }, timeAgo(n.created_at)))))
-      : h('p', { class: 'muted' }, 'No notifications yet. You’ll see offline TVs, licence reminders and payments here.')] });
-  };
-  load();
-  clearInterval(window.__bellTimer);
-  window.__bellTimer = setInterval(load, 60000);
-  return btn;
+  if (variant === 'row') for (const d of bellViews) if (!d.isConnected) bellViews.delete(d);   // new page: drop old badges
+  bellViews.add(dot);
+  const el = variant === 'row'
+    ? h('a', { href: 'javascript:void 0', class: 'bell-row', onclick: (e) => { e.preventDefault(); openNotifications(); } }, icon('bell'), h('span', {}, 'Notifications'), dot)
+    : h('button', { class: 'btn ghost icon bell', title: 'Notifications', 'aria-label': 'Notifications', onclick: openNotifications }, icon('bell'), dot);
+  if (variant === 'row') { loadBells(); clearInterval(window.__bellTimer); window.__bellTimer = setInterval(loadBells, 60000); }
+  else paintBells();
+  return el;
 }
 
 async function signOut() {
