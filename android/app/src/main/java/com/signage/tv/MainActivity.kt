@@ -32,7 +32,6 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.Toast
 import java.security.MessageDigest
@@ -54,7 +53,8 @@ class MainActivity : Activity() {
     private var lastFullReload = SystemClock.elapsedRealtime()
 
     private val prefs by lazy { getSharedPreferences("signage", Context.MODE_PRIVATE) }
-    private val playerUrl: String get() = prefs.getString("player_url", null) ?: BuildConfig.PLAYER_URL
+    // Fixed address (no longer changeable on the TV).
+    private val playerUrl: String get() = BuildConfig.PLAYER_URL
     /** Minutes to wait before reopening after the next time we leave; null = use admin setting. */
     private var nextReturnMinutes: Int? = null
 
@@ -70,7 +70,6 @@ class MainActivity : Activity() {
             } catch (_: Exception) {}
         }
         @JavascriptInterface fun exitToHome(minutes: Int) = runOnUiThread { goHome(minutes) }
-        @JavascriptInterface fun changeAddress() = runOnUiThread { openSettings() }
         @JavascriptInterface fun canReopen(): Boolean = canStartFromBackground()
         @JavascriptInterface fun openOverlayPermission() = runOnUiThread { openOverlaySetting() }
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
@@ -211,28 +210,6 @@ class MainActivity : Activity() {
         }, 10 * 60 * 1000L)
     }
 
-    private fun openSettings() {
-        val input = EditText(this).apply {
-            setText(playerUrl)
-            setSelectAllOnFocus(true)
-            setSingleLine(true)
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Player address")
-            .setMessage("Address of player.html on your signage site")
-            .setView(input)
-            .setPositiveButton("Save") { _, _ ->
-                val v = input.text.toString().trim()
-                if (v.startsWith("https://") || v.startsWith("http://")) {
-                    prefs.edit().putString("player_url", v).apply()
-                    load()
-                } else Toast.makeText(this, "Enter a full https:// address", Toast.LENGTH_LONG).show()
-            }
-            .setNeutralButton("Reset") { _, _ -> prefs.edit().remove("player_url").apply(); load() }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
         if (offline && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
@@ -267,11 +244,11 @@ class MainActivity : Activity() {
         backToast = Toast.makeText(this, "Press Back $left more time${if (left == 1) "" else "s"} for the menu", Toast.LENGTH_SHORT).also { it.show() }
     }
 
-    /** Opens the web screen menu, or the address dialog if the player page isn't loaded. */
+    /** Opens the web screen menu; if the player page isn't loaded (no network), opens Wi-Fi settings instead. */
     private fun openScreenMenu() {
         web?.evaluateJavascript("window.signageRemote ? (window.signageRemote.open(), true) : false") { ok ->
-            if (ok != "true") openSettings()
-        } ?: openSettings()
+            if (ok != "true") openWifiSettings(prefs.getInt("return_minutes", 5))
+        } ?: openWifiSettings(prefs.getInt("return_minutes", 5))
     }
 
     // ------------------------------------------------------------ screenshots

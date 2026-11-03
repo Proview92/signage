@@ -130,7 +130,7 @@ export async function clientsPage({ main, go, rerender }) {
   const remoteCard = h('div', { class: 'card' },
     h('div', { class: 'card-head' },
       h('div', {}, h('h2', {}, 'TV remote'),
-        h('div', { class: 'tiny' }, 'Pressing Back 3 times on a TV remote opens the screen menu: reload, status, exit to the TV home screen, player address.')),
+        h('div', { class: 'tiny' }, 'Pressing Back 3 times on a TV remote opens the screen menu: reload, status, Wi-Fi settings, exit to the TV home screen.')),
       h('label', { class: 'row small', style: { fontWeight: 600 } }, 'Reopen player after',
         select([['0', 'Never'], ['2', '2 minutes'], ['5', '5 minutes'], ['10', '10 minutes'], ['15', '15 minutes'], ['30', '30 minutes'], ['60', '1 hour']], String(tvSettings.return_minutes), async (v) => {
           try { await rpc('set_tv_settings', { p_pin: null, p_return_minutes: Number(v) }); toast('Saved. TVs pick this up within a minute'); }
