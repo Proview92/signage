@@ -264,14 +264,29 @@ function waitReady(el, timeout = 10000) {
     const finish = (ok) => { if (!done) { done = true; resolve(ok); } };
     setTimeout(() => finish(m.tagName === 'IMG' ? m.complete && m.naturalWidth > 0 : m.readyState >= 2), timeout);
     if (m.tagName === 'IMG') {
-      if (m.complete && m.naturalWidth) return finish(true);
-      m.addEventListener('load', () => finish(true), { once: true });
+      // Decode fully before the transition starts, so it doesn't stutter.
+      const decoded = () => (m.decode ? m.decode().then(() => finish(true), () => finish(m.naturalWidth > 0)) : finish(true));
+      if (m.complete && m.naturalWidth) return decoded();
+      m.addEventListener('load', decoded, { once: true });
       m.addEventListener('error', () => finish(false), { once: true });
     } else {
       if (m.readyState >= 3) return finish(true);
       m.addEventListener('canplay', () => finish(true), { once: true });
       m.addEventListener('error', () => finish(false), { once: true });
     }
+  });
+}
+
+// Start a video and resolve once its first frame is actually on screen,
+// so we never fade in a black / frozen box.
+function startVideo(video, timeout = 2500) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    setTimeout(finish, timeout);
+    const onFrame = () => (video.requestVideoFrameCallback ? video.requestVideoFrameCallback(() => finish()) : setTimeout(finish, 80));
+    video.addEventListener('playing', onFrame, { once: true });
+    video.play().catch(() => { video.muted = true; video.play().catch(finish); });
   });
 }
 
@@ -288,7 +303,7 @@ const T = {
   'zoom-out':    { in: [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'none' }], out: [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(1.2)' }] },
   flip:          { in: [{ transform: 'rotateY(-90deg)', offset: 0 }, { transform: 'rotateY(-90deg)', offset: .5 }, { transform: 'none' }],
                    out: [{ transform: 'none' }, { transform: 'rotateY(90deg)', offset: .5 }, { transform: 'rotateY(90deg)' }] },
-  blur:          { in: [{ opacity: 0, filter: 'blur(40px)' }, { opacity: 1, filter: 'blur(0)' }], out: [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(40px)' }] },
+  blur:          { in: [{ opacity: 0, filter: 'blur(16px)' }, { opacity: 1, filter: 'blur(0)' }], out: [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(16px)' }] },
   wipe:          { in: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
   circle:        { in: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
 };
@@ -334,6 +349,7 @@ function startEffect(el, slide, seconds) {
   const frames = E[slide.effect];
   const wrap = el.querySelector('.sg-media-wrap');
   if (!frames || !wrap) return;
+  wrap.style.willChange = 'transform';
   wrap.animate(frames, {
     duration: Math.max(2, seconds) * 1000 + (slide.transition_ms || 0),
     easing: slide.effect === 'pulse' ? 'ease-in-out' : 'linear',
@@ -366,6 +382,7 @@ export class SlidePlayer {
     this.host.setOrientation(settings.orientation || 'landscape');
     this.slides = (content?.slides || []).filter(Boolean);
     this.index = -1;
+    this.fresh = true;            // content changed: rebuild even a single slide
     if (this.running) this.next();
   }
 
@@ -400,6 +417,13 @@ export class SlidePlayer {
     }
     const pos = active.findIndex((i) => i > this.index);
     const idx = pos >= 0 ? active[pos] : active[0];
+    // One slide on screen and nothing changed: keep it running untouched
+    // (rebuilding it would restart the video / flash the picture).
+    if (active.length === 1 && !this.fresh && this.current && this.current.dataset.id === this.slides[idx].id) {
+      this.timer = setTimeout(() => this.running && this.next(), 60000);
+      return;
+    }
+    this.fresh = false;
     await this.show(idx, my, active.length);
   }
 
@@ -416,7 +440,7 @@ export class SlidePlayer {
     }
     if (my !== this.token) return;
     const el = buildSlide(slide, url, { mutedOverride: this.opts.mutedOverride });
-    el.style.visibility = 'hidden';
+    el.style.opacity = '0';           // laid out & decoding, but not visible yet
     this.host.stage.appendChild(el);
     const ok = await waitReady(el);
     if (my !== this.token) { el.remove(); return; }
@@ -426,10 +450,10 @@ export class SlidePlayer {
       this.timer = setTimeout(() => this.next(), 1000);
       return;
     }
-    el.style.visibility = '';
     this.index = idx;
-
     const video = el.querySelector('video');
+    if (video) { await startVideo(video); if (my !== this.token) { el.remove(); return; } }
+    el.style.opacity = '';
     // Same single slide re-shown: no transition needed.
     const skipTransition = activeCount === 1 && this.current && this.current.dataset.id === slide.id;
     el.dataset.id = slide.id;
@@ -437,7 +461,6 @@ export class SlidePlayer {
 
     let seconds = Number(slide.duration) || 0;
     if (video) {
-      video.play().catch(() => { video.muted = true; video.play().catch(() => {}); });
       if (seconds <= 0) {
         video.loop = activeCount === 1;
         const fallback = (isFinite(video.duration) && video.duration > 0 ? video.duration : 60) + 2;
@@ -465,7 +488,11 @@ export class SlidePlayer {
     const ms = skip ? 0 : (slide?.transition_ms ?? 900);
     const anim = T[kind];
     if (el) el.style.zIndex = 2;
-    if (prev) prev.style.zIndex = 1;
+    if (prev) {
+      prev.style.zIndex = 1;
+      // Freeze the outgoing video: many TV sticks can't decode two videos at once.
+      prev.querySelectorAll('video').forEach((v) => { try { v.pause(); } catch {} });
+    }
 
     const cleanup = () => {
       if (prev && prev !== this.current) {
@@ -475,9 +502,11 @@ export class SlidePlayer {
     };
     if (!anim || ms <= 0 || !prev || !el) { cleanup(); return; }
     const opt = { duration: ms, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' };
+    el.style.willChange = prev.style.willChange = 'transform, opacity';
     const a = el.animate(anim.in, opt);
     prev.animate(anim.out, opt);
-    a.finished.then(() => { a.cancel(); cleanup(); }).catch(cleanup);
+    const end = () => { el.style.willChange = ''; cleanup(); };
+    a.finished.then(() => { a.cancel(); end(); }).catch(end);
   }
 }
 

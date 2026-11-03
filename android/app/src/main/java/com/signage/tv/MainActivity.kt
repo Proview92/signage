@@ -116,7 +116,6 @@ class MainActivity : Activity() {
             useWideViewPort = true
             userAgentString = "$userAgentString ProviewSignageTV/${BuildConfig.VERSION_NAME}"
         }
-        w.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         w.addJavascriptInterface(Bridge(), "SignageNative")
         w.webChromeClient = object : WebChromeClient() {
             // Avoid the grey "play" placeholder before videos start

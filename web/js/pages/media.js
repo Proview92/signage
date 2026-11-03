@@ -1,5 +1,7 @@
 import { sb, state, h, icon, q, toast, modal, field, confirmBox, mediaUrls, fmtBytes, fmtDuration, timeAgo, errMsg, BUCKET } from '../core.js';
 
+import { shrinkImage } from '../imgfit.js';
+
 const cfg = window.SIGNAGE_CONFIG || {};
 
 async function listMedia() {
@@ -51,14 +53,25 @@ async function uploadFile(file, path, onProgress) {
 
 export async function uploadFiles(files, progressEl, folder = null) {
   const out = [];
-  for (const file of files) {
+  for (let file of files) {
     const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : null;
     const bar = h('div');
     const row = h('div', { class: 'upload-row' }, h('div', { style: { width: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, file.name), h('div', { class: 'bar' }, bar), h('span', { class: 'tiny' }, fmtBytes(file.size)));
     progressEl?.append(row);
     if (!kind) { row.lastChild.textContent = 'Not a picture or video'; continue; }
     try {
+      // Big phone photos are resized (max 2560px) so TVs show them smoothly.
+      if (kind === 'image') {
+        const small = await shrinkImage(file).catch(() => null);
+        if (small) {
+          const ext2 = small.type === 'image/png' ? 'png' : 'jpg';
+          file = new File([small], file.name.replace(/\.[^.]+$/, '') + '.' + ext2, { type: small.type });
+          row.lastChild.textContent = fmtBytes(file.size);
+        }
+      }
       const meta = await readMeta(file);
+      if (kind === 'video' && meta.width && meta.width * meta.height > 1920 * 1080 * 1.2)
+        toast(`${file.name} is ${meta.width}×${meta.height} (4K). Some TV sticks stutter with 4K — a 1080p MP4 plays smoothest.`);
       const ext = (file.name.split('.').pop() || (kind === 'image' ? 'jpg' : 'mp4')).toLowerCase().replace(/[^a-z0-9]/g, '');
       const path = `${state.clientId}/${crypto.randomUUID()}.${ext}`;
       await uploadFile(file, path, (p) => (bar.style.width = Math.round(p * 100) + '%'));

@@ -8,6 +8,7 @@ import { makeClient, configured, BUCKET } from './sb.js';
 import { LayoutPlayer, onAirPlaylist } from './renderer.js';
 import { licenseState, licenseSummary } from './license.js';
 import { createRemoteMenu } from './remote.js';
+import { shrinkImage } from './imgfit.js';
 
 const qs = new URLSearchParams(location.search);
 const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
@@ -29,22 +30,33 @@ let channel = null;
 
 // ------------------------------------------------------------ media cache
 const objectUrls = new Map();
+const isImagePath = (p) => /\.(jpe?g|png|webp|heic|heif|bmp|avif)$/i.test(p);
+const FIT_EDGE = Math.min(2560, Math.max(1920, Math.round(Math.max(window.screen?.width || 0, window.screen?.height || 0) * (window.devicePixelRatio || 1))));
+// Pictures are stored resized for this TV, so big phone photos decode fast.
+async function fitAndStore(c, path, blob) {
+  let out = blob;
+  if (isImagePath(path)) { const small = await shrinkImage(blob, FIT_EDGE).catch(() => null); if (small) out = small; }
+  if (c) await c.put('/__media/' + path, new Response(out, { headers: { 'content-type': out.type || blob.type || 'application/octet-stream', 'x-fit': '1' } }));
+  return out;
+}
 async function cacheGet(path) {
   if (!('caches' in window)) return null;
   const c = await caches.open(MEDIA_CACHE);
   const r = await c.match('/__media/' + path);
-  return r ? r.blob() : null;
+  if (!r) return null;
+  const blob = await r.blob();
+  // Pictures cached by an older player version: resize them once now.
+  if (isImagePath(path) && !r.headers.get('x-fit')) return fitAndStore(c, path, blob);
+  return blob;
 }
 async function download(path) {
   const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;
   const res = await fetch(data.signedUrl);
   if (!res.ok) throw new Error('download failed ' + res.status);
-  if ('caches' in window) {
-    const c = await caches.open(MEDIA_CACHE);
-    await c.put('/__media/' + path, res.clone());
-  }
-  return res.blob();
+  const blob = await res.blob();
+  const c = 'caches' in window ? await caches.open(MEDIA_CACHE) : null;
+  return fitAndStore(c, path, blob);
 }
 const inflight = new Map();
 async function resolveUrl(slide) {
