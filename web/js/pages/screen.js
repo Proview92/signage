@@ -26,6 +26,15 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
   const plIds = () => playlists.map((p) => p.id);
 
+  // Changes on this page go live straight away (or go for approval).
+  async function goLive() {
+    try {
+      const r = await publishOrRequest('screen', id, screen.name);
+      toast(r.pending ? 'Saved. Sent to your manager for approval' : 'Saved and live on the TV');
+      await load(); paint();
+    } catch (e) { toast('Saved, but the TV wasn’t updated: ' + (e.message || e), true); }
+  }
+
   async function publish() {
     const r = await publishOrRequest('screen', id, screen.name);
     toast(r.pending ? 'Sent to your manager for approval. It goes live once they approve it.' : 'Published — the TV will update in a few seconds');
@@ -77,13 +86,13 @@ export async function screenPage({ main, params: [id], go, rerender }) {
       title: rule ? 'Edit schedule rule' : 'Add schedule rule',
       body: form.body,
       actions: [
-        rule ? { label: 'Delete', class: 'danger', onClick: async () => { await q(sb.from('schedule_items').delete().eq('id', rule.id)); await load(); paint(); } } : null,
+        rule ? { label: 'Delete', class: 'danger', onClick: async () => { await q(sb.from('schedule_items').delete().eq('id', rule.id)); await load(); paint(); goLive(); } } : null,
         { label: 'Cancel' },
         { label: rule ? 'Save rule' : 'Add rule', class: 'primary', onClick: async () => {
           const row = { screen_id: id, client_id: state.clientId, ...form.read() };
           if (rule) await q(sb.from('schedule_items').update(row).eq('id', rule.id));
           else await q(sb.from('schedule_items').insert(row));
-          await load(); paint();
+          await load(); paint(); goLive();
         } },
       ].filter(Boolean),
     });
@@ -144,7 +153,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), (() => { const t = [sites.find((x) => x.id === screen.site_id)?.name, screen.location].filter(Boolean).join(' · '); return t ? h('span', { class: 'tiny' }, t) : null; })())),
       h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: reloadTv, title: 'Force the TV app to reload' }, icon('refresh'), 'Reload TV'),
-        h('button', { class: 'btn primary', onclick: publish, disabled: licenseState(screen).state === 'expired', title: licenseState(screen).state === 'expired' ? 'Licence expired' : '' }, icon('send'), 'Publish to TV')));
+        h('button', { class: 'btn primary', onclick: publish, disabled: licenseState(screen).state === 'expired', title: licenseState(screen).state === 'expired' ? 'Licence expired' : '' }, icon('send'), 'Re-send to TV')));
 
     const preview = h('div');
     const onair = h('div', { class: 'card' },
@@ -157,11 +166,11 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
     const defSel = select([['', '— Nothing (blank screen) —'], ...playlists.map((p) => [p.id, p.name])], screen.default_playlist_id || '', async (v) => {
       await q(sb.from('screens').update({ default_playlist_id: v || null }).eq('id', id));
-      await load(); paint();
+      await load(); paint(); goLive();
     });
 
     const sched = h('div', { class: 'card' },
-      h('div', { class: 'card-head' }, h('div', {}, h('h2', {}, 'Schedule'), h('div', { class: 'tiny' }, 'Times are the TV’s local time. Changes go live when you publish.')),
+      h('div', { class: 'card-head' }, h('div', {}, h('h2', {}, 'Schedule'), h('div', { class: 'tiny' }, 'Times are the TV’s local time. Changes go live on the TV straight away.')),
         h('button', { class: 'btn sm primary', onclick: () => ruleDialog() }, icon('plus'), 'Add rule')),
       h('div', { class: 'card-body stack' },
         field('Default playlist', defSel, 'Plays whenever no schedule rule applies.'),
@@ -174,7 +183,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
               r.priority >= 100 ? h('span', { class: 'badge plain', style: { marginLeft: '8px' } }, 'Override') : r.priority >= 10 ? h('span', { class: 'badge plain', style: { marginLeft: '8px' } }, 'High') : null),
             h('div', { class: 'small muted' }, `${byId[r.playlist_id]?.name || '?'} · ${describeRule({ ...r, start_time: r.start_time?.slice(0, 5), end_time: r.end_time?.slice(0, 5) })}`)),
           h('div', { class: 'row', style: { gap: '4px' } },
-            h('label', { class: 'row tiny', title: 'Enabled' }, h('input', { type: 'checkbox', checked: r.enabled, onchange: async (e) => { await q(sb.from('schedule_items').update({ enabled: e.target.checked }).eq('id', r.id)); await load(); paint(); } })),
+            h('label', { class: 'row tiny', title: 'Enabled' }, h('input', { type: 'checkbox', checked: r.enabled, onchange: async (e) => { await q(sb.from('schedule_items').update({ enabled: e.target.checked }).eq('id', r.id)); await load(); paint(); goLive(); } })),
             h('button', { class: 'btn sm', onclick: () => ruleDialog(r) }, 'Edit'))))
           : h('div', { class: 'list-row muted small' }, 'No rules yet — the default playlist plays all the time.')));
 

@@ -5,6 +5,7 @@ import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
 import { WIDGET_TYPES, widgetDefaults, isWidget } from '../widgets.js';
 import { widgetFields, layoutDialog } from './widget-editor.js';
+import { showOnTvsDialog } from './show-on-tvs.js';
 
 export async function editorPage({ main, params: [id], go }) {
   const pl = await q(sb.from('playlists').select('*').eq('id', id).single());
@@ -22,7 +23,8 @@ export async function editorPage({ main, params: [id], go }) {
     saving = true; dirty = false; status.textContent = 'Saving…';
     try {
       await q(sb.from('playlists').update({ name: pl.name, slides: pl.slides, settings: pl.settings }).eq('id', id));
-      status.textContent = 'All changes saved';
+      status.textContent = pl.settings.auto_publish ? 'Saved · updating TVs…' : 'All changes saved';
+      if (pl.settings.auto_publish) autoPublish();
     } catch (e) { dirty = true; status.textContent = 'Not saved'; toast(errMsg(e), true); }
     saving = false;
     if (dirty) schedule();
@@ -72,12 +74,24 @@ export async function editorPage({ main, params: [id], go }) {
     pl.slides.splice(to, 0, s);
     sel = to; schedule(); paint();
   }
+  let autoTimer = null;
+  function autoPublish() {
+    clearTimeout(autoTimer);
+    autoTimer = setTimeout(async () => {
+      try {
+        const r = await publishOrRequest('playlist', id, pl.name);
+        status.textContent = r.pending ? 'Saved · waiting for approval' : r.published ? `Saved · live on ${r.published} TV${r.published === 1 ? '' : 's'}` : 'Saved · not on any TV yet (use Show on TVs)';
+      } catch (e) { status.textContent = 'Saved · TVs not updated'; }
+    }, 4000);
+  }
+
   async function publish() {
     await save();
     const r = await publishOrRequest('playlist', id, pl.name);
     if (r.pending) return toast('Sent to your manager for approval. It goes live once they approve it.');
     const n = r.published;
-    toast(n ? `Published to ${n} TV${n > 1 ? 's' : ''}` : 'Saved. This playlist isn’t on any TV yet — pick it on a screen’s schedule.');
+    if (n) toast(`Updated ${n} TV${n > 1 ? 's' : ''}`);
+    else showOnTvsDialog(pl);
   }
 
   // ------------------------------------------------ preview
@@ -282,7 +296,11 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'row' }, orient,
         layoutBtn,
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
-        h('button', { class: 'btn primary', onclick: publish }, icon('send'), 'Publish'))),
+        h('button', { class: 'btn', onclick: publish, title: 'Send your latest changes to the TVs that already show this playlist' }, icon('refresh'), 'Update TVs'),
+        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Show on TVs')),
+      h('label', { class: 'row small', style: { fontWeight: 600, width: '100%', justifyContent: 'flex-end' }, title: 'Every save is sent to the TVs showing this playlist, a few seconds later' },
+        h('input', { type: 'checkbox', checked: !!pl.settings.auto_publish, onchange: (e) => { pl.settings.auto_publish = e.target.checked; schedule(); toast(e.target.checked ? 'TVs will update automatically as you edit' : 'Auto-update off: use “Update TVs” when ready'); } }),
+        'Update TVs automatically as I edit')),
     h('div', { class: 'editor' },
       h('div', { class: 'card' }, listEl),
       h('div', { class: 'stack' }, h('div', { class: 'card pad' }, previewBox), h('div', { class: 'card' }, inspEl))));

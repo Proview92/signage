@@ -1,6 +1,10 @@
 import { sb, state, h, icon, q, toast, confirmBox, timeAgo, fmtDuration, mediaUrl } from '../core.js';
 import { renderStill } from '../renderer.js';
 import { templateGallery } from './templates.js';
+import { showOnTvsDialog } from './show-on-tvs.js';
+import { pickMedia } from './media.js';
+import { newSlide } from '../renderer.js';
+import { modal, field } from '../core.js';
 
 export function playlistLength(p) {
   return (p.slides || []).reduce((t, s) => t + (Number(s.duration) > 0 ? Number(s.duration) : (s.video_duration || 10)), 0);
@@ -14,9 +18,23 @@ export async function playlistsPage({ main, go }) {
   ]);
   const usedOn = (pid) => new Set([...screens.filter((s) => s.default_playlist_id === pid).map((s) => s.id), ...rules.filter((r) => r.playlist_id === pid).map((r) => r.screen_id)]).size;
 
+  // Media-first: pick pictures/videos → playlist is built → offer to show on TVs.
   const create = async () => {
-    const p = await q(sb.from('playlists').insert({ client_id: state.clientId, name: 'New playlist' }).select().single());
-    go('playlist/' + p.id);
+    const picked = await pickMedia({ multiple: true, title: 'New playlist: choose pictures & videos', okLabel: 'Create playlist', allowEmpty: true });
+    if (picked === null) return;
+    const slides = picked.map((m) => newSlide({
+      type: m.kind, media_id: m.id, path: m.path, name: m.name,
+      duration: m.kind === 'video' ? 0 : 8, video_duration: m.duration_s ? Number(m.duration_s) : undefined,
+      effect: m.kind === 'image' ? 'kenburns' : 'none', text: { ...newSlide().text, title: '', subtitle: '' },
+    }));
+    const name = h('input', { type: 'text', value: `New playlist ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` });
+    modal({ title: 'Name your playlist', body: [field('Playlist name', name), h('div', { class: 'tiny' }, `${slides.length} slide${slides.length === 1 ? '' : 's'}. You can add text, widgets and effects next.`)],
+      actions: [{ label: 'Cancel' },
+        { label: 'Edit first', onClick: async () => { const p = await make(); go('playlist/' + p.id); } },
+        slides.length ? { label: 'Show on TVs now', class: 'primary', onClick: async () => { const p = await make(); setTimeout(() => showOnTvsDialog(p, { onDone: () => go('playlists') }), 50); } } : null].filter(Boolean) });
+    async function make() {
+      return q(sb.from('playlists').insert({ client_id: state.clientId, name: name.value.trim() || 'New playlist', slides, settings: { orientation: 'landscape' } }).select().single());
+    }
   };
 
   const head = h('div', { class: 'page-head' },
@@ -44,6 +62,7 @@ export async function playlistsPage({ main, go }) {
       h('div', { class: 'screen-meta' },
         h('div', { class: 'row between' }, h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none' } }, h('h3', {}, p.name)),
           h('div', { class: 'row', style: { gap: '2px' } },
+            h('button', { class: 'btn sm', title: 'Choose which TVs show this playlist', onclick: () => showOnTvsDialog(p, { onDone: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }) }, 'Show on TVs'),
             h('button', { class: 'btn ghost icon sm', title: 'Duplicate', onclick: async () => {
               const c = await q(sb.from('playlists').insert({ client_id: state.clientId, name: p.name + ' (copy)', slides: p.slides, settings: p.settings }).select().single());
               toast('Duplicated'); go('playlist/' + c.id);

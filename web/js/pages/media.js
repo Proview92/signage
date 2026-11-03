@@ -186,7 +186,7 @@ export async function mediaPage({ main }) {
 }
 
 // Picker used by the playlist editor. Resolves to an array of media rows.
-export function pickMedia({ multiple = true } = {}) {
+export function pickMedia({ multiple = true, title, okLabel, allowEmpty = false } = {}) {
   return new Promise(async (resolve) => {
     let items = await listMedia();
     const chosen = new Map();
@@ -205,9 +205,13 @@ export function pickMedia({ multiple = true } = {}) {
       }));
     };
     const up = uploader((added) => { items = [...added, ...items]; added.forEach((m) => (multiple || !chosen.size) && chosen.set(m.id, m)); paint(); });
-    modal({ title: multiple ? 'Add pictures & videos' : 'Choose media', wide: true, body: [up, grid],
+    modal({ title: title || (multiple ? 'Add pictures & videos' : 'Choose media'), wide: true,
+      body: [up, h('div', { class: 'tiny' }, multiple ? 'Tick the files to use, in the order they should play. New uploads are ticked automatically.' : ''), grid],
       onClose: () => { if (!done) resolve(null); },
-      actions: [{ label: 'Cancel' }, { label: multiple ? 'Add selected' : 'Use selected', class: 'primary', onClick: () => { done = true; resolve([...chosen.values()]); } }] });
+      actions: [{ label: 'Cancel' }, { label: okLabel || (multiple ? 'Add selected' : 'Use selected'), class: 'primary', onClick: () => {
+        if (!chosen.size && !allowEmpty) throw new Error('Tick at least one file');
+        done = true; resolve([...chosen.values()]);
+      } }] });
     paint();
   });
 }

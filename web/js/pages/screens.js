@@ -7,6 +7,7 @@ import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
 import { licenseState } from '../license.js';
 import { emergencyDialog, overridesBanner } from './emergency.js';
+import { publishSummary } from './show-on-tvs.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -140,6 +141,28 @@ export async function screensPage({ main, go }) {
 
   let filter = localStorage.getItem('signage.siteFilter.' + state.clientId) || 'all';
 
+  // "Playing: [playlist ▾]" on each TV card: switch and go live in one click.
+  const quickPlaylist = (s, now, rule) => {
+    const sel = h('select', { class: 'quick-pl', title: 'Change what this TV plays', onclick: (e) => { e.preventDefault(); e.stopPropagation(); },
+      onchange: async (e) => {
+        const v = e.target.value;
+        if (v === '__new') { go('playlists'); return; }
+        sel.disabled = true;
+        try {
+          await q(sb.from('screens').update({ default_playlist_id: v || null }).eq('id', s.id));
+          const r = await publishOrRequest('screen', s.id, s.name);
+          toast(r.pending ? publishSummary({ ok: 0, pending: 1, failed: [] }) : `${s.name}: now showing ${data.byId[v]?.name || 'nothing'}`);
+          await refresh();
+        } catch (err) { toast(err.message, true); sel.disabled = false; }
+      } },
+      h('option', { value: '' }, '— Nothing —'),
+      data.playlists.map((p) => h('option', { value: p.id, selected: p.id === s.default_playlist_id }, p.name)),
+      h('option', { value: '__new' }, '+ Create a playlist…'));
+    return h('div', { class: 'small muted row', style: { gap: '6px', flexWrap: 'nowrap' }, onclick: (e) => { e.preventDefault(); e.stopPropagation(); } },
+      h('span', {}, 'Playing'), sel,
+      rule?.label && now ? h('span', { class: 'tiny', title: 'A schedule rule is on air right now' }, `⏱ ${rule.label}`) : null);
+  };
+
   const card = (s, rules, byId) => {
     const { playlistId, rule } = resolveSchedule(s.content);
     const now = playlistId ? s.content.playlists[playlistId]?.name : null;
@@ -147,7 +170,7 @@ export async function screensPage({ main, go }) {
       screenThumb(s),
       h('div', { class: 'screen-meta' },
         h('div', { class: 'row between' }, h('h3', {}, s.name), h('span', { class: 'tiny' }, s.location || '')),
-        h('div', { class: 'small muted' }, now ? `Playing: ${now}${rule?.label ? ` · ${rule.label}` : ''}` : 'Idle'),
+        quickPlaylist(s, now, rule),
         h('div', { class: 'row', style: { gap: '6px' } }, statusBadges(s, rules, byId))));
   };
 
