@@ -211,7 +211,8 @@ export function buildSlide(slide, url, { forPreview = false, mutedOverride } = {
     media.decoding = 'async';
   } else if (slide.type === 'video' && url) {
     media = document.createElement('video');
-    media.src = url;
+    // Previews show a frame a little way in (many videos open on a blank/white frame).
+    media.src = forPreview && !String(url).includes('#') ? url + '#t=2' : url;
     media.playsInline = true;
     media.setAttribute('playsinline', '');
     media.preload = 'auto';
