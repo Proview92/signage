@@ -3,6 +3,8 @@ import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnl
 import { renderStill, resolveSchedule, isSlideActive } from '../renderer.js';
 import { licenseBadge } from './license-ui.js';
 import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
+import { ruleForm } from './rule-form.js';
+import { licenseState } from '../license.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -82,6 +84,53 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
   });
 }
 
+/** Apply a default playlist and/or schedule rule to every TV at a site, then publish. */
+export function siteScheduleDialog({ site, tvs, playlists, onDone, go }) {
+  if (!playlists.length) { toast('Create a playlist first', true); return go?.('playlists'); }
+  let def = 'keep', mode = 'none', publish = true;
+  const form = ruleForm(playlists);
+  const ruleWrap = h('div', { class: 'stack hidden', style: { borderLeft: '3px solid var(--accent)', paddingLeft: '14px' } }, form.body);
+  const expired = tvs.filter((t) => licenseState(t).state === 'expired' || licenseState(t).state === 'none');
+  const modeSel = select([
+    ['none', 'Don’t change schedule rules'],
+    ['add', 'Add a rule to every TV'],
+    ['replace', 'Replace every TV’s rules with one rule'],
+    ['clear', 'Remove all schedule rules'],
+  ], mode, (v) => { mode = v; ruleWrap.classList.toggle('hidden', !['add', 'replace'].includes(v)); });
+
+  modal({
+    title: `Site schedule — ${site.name}`,
+    body: [
+      h('p', { class: 'muted small', style: { margin: 0 } }, `Applies to all ${tvs.length} TV${tvs.length === 1 ? '' : 's'} at this site: ${tvs.map((t) => t.name).join(', ')}.`),
+      field('Default playlist', select([['keep', '— Keep each TV’s own —'], ['', 'Nothing (blank screen)'], ...playlists.map((p) => [p.id, p.name])], def, (v) => (def = v)),
+        'Plays whenever no schedule rule applies.'),
+      field('Schedule rules', modeSel),
+      ruleWrap,
+      h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: publish, onchange: (e) => (publish = e.target.checked) }), 'Publish to the TVs now'),
+      expired.length ? h('div', { class: 'notice' }, `${expired.length} TV${expired.length === 1 ? ' has' : 's have'} no valid licence and won't be published to: ${expired.map((t) => t.name).join(', ')}.`) : null,
+    ],
+    actions: [
+      { label: 'Cancel' },
+      { label: 'Apply to site', class: 'primary', onClick: async () => {
+        const rule = ['add', 'replace'].includes(mode) ? form.read() : null;
+        if (def === 'keep' && mode === 'none' && !publish) return;
+        const ids = tvs.map((t) => t.id);
+        if (def !== 'keep') await q(sb.from('screens').update({ default_playlist_id: def || null }).in('id', ids));
+        if (mode === 'replace' || mode === 'clear') await q(sb.from('schedule_items').delete().in('screen_id', ids));
+        if (rule) await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, screen_id: sid, client_id: state.clientId }))));
+        let ok = 0; const failed = [];
+        if (publish) {
+          for (const t of tvs) {
+            try { await rpc('publish_screen', { p_screen: t.id }); ok++; } catch { failed.push(t.name); }
+          }
+        }
+        toast(publish ? `Applied and published to ${ok} TV${ok === 1 ? '' : 's'}${failed.length ? ` (not published: ${failed.join(', ')})` : ''}` : 'Applied. Publish when ready.', failed.length > 0);
+        onDone?.();
+      } },
+    ],
+  });
+}
+
 export async function screensPage({ main, go }) {
   const client = currentClient();
   let data = await loadClientData(state.clientId);
@@ -134,7 +183,9 @@ export async function screensPage({ main, go }) {
     main.replaceChildren(head, ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
-        canManage() && g.id !== 'none' ? h('button', { class: 'btn sm ghost', onclick: () => addTv(g.id) }, icon('plus'), 'Add TV here') : null) : null,
+        h('div', { class: 'row', style: { gap: '4px' } },
+          g.id !== 'none' && g.items.length ? h('button', { class: 'btn sm', onclick: () => siteScheduleDialog({ site: sites.find((x) => x.id === g.id), tvs: g.items, playlists: data.playlists, onDone: refresh, go }) }, icon('calendar'), 'Site schedule') : null,
+          canManage() && g.id !== 'none' ? h('button', { class: 'btn sm ghost', onclick: () => addTv(g.id) }, icon('plus'), 'Add TV here') : null)) : null,
       g.items.length ? h('div', { class: 'cards' }, g.items.map((s) => card(s, data.rules, data.byId)))
         : h('div', { class: 'card pad muted small' }, 'No TVs at this site yet.'))));
   };
