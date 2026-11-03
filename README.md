@@ -81,7 +81,7 @@ Reload the dashboard. You'll see **Clients & TVs**.
 - Open **PROVIEW SIGNAGE** and the TV shows a pairing code.
 - On **Google TV**, allow *Display over other apps* for PROVIEW SIGNAGE (Settings → Apps → Special app access) so it auto-starts after a power cut.
 
-**TV remote:** press **Back 5×** (or **Menu**) on the remote to open the PIN-protected screen menu: reload, screen and licence status, exit to the TV home screen, or change the player address. Set the PIN (default **1234**: change it!) and how long before the player reopens itself under **Clients & TVs → TV remote**. Press **OK** to show what's playing. On Android 10+ / Google TV, allow *Display over other apps* (also offered in the menu) so the player can reopen itself.
+**TV remote:** press **Back** (or **Menu**) on the remote to open the screen menu: reload, screen and licence status, exit to the TV home screen, or change the player address. After anyone leaves the player (Home button or *Exit*), it reopens itself after **5 minutes**. Change this under **Clients & TVs → TV remote**. Press **OK** to show what's playing. On Android 10+ / Google TV, allow *Display over other apps* (offered in the menu) so the player can reopen itself.
 
 Any browser can also be a screen: open `player.html` full-screen on a smart TV browser, PC or Raspberry Pi.
 

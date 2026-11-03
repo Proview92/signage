@@ -7,7 +7,6 @@ import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.text.InputType
 import android.webkit.JavascriptInterface
 import android.graphics.Color
 import android.net.Uri
@@ -38,8 +37,8 @@ import java.util.Calendar
  * Full-screen kiosk wrapper around the web player (player.html).
  * - starts on boot, keeps the screen on, hides system bars
  * - autoplays video (with sound), recovers from WebView crashes & network errors
- * - Back ×5 or Menu opens the PIN-protected screen menu (in the web player);
- *   a native PIN prompt is the fallback if the player page isn't loaded
+ * - Back or Menu opens the screen menu (in the web player); the native
+ *   address dialog is the fallback if the player page isn't loaded
  * - reopens itself N minutes after someone leaves it (admin setting)
  */
 class MainActivity : Activity() {
@@ -47,8 +46,6 @@ class MainActivity : Activity() {
     private lateinit var root: FrameLayout
     private var web: WebView? = null
     private val handler = Handler(Looper.getMainLooper())
-    private var backPresses = 0
-    private var lastBack = 0L
     private var lastFullReload = SystemClock.elapsedRealtime()
 
     private val prefs by lazy { getSharedPreferences("signage", Context.MODE_PRIVATE) }
@@ -229,7 +226,7 @@ class MainActivity : Activity() {
                 if (code == KeyEvent.KEYCODE_BACK) {
                     // If the screen menu is open, Back steps back / closes it.
                     web?.evaluateJavascript("(window.signageRemote && window.signageRemote.back()) || false") { handled ->
-                        if (handled != "true") countBack()
+                        if (handled != "true") openScreenMenu()
                     }
                 } else openScreenMenu()
             }
@@ -238,38 +235,11 @@ class MainActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
-    private fun countBack() {
-        val now = SystemClock.elapsedRealtime()
-        backPresses = if (now - lastBack < 1500) backPresses + 1 else 1
-        lastBack = now
-        if (backPresses >= 5) { backPresses = 0; openScreenMenu() }
-    }
-
-    /** Opens the PIN-protected web menu, or a native PIN prompt if the player isn't loaded. */
+    /** Opens the web screen menu, or the address dialog if the player page isn't loaded. */
     private fun openScreenMenu() {
         web?.evaluateJavascript("window.signageRemote ? (window.signageRemote.open(), true) : false") { ok ->
-            if (ok != "true") askPin { openSettings() }
-        } ?: askPin { openSettings() }
-    }
-
-    private fun sha256(text: String) =
-        MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
-
-    private fun askPin(onOk: () -> Unit) {
-        val input = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            hint = "PIN"
-        }
-        AlertDialog.Builder(this)
-            .setTitle("Enter PIN")
-            .setView(input)
-            .setPositiveButton("OK") { _, _ ->
-                val expected = prefs.getString("pin_hash", null)?.takeIf { it.isNotBlank() } ?: sha256("proview-pin:1234")
-                if (sha256("proview-pin:" + input.text.toString()) == expected) onOk()
-                else Toast.makeText(this, "Wrong PIN", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+            if (ok != "true") openSettings()
+        } ?: openSettings()
     }
 
     // ------------------------------------------------------------ leave & auto-return

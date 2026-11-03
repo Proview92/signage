@@ -1,11 +1,11 @@
 // =====================================================================
-//  TV remote menu (PIN-protected), driven by a D-pad remote.
-//  Opened by: Back ×5 or Menu (Android app), or "M" key (browser).
-//  The PIN is checked locally against a SHA-256 hash from the server,
-//  so it also works offline.
+//  TV remote menu, driven by a D-pad remote.
+//  Opened by: Back or Menu (Android app), or "M" key (browser).
+//  (A PIN step exists below but is switched off: REQUIRE_PIN = false.)
 // =====================================================================
 const native = () => window.SignageNative || null;
 const LS_SETTINGS = 'signage.tv.settings';
+const REQUIRE_PIN = false;
 
 async function sha256hex(text) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -22,7 +22,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
     <div class="rm-card">
       <div class="rm-head"><div class="wm"><b>PROVIEW</b> <span>SIGNAGE</span></div><div class="rm-title"></div></div>
       <div class="rm-body"></div>
-      <div class="rm-foot">Use ▲ ▼ ◀ ▶ and OK · Back to close</div>
+      <div class="rm-foot">Use ▲ ▼ and OK · Back to close</div>
     </div>`;
   document.body.appendChild(root);
   const $title = root.querySelector('.rm-title');
@@ -139,7 +139,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
     if (open) return true;
     open = true; pin = ''; focus = 0;
     root.classList.add('on');
-    renderPin();
+    if (REQUIRE_PIN) renderPin(); else renderMenu();
     clearTimeout(closeTimer);
     closeTimer = setTimeout(close, 60000);
     return true;
