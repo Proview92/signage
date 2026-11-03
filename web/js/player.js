@@ -35,7 +35,7 @@ const FIT_EDGE = Math.min(2560, Math.max(1920, Math.round(Math.max(window.screen
 // Pictures are stored resized for this TV, so big phone photos decode fast.
 async function fitAndStore(c, path, blob) {
   let out = blob;
-  if (isImagePath(path)) { const small = await shrinkImage(blob, FIT_EDGE).catch(() => null); if (small) out = small; }
+  if (isImagePath(path)) { const small = await shrinkImage(blob, /\.4k\.[a-z0-9]+$/i.test(path) ? 3840 : FIT_EDGE).catch(() => null); if (small) out = small; }
   if (c) await c.put('/__media/' + path, new Response(out, { headers: { 'content-type': out.type || blob.type || 'application/octet-stream', 'x-fit': '1' } }));
   return out;
 }

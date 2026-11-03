@@ -51,8 +51,42 @@ async function uploadFile(file, path, onProgress) {
   });
 }
 
+// Ask once per upload: 1080p (smoothest on any TV) or 4K (sharper on 4K TVs).
+const QKEY = 'signage.uploadQuality';
+function askQuality(files) {
+  const imgs = files.filter((f) => f.type.startsWith('image/')).length;
+  const vids = files.filter((f) => f.type.startsWith('video/')).length;
+  if (!imgs && !vids) return Promise.resolve('1080');
+  let last = '1080'; try { last = localStorage.getItem(QKEY) || '1080'; } catch {}
+  return new Promise((resolve) => {
+    let done = false;
+    const opt = (val, title, text) => h('label', { class: 'card pad', style: { display: 'flex', gap: '10px', alignItems: 'flex-start', cursor: 'pointer' } },
+      h('input', { type: 'radio', name: 'uq', value: val, checked: last === val, style: { marginTop: '4px' } }),
+      h('div', {}, h('h3', {}, title), h('div', { class: 'tiny', style: { marginTop: '4px' } }, text)));
+    const body = h('div', { class: 'stack' },
+      h('p', { class: 'muted small', style: { margin: 0 } }, `Uploading ${[imgs && `${imgs} picture${imgs > 1 ? 's' : ''}`, vids && `${vids} video${vids > 1 ? 's' : ''}`].filter(Boolean).join(' and ')}. What quality should ${imgs + vids > 1 ? 'they' : 'it'} be for your TVs?`),
+      h('div', { class: 'grid2' },
+        opt('1080', '1080p (Full HD)', 'Recommended. Plays smoothly on every TV and TV stick, and uploads faster.'),
+        opt('4k', '4K (Ultra HD)', 'Sharper on 4K TVs with a 4K-capable player. Bigger files; cheaper TV sticks may stutter.')),
+      vids ? h('div', { class: 'tiny' }, 'Pictures are resized to the size you pick. Videos upload as they are — we\'ll tell you if one doesn\'t match.') : null);
+    const pick = () => body.querySelector('input[name=uq]:checked')?.value || '1080';
+    modal({
+      title: 'Picture & video quality', body,
+      onClose: () => { if (!done) resolve(null); },
+      actions: [
+        { label: 'Cancel', onClick: () => { done = true; resolve(null); } },
+        { label: 'Upload', class: 'primary', onClick: () => { done = true; const v = pick(); try { localStorage.setItem(QKEY, v); } catch {} resolve(v); } },
+      ],
+    });
+  });
+}
+
 export async function uploadFiles(files, progressEl, folder = null) {
   const out = [];
+  files = [...files];
+  const quality = await askQuality(files);
+  if (!quality) return out;
+  const k4 = quality === '4k';
   for (let file of files) {
     const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : null;
     const bar = h('div');
@@ -60,9 +94,9 @@ export async function uploadFiles(files, progressEl, folder = null) {
     progressEl?.append(row);
     if (!kind) { row.lastChild.textContent = 'Not a picture or video'; continue; }
     try {
-      // Big phone photos are resized (max 2560px) so TVs show them smoothly.
+      // Pictures are resized to the chosen quality so TVs show them smoothly.
       if (kind === 'image') {
-        const small = await shrinkImage(file).catch(() => null);
+        const small = await shrinkImage(file, k4 ? 3840 : 1920).catch(() => null);
         if (small) {
           const ext2 = small.type === 'image/png' ? 'png' : 'jpg';
           file = new File([small], file.name.replace(/\.[^.]+$/, '') + '.' + ext2, { type: small.type });
@@ -70,10 +104,13 @@ export async function uploadFiles(files, progressEl, folder = null) {
         }
       }
       const meta = await readMeta(file);
-      if (kind === 'video' && meta.width && meta.width * meta.height > 1920 * 1080 * 1.2)
-        toast(`${file.name} is ${meta.width}×${meta.height} (4K). Some TV sticks stutter with 4K — a 1080p MP4 plays smoothest.`);
+      const px = (meta.width || 0) * (meta.height || 0);
+      if (kind === 'video' && !k4 && px > 1920 * 1080 * 1.2)
+        toast(`${file.name} is ${meta.width}×${meta.height} (4K), not 1080p. It will upload as is — for the smoothest playback, export it at 1080p from your phone or editor and upload again.`);
+      if (kind === 'video' && k4 && px && px < 3840 * 2160 * 0.8)
+        toast(`${file.name} is ${meta.width}×${meta.height}, so it will play at that quality, not 4K.`);
       const ext = (file.name.split('.').pop() || (kind === 'image' ? 'jpg' : 'mp4')).toLowerCase().replace(/[^a-z0-9]/g, '');
-      const path = `${state.clientId}/${crypto.randomUUID()}.${ext}`;
+      const path = `${state.clientId}/${crypto.randomUUID()}${k4 ? '.4k' : ''}.${ext}`;   // .4k = TV keeps full 4K
       await uploadFile(file, path, (p) => (bar.style.width = Math.round(p * 100) + '%'));
       const m = await q(sb.from('media').insert({ client_id: state.clientId, folder: folder || null, name: file.name.replace(/\.[^.]+$/, ''), path, kind, mime: file.type, size_bytes: file.size, ...meta }).select().single());
       out.push(m);
@@ -94,7 +131,7 @@ function mediaThumb(m, url) {
   if (!url) t.append(h('div', { class: 'blank' }, '…'));
   else if (m.kind === 'image') t.append(h('img', { src: url, loading: 'lazy', alt: '' }));
   else t.append(h('video', { src: url + '#t=0.5', preload: 'metadata', muted: true, playsInline: true }));
-  t.append(h('span', { class: 'tag' }, m.kind === 'video' ? (m.duration_s ? fmtDuration(m.duration_s) : 'Video') : 'Image'));
+  t.append(h('span', { class: 'tag' }, (m.kind === 'video' ? (m.duration_s ? fmtDuration(m.duration_s) : 'Video') : 'Image') + ((m.width || 0) >= 3000 || (m.height || 0) >= 3000 ? ' · 4K' : '')));
   return t;
 }
 
