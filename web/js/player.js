@@ -6,6 +6,7 @@
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
 import { SlidePlayer, resolveSchedule } from './renderer.js';
+import { licenseState } from './license.js';
 
 const qs = new URLSearchParams(location.search);
 const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
@@ -15,7 +16,7 @@ const LS = { screen: 'signage.tv.screen', reload: 'signage.tv.reload' };
 const MEDIA_CACHE = 'signage-media-v1';
 
 const $ = (id) => document.getElementById(id);
-const views = { boot: $('boot'), pair: $('pair'), wait: $('wait'), stage: $('stage'), error: $('error') };
+const views = { boot: $('boot'), pair: $('pair'), wait: $('wait'), stage: $('stage'), expired: $('expired'), error: $('error') };
 function show(name) { for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === name); }
 
 let screen = null;        // our screens row
@@ -81,7 +82,18 @@ async function prefetchAndPrune(c) {
 }
 
 // ------------------------------------------------------------ playback
+function isExpired() { return screen?.claimed && licenseState(screen).state === 'expired'; }
+
 function evaluate() {
+  if (isExpired()) {
+    if (currentKey !== 'expired') {
+      currentKey = 'expired'; player?.clear(); nowPlaying = 'licence expired';
+      $('expired-name').textContent = screen.name;
+      show('expired');
+    }
+    return;
+  }
+  if (currentKey === 'expired') currentKey = null;
   if (!content) return;
   const { playlistId, rule } = resolveSchedule(content);
   const key = playlistId ? `${playlistId}:${content.version}` : `none:${content.version}`;
@@ -117,11 +129,13 @@ function apply(row) {
     $('code').textContent = row.pairing_code || '······';
     return show('pair');
   }
+  if (isExpired()) return evaluate();
   if (!row.content) {
     content = null; currentKey = null; player?.clear();
     $('wait-name').textContent = row.name;
     return show('wait');
   }
+  if (currentKey === 'expired') currentKey = null;
   if (!content || content.version !== row.content.version) {
     content = row.content;
     prefetchAndPrune(content);
@@ -212,7 +226,7 @@ if (!configured) {
   const cached = JSON.parse(localStorage.getItem(LS.screen) || 'null');
   if (cached?.claimed && cached.content) apply(cached);   // instant start from last known state
   boot();
-  setInterval(evaluate, 15000);   // schedule changes over time
+  setInterval(evaluate, 15000);   // schedule changes & licence expiry over time
   setInterval(poll, 60000);       // safety net if realtime drops
   setInterval(heartbeat, 60000);
   setTimeout(heartbeat, 5000);

@@ -1,5 +1,6 @@
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, isSlideActive } from '../renderer.js';
+import { licenseBadge } from './license-ui.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules] = await Promise.all([
@@ -31,6 +32,7 @@ export function statusBadges(screen, rules, byId) {
   const out = [];
   out.push(isOnline(screen) ? h('span', { class: 'badge ok' }, 'Online') : h('span', { class: 'badge bad' }, screen.last_seen ? `Offline · ${timeAgo(screen.last_seen)}` : 'Offline'));
   if (needsPublish(screen, rules.filter((r) => r.screen_id === screen.id), byId)) out.push(h('span', { class: 'badge warn' }, 'Unpublished changes'));
+  out.push(licenseBadge(screen));
   return out;
 }
 
@@ -55,7 +57,7 @@ export function pairDialog({ fixedClient, clients, onDone }) {
         if (code.value.trim().length < 6) throw new Error('Enter the 6-character code shown on the TV');
         const s = await rpc('claim_screen', { p_code: code.value, p_name: name.value || null, p_client: clientId || null });
         if (loc.value.trim()) await q(sb.from('screens').update({ location: loc.value.trim() }).eq('id', s.id));
-        toast(`${s.name} paired`);
+        toast(`${s.name} paired — 7-day trial started`);
         onDone?.(s);
       } },
     ],

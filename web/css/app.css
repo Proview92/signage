@@ -134,6 +134,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .list { display: flex; flex-direction: column; }
 .list-row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid var(--line); }
 .list-row:first-child { border-top: 0; }
+.list-row select { width: auto; max-width: 220px; flex: none; }
+.list-row .grow { min-width: 120px; }
 
 /* screen card */
 .screen-card { overflow: hidden; display: flex; flex-direction: column; text-decoration: none; transition: transform .15s, box-shadow .15s; }

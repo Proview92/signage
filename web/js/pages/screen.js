@@ -1,6 +1,8 @@
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
 import { SlidePlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
 import { statusBadges } from './screens.js';
+import { licenseBanner, licenseDialog } from './license-ui.js';
+import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 
 export async function screenPage({ main, params: [id], go, rerender }) {
   let screen, playlists, rules, byId, player = null, tick = null;
@@ -173,7 +175,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), screen.location ? h('span', { class: 'tiny' }, screen.location) : null)),
       h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: reloadTv, title: 'Force the TV app to reload' }, icon('refresh'), 'Reload TV'),
-        h('button', { class: 'btn primary', onclick: publish }, icon('send'), 'Publish to TV')));
+        h('button', { class: 'btn primary', onclick: publish, disabled: licenseState(screen).state === 'expired', title: licenseState(screen).state === 'expired' ? 'Licence expired' : '' }, icon('send'), 'Publish to TV')));
 
     const preview = h('div');
     const onair = h('div', { class: 'card' },
@@ -207,6 +209,16 @@ export async function screenPage({ main, params: [id], go, rerender }) {
             h('button', { class: 'btn sm', onclick: () => ruleDialog(r) }, 'Edit'))))
           : h('div', { class: 'list-row muted small' }, 'No rules yet — the default playlist plays all the time.')));
 
+    const L = licenseState(screen);
+    const lic = h('div', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h2', {}, 'Licence'), h('span', { class: 'badge ' + licenseSummary(screen).tone }, licenseSummary(screen).text)),
+      h('div', { class: 'card-body stack small' },
+        h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Plan'), licenseLabel(screen.license_type)),
+        screen.license_starts_at ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Started'), fmtDate(screen.license_starts_at)) : null,
+        h('div', { class: 'row between' }, h('span', { class: 'muted' }, L.state === 'lifetime' ? 'Expires' : (L.daysLeft >= 0 ? 'Expires' : 'Expired')), L.state === 'lifetime' ? 'Never' : L.expires ? fmtDate(L.expires) : '—'),
+        state.me.is_admin && screen.license_notes ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Notes'), screen.license_notes) : null,
+        state.me.is_admin ? h('div', {}, h('button', { class: 'btn sm primary', onclick: () => licenseDialog(screen, async () => { await load(); paint(); }) }, 'Change or renew licence…')) : null));
+
     const device = h('div', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', {}, 'Device')),
       h('div', { class: 'card-body stack small' },
@@ -219,8 +231,9 @@ export async function screenPage({ main, params: [id], go, rerender }) {
           state.me.is_admin ? h('button', { class: 'btn sm', onclick: assignDialog }, 'Move to client…') : null,
           canManage() ? h('button', { class: 'btn sm danger', onclick: unpair }, icon('trash'), 'Remove TV') : null)));
 
-    main.replaceChildren(head, h('div', { class: 'split' },
-      h('div', { class: 'stack' }, onair, device),
+    const banner = licenseBanner(screen);
+    main.replaceChildren(head, banner ? h('div', { style: { marginBottom: '16px' } }, banner) : '', h('div', { class: 'split' },
+      h('div', { class: 'stack' }, onair, lic, device),
       h('div', { class: 'stack' }, sched)));
     startPreview(preview);
   }
@@ -230,7 +243,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
   let lastPid = resolveSchedule(screen.content).playlistId;
   tick = setInterval(async () => {
     try {
-      const s = await q(sb.from('screens').select('last_seen,device_info,content,published_at,schedule_updated_at').eq('id', id).single());
+      const s = await q(sb.from('screens').select('last_seen,device_info,content,published_at,schedule_updated_at,license_type,license_expires_at').eq('id', id).single());
       const pid = resolveSchedule(s.content).playlistId;
       Object.assign(screen, s);
       if (pid !== lastPid) { lastPid = pid; paint(); }

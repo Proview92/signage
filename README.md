@@ -30,6 +30,7 @@ Pushing to `main` redeploys the dashboard automatically. Changes under `android/
 | **Media** | Drag-and-drop or camera-roll upload with progress bars. Images and videos stored privately per client. |
 | **Playlists** | Slides from pictures, videos or text. 12 transitions (fade, slide, zoom, flip, blur, wipe, circle…), motion effects (Ken Burns, pan, slow zoom), text overlays with position, size, colour and animation, landscape or portrait, live preview, autosave. |
 | **Schedules** | Per TV: a default playlist plus rules such as *"Breakfast menu, weekdays 07:00–11:00"* or *"Christmas, 1–26 Dec, override"*. Priorities, overnight slots, date ranges, a 7-day timeline view. Individual slides can also have their own time windows. |
+| **Licences** | Per TV: 7-day trial (automatic on pairing), 1, 3, 6, 12, 24 or 36 months, lifetime, or a custom end date. Only the admin can set or renew them, and renewals can stack onto the current end date. After expiry the TV keeps playing for a 7-day grace period with warnings in the dashboard, then shows *Licence expired*, can't be published to and can't download media. **Clients & TVs** lists every licence that needs attention. |
 | **Publishing** | Edits stay as drafts until you press **Publish**. TVs update within seconds. |
 | **Reliability** | TVs keep the full schedule and all media cached, so they continue playing and switching on time without internet. They auto-start on boot, recover from crashes and reload nightly. |
 
@@ -37,7 +38,7 @@ Pushing to `main` redeploys the dashboard automatically. Changes under `android/
 
 ### 1. Create the backend
 1. Create a free project at [supabase.com](https://supabase.com).
-2. **SQL Editor → New query**: paste all of `supabase/schema.sql`, then click **Run**.
+2. **SQL Editor → New query**: paste all of `supabase/schema.sql`, then click **Run**. Then do the same for each file in `supabase/migrations/`, in order.
 3. **Authentication → Sign In / Providers**:
    - Turn on **Allow anonymous sign-ins**. TVs use these.
    - Email provider: on. For easier client onboarding you can turn off **Confirm email**.

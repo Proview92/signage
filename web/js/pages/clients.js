@@ -1,11 +1,13 @@
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, isOnline, refreshMe, setClient } from '../core.js';
 import { pairDialog } from './screens.js';
 import { showInviteLink } from './team.js';
+import { licenseBadge, licenseDialog } from './license-ui.js';
+import { licenseState, licenseSummary } from '../license.js';
 
 export async function clientsPage({ main, go, rerender }) {
   const [clients, screens, members] = await Promise.all([
     q(sb.from('clients').select('*').order('name')),
-    q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at').eq('claimed', true).order('name')),
+    q(sb.from('screens').select('id,name,location,client_id,last_seen,claimed,published_at,license_type,license_starts_at,license_expires_at,license_notes').eq('claimed', true).order('name')),
     q(sb.from('client_members').select('client_id,user_id')),
   ]);
   const byClient = (id) => screens.filter((s) => s.client_id === id);
@@ -46,7 +48,7 @@ export async function clientsPage({ main, go, rerender }) {
   }
 
   const head = h('div', { class: 'page-head' },
-    h('div', {}, h('h1', {}, 'Clients & TVs'), h('p', { class: 'muted' }, `${clients.length} clients · ${screens.length} TVs`)),
+    h('div', {}, h('h1', {}, 'Clients & TVs'), h('p', { class: 'muted' }, `${clients.length} clients · ${screens.length} TVs · ${screens.filter((s) => ['active','expiring','lifetime'].includes(licenseState(s).state) && s.license_type !== 'trial7').length} paid · ${screens.filter((s) => s.license_type === 'trial7').length} on trial`)),
     h('div', { class: 'row' },
       h('button', { class: 'btn', onclick: () => pairDialog({ clients, onDone: async () => { await refreshMe(); rerender(); } }) }, icon('tv'), 'Pair a TV'),
       h('button', { class: 'btn primary', onclick: () => clientDialog() }, icon('plus'), 'New client')));
@@ -77,13 +79,25 @@ export async function clientsPage({ main, go, rerender }) {
       h('p', {}, 'Each client gets their own TVs, media library, playlists and schedules — and their own logins.'),
       h('button', { class: 'btn primary', onclick: () => clientDialog() }, icon('plus'), 'New client'));
 
+  const needs = screens
+    .map((s) => ({ s, L: licenseState(s) }))
+    .filter(({ L }) => ['none', 'expiring', 'grace', 'expired'].includes(L.state))
+    .sort((a, b) => (a.L.expires ?? 0) - (b.L.expires ?? 0));
+  const attention = needs.length ? h('div', { class: 'card' },
+    h('div', { class: 'card-head' }, h('h2', {}, 'Licences needing attention'), h('span', { class: 'badge warn' }, needs.length)),
+    h('div', { class: 'list' }, needs.map(({ s }) => h('div', { class: 'list-row' },
+      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, cname[s.client_id] || 'Unassigned')),
+      licenseBadge(s),
+      h('button', { class: 'btn sm primary', onclick: () => licenseDialog(s, () => rerender()) }, 'Renew…'))))) : null;
+
   const allTvs = screens.length ? h('div', { class: 'card' },
     h('div', { class: 'card-head' }, h('h2', {}, 'All TVs')),
     h('div', { class: 'list' }, screens.map((s) => h('div', { class: 'list-row' },
       h('span', { class: 'badge ' + (isOnline(s) ? 'ok' : 'bad') }, isOnline(s) ? 'Online' : 'Offline'),
       h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, [cname[s.client_id] || 'Unassigned', s.location].filter(Boolean).join(' · '))),
-      h('span', { class: 'tiny' }, timeAgo(s.last_seen)),
+      licenseBadge(s),
+      h('button', { class: 'btn sm', onclick: () => licenseDialog(s, () => rerender()) }, 'Licence'),
       s.client_id ? h('button', { class: 'btn sm', onclick: () => { setClient(s.client_id); go('screen/' + s.id); } }, 'Manage') : null)))) : null;
 
-  main.replaceChildren(head, h('div', { class: 'stack' }, unassignedCard, clientsCard, allTvs));
+  main.replaceChildren(head, h('div', { class: 'stack' }, attention, unassignedCard, clientsCard, allTvs));
 }

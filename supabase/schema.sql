@@ -229,8 +229,10 @@ create trigger schedule_items_guard before insert or update or delete on public.
   for each row execute function public.schedule_items_guard();
 
 -- Non-admins can't move a screen to another client or touch device fields.
+-- NOT security definer on purpose: current_user must be the caller's role
+-- ('authenticated' for direct API edits; the owner inside our RPCs).
 create or replace function public.screens_guard()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   if current_user in ('postgres', 'supabase_admin', 'service_role') then
     -- security-definer RPCs run as owner; they do their own checks

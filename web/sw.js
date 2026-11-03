@@ -1,7 +1,7 @@
 // Service worker: lets the TV player start with no internet connection.
 // App files are served network-first (so updates arrive) with a cache fallback.
-const SHELL = 'signage-shell-v1';
-const PRECACHE = ['player.html', 'config.js', 'css/stage.css', 'js/player.js', 'js/renderer.js', 'js/sb.js', 'vendor/supabase.js'];
+const SHELL = 'signage-shell-v2';
+const PRECACHE = ['player.html', 'config.js', 'css/stage.css', 'js/player.js', 'js/renderer.js', 'js/license.js', 'js/sb.js', 'vendor/supabase.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(SHELL).then((c) => c.addAll(PRECACHE)).catch(() => {}));
