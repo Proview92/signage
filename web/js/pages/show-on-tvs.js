@@ -61,7 +61,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
   const ruleWrap = h('div', { class: 'stack hidden', style: { borderLeft: '3px solid var(--accent)', paddingLeft: '14px' } }, form.body.slice(1));
 
   modal({
-    title: `Show “${playlist.name}” on TVs`,
+    title: `Publish “${playlist.name}”`,
     wide: true,
     body: [
       h('div', { class: 'row between' }, h('div', { class: 'tiny' }, 'Tick the TVs (or a whole site). It goes live straight away.'),
@@ -72,7 +72,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
       field('When should it play?', select([['always', 'All the time (replaces what these TVs play now)'], ['times', 'Only at certain times (e.g. breakfast, weekends)']], mode, (v) => { mode = v; ruleWrap.classList.toggle('hidden', v !== 'times'); })),
       ruleWrap,
     ],
-    actions: [{ label: 'Cancel' }, { label: 'Show on TVs now', class: 'primary', onClick: async () => {
+    actions: [{ label: 'Cancel' }, { label: 'Publish', class: 'primary', onClick: async () => {
       const ids = [...chosen];
       if (!ids.length) throw new Error('Tick at least one TV');
       const rule = mode === 'times' ? form.read() : null;

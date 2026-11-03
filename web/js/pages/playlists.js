@@ -31,7 +31,7 @@ export async function playlistsPage({ main, go }) {
     modal({ title: 'Name your playlist', body: [field('Playlist name', name), h('div', { class: 'tiny' }, `${slides.length} slide${slides.length === 1 ? '' : 's'}. You can add text, widgets and effects next.`)],
       actions: [{ label: 'Cancel' },
         { label: 'Edit first', onClick: async () => { const p = await make(); go('playlist/' + p.id); } },
-        slides.length ? { label: 'Show on TVs now', class: 'primary', onClick: async () => { const p = await make(); setTimeout(() => showOnTvsDialog(p, { onDone: () => go('playlists') }), 50); } } : null].filter(Boolean) });
+        slides.length ? { label: 'Publish', class: 'primary', onClick: async () => { const p = await make(); setTimeout(() => showOnTvsDialog(p, { onDone: () => go('playlists') }), 50); } } : null].filter(Boolean) });
     async function make() {
       return q(sb.from('playlists').insert({ client_id: state.clientId, name: name.value.trim() || 'New playlist', slides, settings: { orientation: 'landscape' } }).select().single());
     }
@@ -62,7 +62,7 @@ export async function playlistsPage({ main, go }) {
       h('div', { class: 'screen-meta' },
         h('div', { class: 'row between' }, h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none' } }, h('h3', {}, p.name)),
           h('div', { class: 'row', style: { gap: '2px' } },
-            h('button', { class: 'btn sm', title: 'Choose which TVs show this playlist', onclick: () => showOnTvsDialog(p, { onDone: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }) }, 'Show on TVs'),
+            h('button', { class: 'btn sm', title: 'Choose which TVs show this playlist', onclick: () => showOnTvsDialog(p, { onDone: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }) }, 'Publish'),
             h('button', { class: 'btn ghost icon sm', title: 'Duplicate', onclick: async () => {
               const c = await q(sb.from('playlists').insert({ client_id: state.clientId, name: p.name + ' (copy)', slides: p.slides, settings: p.settings }).select().single());
               toast('Duplicated'); go('playlist/' + c.id);

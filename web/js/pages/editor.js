@@ -80,7 +80,7 @@ export async function editorPage({ main, params: [id], go }) {
     autoTimer = setTimeout(async () => {
       try {
         const r = await publishOrRequest('playlist', id, pl.name);
-        status.textContent = r.pending ? 'Saved · waiting for approval' : r.published ? `Saved · live on ${r.published} TV${r.published === 1 ? '' : 's'}` : 'Saved · not on any TV yet (use Show on TVs)';
+        status.textContent = r.pending ? 'Saved · waiting for approval' : r.published ? `Saved · live on ${r.published} TV${r.published === 1 ? '' : 's'}` : 'Saved · not on any TV yet (use Publish)';
       } catch (e) { status.textContent = 'Saved · TVs not updated'; }
     }, 4000);
   }
@@ -297,7 +297,7 @@ export async function editorPage({ main, params: [id], go }) {
         layoutBtn,
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
         h('button', { class: 'btn', onclick: publish, title: 'Send your latest changes to the TVs that already show this playlist' }, icon('refresh'), 'Update TVs'),
-        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Show on TVs')),
+        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish')),
       h('label', { class: 'row small', style: { fontWeight: 600, width: '100%', justifyContent: 'flex-end' }, title: 'Every save is sent to the TVs showing this playlist, a few seconds later' },
         h('input', { type: 'checkbox', checked: !!pl.settings.auto_publish, onchange: (e) => { pl.settings.auto_publish = e.target.checked; schedule(); toast(e.target.checked ? 'TVs will update automatically as you edit' : 'Auto-update off: use “Update TVs” when ready'); } }),
         'Update TVs automatically as I edit')),
