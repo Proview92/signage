@@ -10,6 +10,17 @@ Upload pictures and videos from a phone or computer, build slideshows with trans
 └──────────────────────┘     └──────────────────────────┘     └────────────────────────┘
 ```
 
+## Live setup
+
+| | |
+|---|---|
+| Dashboard | https://proview92.github.io/signage/ |
+| TV player (browser) | https://proview92.github.io/signage/player.html |
+| TV app (APK) | https://github.com/Proview92/signage/releases/latest/download/signage-tv.apk |
+| Backend | Supabase project `signage` (zbuyafrdhbgqyaepiajm, eu-west-1) |
+
+Pushing to `main` redeploys the dashboard automatically. Changes under `android/` rebuild the APK and publish a new release.
+
 ## What it does
 
 | Area | Features |
