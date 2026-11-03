@@ -31,6 +31,12 @@
     #info { position: fixed; left: 2vh; bottom: 2vh; z-index: 10; background: rgba(0,0,0,.7); padding: 1.2vh 2vh; border-radius: 1vh; font-size: 2vh; display: none; }
     #info.on { display: block; }
     #error { background: #111; }
+    #override { z-index: 20; display: none; }
+    #override.on { display: flex; }
+    .ov-icon { width: 14vh; height: 14vh; border-radius: 50%; border: 1.2vh solid currentColor; display: grid; place-items: center; font: 900 9vh/1 sans-serif; animation: ovpulse 1.6s ease-in-out infinite; }
+    #ov-msg { font-size: 9vh; font-weight: 850; line-height: 1.05; max-width: 88vw; letter-spacing: -.02em; }
+    #ov-sub { font-size: 4vh; opacity: .92; max-width: 80vw; }
+    @keyframes ovpulse { 50% { transform: scale(1.08); } }
     #remote { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: rgba(0,0,0,.72); cursor: default; }
     #remote.on { display: grid; }
     .rm-card { width: min(46vw, 760px); min-width: 520px; background: #17171c; border: 1px solid #2c2c35; border-radius: 2.2vh; padding: 3vh 3.4vh; box-shadow: 0 4vh 12vh rgba(0,0,0,.6); }
@@ -92,6 +98,7 @@
     <p style="font-size:2vh">Retrying automatically…</p>
   </div>
 
+  <div id="override" class="view center"><div class="ov-icon">!</div><div id="ov-msg"></div><div id="ov-sub"></div></div>
   <div id="net" title="Offline"></div>
   <div id="info"><span id="screen-name"></span> — <span id="info-text"></span></div>
 

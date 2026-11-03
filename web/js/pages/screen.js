@@ -1,10 +1,12 @@
 import { clientLabel } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
-import { SlidePlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
+import { SlidePlayer, LayoutPlayer, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
 import { statusBadges } from './screens.js';
+import { publishOrRequest } from '../core.js';
 import { ruleForm } from './rule-form.js';
 import { loadSites, siteSelect } from './sites-ui.js';
 import { licenseBanner, licenseDialog } from './license-ui.js';
+import { renewOnlineDialog } from './integrations.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 
 export async function screenPage({ main, params: [id], go, rerender }) {
@@ -25,8 +27,8 @@ export async function screenPage({ main, params: [id], go, rerender }) {
   const plIds = () => playlists.map((p) => p.id);
 
   async function publish() {
-    await rpc('publish_screen', { p_screen: id });
-    toast('Published — the TV will update in a few seconds');
+    const r = await publishOrRequest('screen', id, screen.name);
+    toast(r.pending ? 'Sent to your manager for approval. It goes live once they approve it.' : 'Published — the TV will update in a few seconds');
     await load(); paint();
   }
 
@@ -124,7 +126,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     if (!pl) { box.append(h('div', { class: 'thumb' }, h('div', { class: 'blank' }, screen.content ? 'Nothing scheduled right now' : 'Nothing published yet'))); return; }
     const stage = h('div', { class: 'preview-box' + (pl.settings?.orientation === 'portrait' ? ' portrait' : '') });
     box.append(stage);
-    player = new SlidePlayer(stage, { resolveUrl: (s) => mediaUrl(s.path), mutedOverride: true });
+    player = new LayoutPlayer(stage, { resolveUrl: (s) => mediaUrl(s.path), mutedOverride: true, lookup: (pid) => screen.content?.playlists?.[pid] || null });
     player.load(pl);
     player.start();
   }
@@ -184,7 +186,30 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         screen.license_starts_at ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Started'), fmtDate(screen.license_starts_at)) : null,
         h('div', { class: 'row between' }, h('span', { class: 'muted' }, L.state === 'lifetime' ? 'Expires' : (L.daysLeft >= 0 ? 'Expires' : 'Expired')), L.state === 'lifetime' ? 'Never' : L.expires ? fmtDate(L.expires) : '—'),
         state.me.is_admin && screen.license_notes ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Notes'), screen.license_notes) : null,
-        state.me.is_admin ? h('div', {}, h('button', { class: 'btn sm primary', onclick: () => licenseDialog(screen, async () => { await load(); paint(); }) }, 'Change or renew licence…')) : null));
+        h('div', { class: 'row' },
+          state.me.is_admin ? h('button', { class: 'btn sm primary', onclick: () => licenseDialog(screen, async () => { await load(); paint(); }) }, 'Change or renew licence…') : null,
+          canManage() && L.state !== 'lifetime' ? h('button', { class: 'btn sm', onclick: () => renewOnlineDialog(screen) }, 'Renew online') : null)));
+
+    const shotImg = h('div', { class: 'thumb', style: { borderRadius: '8px' } }, h('div', { class: 'blank' }, screen.screenshot_at ? 'Loading…' : 'No screenshot yet'));
+    if (screen.screenshot_path) sb.storage.from('screenshots').createSignedUrl(screen.screenshot_path, 600).then(({ data }) => {
+      if (data?.signedUrl) shotImg.replaceChildren(h('img', { src: data.signedUrl + '&t=' + Date.parse(screen.screenshot_at || 0), alt: 'Screenshot' }));
+    });
+    const shotBtn = h('button', { class: 'btn sm', onclick: async () => {
+      shotBtn.disabled = true; shotBtn.textContent = 'Asking the TV…';
+      const before = screen.screenshot_at;
+      await q(sb.from('screens').update({ screenshot_requested_at: new Date().toISOString() }).eq('id', id));
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const s = await q(sb.from('screens').select('screenshot_at,screenshot_path,screenshot_error,screenshot_requested_at').eq('id', id).single());
+        if (s.screenshot_at !== before || (!s.screenshot_requested_at && s.screenshot_error)) { Object.assign(screen, s); break; }
+      }
+      if (screen.screenshot_error && screen.screenshot_at === before) toast(screen.screenshot_error, true);
+      else if (screen.screenshot_at === before) toast('The TV didn’t respond. Is it online?', true);
+      paint();
+    } }, icon('screens'), 'Take screenshot');
+    const shot = h('div', { class: 'card' },
+      h('div', { class: 'card-head' }, h('h2', {}, 'Live screenshot'), h('span', { class: 'tiny' }, screen.screenshot_at ? 'Taken ' + timeAgo(screen.screenshot_at) : '')),
+      h('div', { class: 'card-body stack' }, shotImg, h('div', { class: 'row between' }, h('span', { class: 'tiny' }, 'Exactly what the TV is showing (TV app 1.5+).'), shotBtn)));
 
     const device = h('div', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', {}, 'Device')),
@@ -200,7 +225,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
     const banner = licenseBanner(screen);
     main.replaceChildren(head, banner ? h('div', { style: { marginBottom: '16px' } }, banner) : '', h('div', { class: 'split' },
-      h('div', { class: 'stack' }, onair, lic, device),
+      h('div', { class: 'stack' }, onair, shot, lic, device),
       h('div', { class: 'stack' }, sched)));
     startPreview(preview);
   }

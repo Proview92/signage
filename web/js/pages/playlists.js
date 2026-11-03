@@ -1,5 +1,6 @@
 import { sb, state, h, icon, q, toast, confirmBox, timeAgo, fmtDuration, mediaUrl } from '../core.js';
 import { renderStill } from '../renderer.js';
+import { templateGallery } from './templates.js';
 
 export function playlistLength(p) {
   return (p.slides || []).reduce((t, s) => t + (Number(s.duration) > 0 ? Number(s.duration) : (s.video_duration || 10)), 0);
@@ -20,12 +21,16 @@ export async function playlistsPage({ main, go }) {
 
   const head = h('div', { class: 'page-head' },
     h('div', {}, h('h1', {}, 'Playlists'), h('p', { class: 'muted' }, 'Build slideshows from your pictures, videos and text, then schedule them on your TVs.')),
-    h('button', { class: 'btn primary', onclick: create }, icon('plus'), 'New playlist'));
+    h('div', { class: 'row' },
+      h('button', { class: 'btn', onclick: () => templateGallery(go) }, 'From template'),
+      h('button', { class: 'btn primary', onclick: create }, icon('plus'), 'New playlist')));
 
   if (!playlists.length) {
     return main.replaceChildren(head, h('div', { class: 'card empty' }, h('h2', {}, 'No playlists yet'),
       h('p', {}, 'A playlist is a set of slides — pictures, videos or text — with transitions and effects.'),
-      h('button', { class: 'btn primary', onclick: create }, icon('plus'), 'Create your first playlist')));
+      h('div', { class: 'row', style: { justifyContent: 'center' } },
+        h('button', { class: 'btn', onclick: () => templateGallery(go) }, 'Start from a template'),
+        h('button', { class: 'btn primary', onclick: create }, icon('plus'), 'Blank playlist'))));
   }
 
   main.replaceChildren(head, h('div', { class: 'cards' }, playlists.map((p) => {

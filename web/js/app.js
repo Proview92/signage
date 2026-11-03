@@ -7,6 +7,9 @@ import { editorPage } from './pages/editor.js';
 import { mediaPage } from './pages/media.js';
 import { teamPage } from './pages/team.js';
 import { clientsPage } from './pages/clients.js';
+import { activityPage } from './pages/activity.js';
+import { reportsPage } from './pages/reports.js';
+import { q, timeAgo, modal } from './core.js';
 
 const root = document.getElementById('root');
 const APP = window.SIGNAGE_CONFIG?.APP_NAME || 'PROVIEW SIGNAGE';
@@ -20,6 +23,8 @@ const routes = [
   [/^playlist\/([\w-]+)$/, editorPage, 'playlists'],
   [/^media$/, mediaPage, 'media'],
   [/^team$/, teamPage, 'team'],
+  [/^activity(\?.*)?$/, activityPage, 'activity'],
+  [/^reports$/, reportsPage, 'reports'],
   [/^clients$/, clientsPage, 'clients'],
 ];
 
@@ -85,6 +90,8 @@ function nav(section) {
     ['screens', 'Screens', 'screens'],
     ['playlists', 'Playlists', 'playlists'],
     ['media', 'Media', 'media'],
+    ['reports', 'Reports', 'chart'],
+    ['activity', 'Activity', 'activity'],
     ['team', 'Team', 'team'],
   ];
   return { items: state.clientId ? items : [], admin: state.me.is_admin, r, section };
@@ -107,7 +114,7 @@ function shell(section, main) {
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
 
   const side = h('aside', { class: 'side' },
-    h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
+    h('div', { class: 'brand', style: { justifyContent: 'space-between' } }, h('div', { class: 'row', style: { gap: '10px', flexWrap: 'nowrap' } }, brandMark(), wordmark(APP)), bell()),
     h('div', { class: 'client-pick' }, clientPicker()),
     h('nav', { class: 'nav' },
       n.items.map(([k, l, i]) => link(k, l, i)),
@@ -117,13 +124,49 @@ function shell(section, main) {
       h('div', { class: 'tiny' }, n.r === 'admin' ? 'Administrator' : n.r === 'manager' ? 'Manager' : 'Editor'),
       h('button', { class: 'btn sm', onclick: signOut }, icon('logout'), 'Sign out')));
 
-  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(),
+  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(), bell(),
     h('button', { class: 'btn ghost icon', style: { color: '#fff' }, onclick: signOut, 'aria-label': 'Sign out' }, icon('logout')));
   const tabs = h('nav', { class: 'tabbar' },
     n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),
     n.admin ? h('a', { href: '#/clients', class: section === 'clients' ? 'active' : '' }, icon('clients'), 'Clients') : null);
 
   return h('div', { class: 'app' }, side, h('div', { style: { minWidth: 0 } }, top, main), tabs);
+}
+
+// ------------------------------------------------------------ notifications bell
+function bell() {
+  const key = 'signage.notif.read.' + state.me.user_id;
+  const btn = h('button', { class: 'btn ghost icon bell', title: 'Notifications', style: { color: '#c9c9d1', position: 'relative' } }, '🔔');
+  const dot = h('span', { class: 'bell-dot hidden' });
+  btn.append(dot);
+  let items = [];
+  const load = async () => {
+    try {
+      let qry = sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
+      if (!state.me.is_admin && state.clientId) qry = qry.eq('client_id', state.clientId);
+      items = await q(qry);
+      const last = localStorage.getItem(key) || '';
+      const unread = items.filter((n) => n.created_at > last).length;
+      dot.textContent = unread > 9 ? '9+' : String(unread);
+      dot.classList.toggle('hidden', !unread);
+    } catch {}
+  };
+  btn.onclick = () => {
+    localStorage.setItem(key, new Date().toISOString());
+    dot.classList.add('hidden');
+    const names = Object.fromEntries(state.me.clients.map((c) => [c.id, c.name]));
+    const ico = { offline: '🔴', online: '🟢', licence_14d: '🟡', licence_3d: '🟠', licence_expired: '⛔', payment: '💳' };
+    modal({ title: 'Notifications', body: [items.length ? h('div', { class: 'list' }, items.map((n) => h('div', { class: 'list-row', style: { cursor: n.screen_id ? 'pointer' : 'default' },
+      onclick: () => { if (n.screen_id && n.client_id) { setClient(n.client_id); document.querySelector('.modal-back')?.remove(); go('screen/' + n.screen_id); } } },
+      h('div', { style: { width: '22px' } }, ico[n.kind] || '•'),
+      h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, n.title), h('div', { class: 'tiny' }, [n.body, state.me.is_admin && names[n.client_id]].filter(Boolean).join(' · '))),
+      h('span', { class: 'tiny' }, timeAgo(n.created_at)))))
+      : h('p', { class: 'muted' }, 'No notifications yet. You’ll see offline TVs, licence reminders and payments here.')] });
+  };
+  load();
+  clearInterval(window.__bellTimer);
+  window.__bellTimer = setInterval(load, 60000);
+  return btn;
 }
 
 async function signOut() {

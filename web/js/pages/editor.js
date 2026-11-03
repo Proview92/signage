@@ -1,11 +1,16 @@
+import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
-import { SlidePlayer, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
+import { SlidePlayer, LayoutPlayer, LAYOUTS, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
+import { WIDGET_TYPES, widgetDefaults, isWidget } from '../widgets.js';
+import { widgetFields, layoutDialog } from './widget-editor.js';
 
 export async function editorPage({ main, params: [id], go }) {
   const pl = await q(sb.from('playlists').select('*').eq('id', id).single());
   pl.settings = pl.settings || {};
+  const allPlaylists = await q(sb.from('playlists').select('id,name,slides,settings').eq('client_id', state.clientId));
+  const lookup = (pid) => (pid === pl.id ? pl : allPlaylists.find((x) => x.id === pid)) || null;
   let sel = pl.slides.length ? 0 : -1;
   let saveTimer = null, saving = false, dirty = false, player = null, previewTimer = null;
 
@@ -45,6 +50,22 @@ export async function editorPage({ main, params: [id], go }) {
     pl.slides.splice(at, 0, s);
     sel = at; schedule(); paint();
   }
+  function addWidget() {
+    let type = 'clock';
+    modal({ title: 'Add a widget', body: [
+      h('div', { class: 'stack', style: { gap: '8px' } }, Object.entries(WIDGET_TYPES).map(([k, l]) =>
+        h('label', { class: 'row', style: { fontWeight: 600, gap: '10px' } }, h('input', { type: 'radio', name: 'wt', value: k, checked: k === type, onchange: () => (type = k) }), l,
+          h('span', { class: 'tiny', style: { fontWeight: 400 } }, {
+            clock: 'Large time and date', weather: 'Current weather + forecast (needs internet)', qr: 'Scan-to-open link',
+            menu: 'Items with prices, in columns', web: 'Show a live web page', youtube: 'Play a YouTube video (needs internet)' }[k]))))],
+    actions: [{ label: 'Cancel' }, { label: 'Add', class: 'primary', onClick: () => {
+      const d = widgetDefaults(type);
+      const s = newSlide({ type, transition: 'fade', effect: 'none', duration: d.duration || 10, ...d,
+        text: { ...newSlide().text, title: '', subtitle: '', ...(d.text || {}) } });
+      const at = sel >= 0 ? sel + 1 : pl.slides.length;
+      pl.slides.splice(at, 0, s); sel = at; schedule(); paint();
+    } }] });
+  }
   function move(from, to) {
     if (to < 0 || to >= pl.slides.length || from === to) return;
     const [s] = pl.slides.splice(from, 1);
@@ -53,7 +74,9 @@ export async function editorPage({ main, params: [id], go }) {
   }
   async function publish() {
     await save();
-    const n = await rpc('publish_playlist', { p_playlist: id });
+    const r = await publishOrRequest('playlist', id, pl.name);
+    if (r.pending) return toast('Sent to your manager for approval. It goes live once they approve it.');
+    const n = r.published;
     toast(n ? `Published to ${n} TV${n > 1 ? 's' : ''}` : 'Saved. This playlist isn’t on any TV yet — pick it on a screen’s schedule.');
   }
 
@@ -82,7 +105,7 @@ export async function editorPage({ main, params: [id], go }) {
   function previewAll() {
     const box = h('div', { class: 'preview-box' + (pl.settings.orientation === 'portrait' ? ' portrait' : '') });
     const counter = h('span', { class: 'tiny' });
-    const p = new SlidePlayer(box, { resolveUrl: (s) => mediaUrl(s.path), onChange: ({ index, total }) => (counter.textContent = index >= 0 ? `Slide ${index + 1} of ${total}` : 'No slides are scheduled for right now') });
+    const p = new LayoutPlayer(box, { resolveUrl: (s) => mediaUrl(s.path), lookup, onChange: ({ index, total }) => (counter.textContent = index >= 0 ? `Slide ${index + 1} of ${total}` : 'No slides are scheduled for right now') });
     p.load({ slides: pl.slides, settings: pl.settings });
     modal({ title: `Preview: ${pl.name}`, wide: true, body: [box, h('div', { class: 'row between' }, counter,
       h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: () => p.next() }, 'Next slide'),
@@ -94,7 +117,7 @@ export async function editorPage({ main, params: [id], go }) {
   const listEl = h('div', { class: 'slides-list' });
   const rowThumbs = [];
   function slideTitle(s) {
-    return s.text?.title || s.name || (s.type === 'text' ? 'Text slide' : s.type === 'video' ? 'Video' : 'Picture');
+    return s.text?.title || s.name || (s.type === 'text' ? 'Text slide' : s.type === 'video' ? 'Video' : WIDGET_TYPES[s.type] || 'Picture');
   }
   function paintList() {
     rowThumbs.length = 0;
@@ -121,7 +144,8 @@ export async function editorPage({ main, params: [id], go }) {
     }),
     h('div', { class: 'row', style: { padding: '6px 2px', gap: '6px' } },
       h('button', { class: 'btn sm', onclick: addMedia }, icon('media'), 'Add media'),
-      h('button', { class: 'btn sm', onclick: addText }, icon('text'), 'Text slide')));
+      h('button', { class: 'btn sm', onclick: addText }, icon('text'), 'Text slide'),
+      h('button', { class: 'btn sm', onclick: addWidget }, icon('plus'), 'Widget')));
   }
   async function paintThumb(i) {
     const s = pl.slides[i], el = rowThumbs[i];
@@ -150,7 +174,8 @@ export async function editorPage({ main, params: [id], go }) {
         h('p', {}, 'Use pictures and videos from your media library, or make a text slide.'),
         h('div', { class: 'row', style: { justifyContent: 'center' } },
           h('button', { class: 'btn primary', onclick: addMedia }, icon('media'), 'Add media'),
-          h('button', { class: 'btn', onclick: addText }, icon('text'), 'Text slide'))));
+          h('button', { class: 'btn', onclick: addText }, icon('text'), 'Text slide'),
+          h('button', { class: 'btn', onclick: addWidget }, icon('plus'), 'Widget'))));
       return;
     }
     const t = s.text || (s.text = { ...newSlide().text, title: '', subtitle: '' });
@@ -181,8 +206,8 @@ export async function editorPage({ main, params: [id], go }) {
         field('Until', h('input', { type: 'time', value: sch.to || '', onchange: (e) => change((x) => (x.schedule.to = e.target.value)) })))) : null;
 
     inspEl.replaceChildren(h('div', { class: 'inspector' },
-      h('div', { class: 'section-title' }, s.type === 'text' ? 'Text slide' : isVideo ? 'Video' : 'Picture'),
-      s.type !== 'text' ? h('div', { class: 'full row' },
+      ...(isWidget(s.type) ? widgetFields(s, change, paintInspector) : [h('div', { class: 'section-title' }, s.type === 'text' ? 'Text slide' : isVideo ? 'Video' : 'Picture')]),
+      (s.type === 'image' || s.type === 'video') ? h('div', { class: 'full row' },
         h('button', { class: 'btn sm', onclick: async () => {
           const [m] = (await pickMedia({ multiple: false })) || [];
           if (m) { change((x) => Object.assign(x, { type: m.kind, media_id: m.id, path: m.path, name: m.name, video_duration: m.duration_s ? Number(m.duration_s) : undefined, duration: m.kind === 'video' ? 0 : (x.duration || 8) })); paintInspector(); }
@@ -214,6 +239,8 @@ export async function editorPage({ main, params: [id], go }) {
       field('Text animation', select(TEXT_ANIMS, t.anim || 'none', (v) => change((x) => (x.text.anim = v)))),
 
       h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
+      field('Show from (date)', h('input', { type: 'date', value: s.valid_from || '', onchange: (e) => change((x) => (x.valid_from = e.target.value || null)) })),
+      field('Show until (date)', h('input', { type: 'date', value: s.valid_until || '', onchange: (e) => change((x) => (x.valid_until = e.target.value || null)) }), 'After this date the slide stops showing by itself.'),
       h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
       schedBody,
 
@@ -243,11 +270,17 @@ export async function editorPage({ main, params: [id], go }) {
       paint();
     } }, l)));
 
+  const layoutBtn = h('button', { class: 'btn', title: 'Full screen, side panel or ticker' });
+  const paintLayoutBtn = () => (layoutBtn.textContent = `Layout: ${LAYOUTS[pl.settings.layout || 'full']}`);
+  layoutBtn.onclick = () => layoutDialog(pl, allPlaylists, (st) => { Object.assign(pl.settings, st); schedule(); paintLayoutBtn(); toast('Layout saved. Use Preview to see it'); });
+  paintLayoutBtn();
+
   main.replaceChildren(
     h('div', { class: 'page-head' },
       h('div', { class: 'grow' }, h('div', { class: 'crumb' }, h('a', { href: '#/playlists' }, 'Playlists'), ' / Edit'), nameInput,
         h('div', { class: 'row' }, totalEl, '·', status)),
       h('div', { class: 'row' }, orient,
+        layoutBtn,
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
         h('button', { class: 'btn primary', onclick: publish }, icon('send'), 'Publish'))),
     h('div', { class: 'editor' },

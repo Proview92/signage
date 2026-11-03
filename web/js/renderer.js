@@ -1,3 +1,5 @@
+import { isWidget, buildWidget } from './widgets.js';
+
 // =====================================================================
 //  Slide renderer — shared by the dashboard preview and the TV player.
 //  Renders onto a fixed 1920×1080 (or 1080×1920) "stage" that is scaled
@@ -80,6 +82,12 @@ export function newSlide(partial = {}) {
 //  Scheduling
 // ---------------------------------------------------------------------
 export function isSlideActive(slide, now = new Date()) {
+  // Show-from / show-until dates (e.g. a promotion that ends on 30 Nov)
+  if (slide.valid_from || slide.valid_until) {
+    const d = localDate(now);
+    if (slide.valid_from && d < slide.valid_from) return false;
+    if (slide.valid_until && d > slide.valid_until) return false;
+  }
   const s = slide.schedule;
   if (!s) return true;
   if (Array.isArray(s.days) && s.days.length && !s.days.includes(now.getDay())) return false;
@@ -144,15 +152,15 @@ export function describeRule(r) {
 // ---------------------------------------------------------------------
 //  Stage: fixed-size canvas scaled to its container
 // ---------------------------------------------------------------------
-export function createStage(container, orientation = 'landscape') {
+export function createStage(container, orientation = 'landscape', size = null) {
   container.classList.add('sg-host');
   const stage = document.createElement('div');
   stage.className = 'sg-stage';
   container.appendChild(stage);
   const setOrientation = (o) => {
     const portrait = o === 'portrait';
-    stage.style.width = (portrait ? 1080 : 1920) + 'px';
-    stage.style.height = (portrait ? 1920 : 1080) + 'px';
+    stage.style.width = (size ? size.w : portrait ? 1080 : 1920) + 'px';
+    stage.style.height = (size ? size.h : portrait ? 1920 : 1080) + 'px';
     fit();
   };
   const fit = () => {
@@ -198,6 +206,8 @@ export function buildSlide(slide, url, { forPreview = false, mutedOverride } = {
     wrap.className = 'sg-media-wrap';
     wrap.appendChild(media);
     el.appendChild(wrap);
+  } else if (isWidget(slide.type)) {
+    buildWidget(slide, el, { forPreview });
   } else if (slide.type !== 'text') {
     const ph = document.createElement('div');
     ph.className = 'sg-missing';
@@ -323,7 +333,7 @@ export class SlidePlayer {
    */
   constructor(container, opts) {
     this.opts = opts;
-    this.host = createStage(container);
+    this.host = createStage(container, 'landscape', opts.size || null);
     this.slides = [];
     this.index = -1;
     this.current = null;
@@ -382,7 +392,7 @@ export class SlidePlayer {
   async show(idx, my = ++this.token, activeCount = 1) {
     const slide = this.slides[idx];
     let url = null;
-    if (slide.type !== 'text') {
+    if (slide.type === 'image' || slide.type === 'video') {
       try { url = await this.opts.resolveUrl(slide); } catch (e) { console.warn('media failed', e); }
     }
     if (my !== this.token) return;
@@ -391,7 +401,7 @@ export class SlidePlayer {
     this.host.stage.appendChild(el);
     const ok = await waitReady(el);
     if (my !== this.token) { el.remove(); return; }
-    if (!ok && slide.type !== 'text' && this.slides.length > 1) {
+    if (!ok && (slide.type === 'image' || slide.type === 'video') && this.slides.length > 1) {
       el.remove();
       this.index = idx;
       this.timer = setTimeout(() => this.next(), 1000);
@@ -459,4 +469,85 @@ export function renderStill(container, slide, url, orientation = 'landscape') {
   const el = buildSlide(slide, url, { forPreview: true, mutedOverride: true });
   st.stage.appendChild(el);
   return st;
+}
+
+// ---------------------------------------------------------------------
+//  Layouts: full screen, or zones (main + side panel and/or ticker).
+//  settings.layout: 'full' | 'side' | 'ticker' | 'side-ticker'
+//  settings.side_playlist_id: playlist shown in the side panel (portrait)
+//  settings.ticker: { text, speed: 'slow'|'normal'|'fast', bg, color }
+// ---------------------------------------------------------------------
+export const LAYOUTS = {
+  full: 'Full screen',
+  side: 'Main + side panel',
+  ticker: 'Main + ticker',
+  'side-ticker': 'Main + side panel + ticker',
+};
+const TICKER_H = 96, SIDE_W = 480;
+
+export class LayoutPlayer {
+  /** opts: SlidePlayer opts + lookup(playlistId) → playlist ({slides, settings}) */
+  constructor(container, opts) {
+    this.container = container;
+    this.opts = opts;
+    this.players = [];
+    this.host = null;
+    this.running = false;
+  }
+
+  _reset() {
+    this.players.forEach((p) => { p.stop(); p.host.destroy(); });
+    this.players = [];
+    this.host?.destroy();
+    this.host = null;
+    this.container.replaceChildren();
+  }
+
+  load(pl) {
+    this.pl = pl;
+    const st = pl?.settings || {};
+    const layout = st.orientation === 'portrait' ? 'full' : (st.layout || 'full');
+    const side = layout.includes('side') && st.side_playlist_id ? this.opts.lookup?.(st.side_playlist_id) : null;
+    const ticker = layout.includes('ticker') && st.ticker?.text ? st.ticker : null;
+    const key = `${layout}|${!!side}|${!!ticker}`;
+    if (key !== this.key) {
+      this._reset();
+      this.key = key;
+      if (!side && !ticker) {
+        this.players = [new SlidePlayer(this.container, this.opts)];
+      } else {
+        this.host = createStage(this.container, 'landscape');
+        const H = 1080 - (ticker ? TICKER_H : 0), W = 1920 - (side ? SIDE_W : 0);
+        const zone = (x, y, w, h) => { const z = document.createElement('div'); Object.assign(z.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', overflow: 'hidden', background: '#000' }); this.host.stage.appendChild(z); return z; };
+        this.players = [new SlidePlayer(zone(0, 0, W, H), { ...this.opts, size: { w: W, h: H } })];
+        if (side) this.players.push(new SlidePlayer(zone(W, 0, SIDE_W, H), { ...this.opts, onChange: null }));
+        if (ticker) this.tickerEl = zone(0, H, 1920, TICKER_H);
+      }
+    }
+    this.players[0].load(pl);
+    if (this.players[1]) this.players[1].load(side);
+    if (this.tickerEl && ticker) paintTicker(this.tickerEl, ticker);
+    if (this.running) this.players.forEach((p) => p.start());
+  }
+
+  start() { this.running = true; this.players.forEach((p) => p.start()); }
+  stop() { this.running = false; this.players.forEach((p) => p.stop()); }
+  clear() { this.stop(); this._reset(); this.key = null; this.tickerEl = null; }
+  next() { this.players[0]?.next(); }
+}
+
+function paintTicker(el, t) {
+  el.replaceChildren();
+  Object.assign(el.style, { background: t.bg || '#ff5a1f', color: t.color || '#ffffff', display: 'flex', alignItems: 'center',
+    fontFamily: '"Inter","Segoe UI",system-ui,Roboto,Arial,sans-serif', fontSize: '50px', fontWeight: '700', whiteSpace: 'nowrap' });
+  const track = document.createElement('div');
+  Object.assign(track.style, { display: 'inline-flex', willChange: 'transform' });
+  const text = String(t.text).split('\n').map((x) => x.trim()).filter(Boolean).join('     •     ');
+  for (let i = 0; i < 2; i++) { const s = document.createElement('span'); s.textContent = text + '     •     '; s.style.paddingRight = '0'; s.style.whiteSpace = 'pre'; track.appendChild(s); }
+  el.appendChild(track);
+  requestAnimationFrame(() => {
+    const w = track.firstChild.getBoundingClientRect().width / (el.getBoundingClientRect().width / 1920 || 1);
+    const pxPerSec = { slow: 90, normal: 150, fast: 240 }[t.speed] || 150;
+    track.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${w}px)` }], { duration: Math.max(4000, (w / pxPerSec) * 1000), iterations: Infinity });
+  });
 }

@@ -8,7 +8,12 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.webkit.JavascriptInterface
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.util.Base64
+import android.view.PixelCopy
+import java.io.ByteArrayOutputStream
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -75,6 +80,7 @@ class MainActivity : Activity() {
             }
         }
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
+        @JavascriptInterface fun captureScreen() = runOnUiThread { captureScreen() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -240,6 +246,44 @@ class MainActivity : Activity() {
         web?.evaluateJavascript("window.signageRemote ? (window.signageRemote.open(), true) : false") { ok ->
             if (ok != "true") openSettings()
         } ?: openSettings()
+    }
+
+    // ------------------------------------------------------------ screenshots
+    /** Captures what's on screen (incl. video on Android 8+) and hands a JPEG data URL to the web player. */
+    private fun captureScreen() {
+        val w = web ?: return
+        val width = w.width.coerceAtLeast(1)
+        val height = w.height.coerceAtLeast(1)
+        val scale = minOf(1f, 1280f / width)
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val deliver = { b: Bitmap?, err: String? ->
+            if (b == null) {
+                w.evaluateJavascript("window.__onScreenshot && window.__onScreenshot(null, ${org.json.JSONObject.quote(err ?: "Capture failed")})", null)
+            } else {
+                Thread {
+                    val small = if (scale < 1f) Bitmap.createScaledBitmap(b, (width * scale).toInt(), (height * scale).toInt(), true) else b
+                    val out = ByteArrayOutputStream()
+                    small.compress(Bitmap.CompressFormat.JPEG, 72, out)
+                    val data = "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+                    runOnUiThread { w.evaluateJavascript("window.__onScreenshot && window.__onScreenshot('$data')", null) }
+                }.start()
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 26) {
+            val loc = IntArray(2)
+            w.getLocationInWindow(loc)
+            try {
+                PixelCopy.request(window, android.graphics.Rect(loc[0], loc[1], loc[0] + width, loc[1] + height), bmp, { result ->
+                    if (result == PixelCopy.SUCCESS) deliver(bmp, null) else drawCapture(w, bmp, deliver)
+                }, handler)
+                return
+            } catch (_: Exception) { /* fall back */ }
+        }
+        drawCapture(w, bmp, deliver)
+    }
+
+    private fun drawCapture(w: WebView, bmp: Bitmap, deliver: (Bitmap?, String?) -> Unit) {
+        try { w.draw(Canvas(bmp)); deliver(bmp, null) } catch (e: Exception) { deliver(null, e.message) }
     }
 
     // ------------------------------------------------------------ leave & auto-return

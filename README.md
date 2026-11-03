@@ -32,6 +32,12 @@ Pushing to `main` redeploys the dashboard automatically. Changes under `android/
 | **Playlists** | Slides from pictures, videos or text. 12 transitions (fade, slide, zoom, flip, blur, wipe, circle…), motion effects (Ken Burns, pan, slow zoom), text overlays with position, size, colour and animation, landscape or portrait, live preview, autosave. |
 | **Schedules** | Per TV: a default playlist plus rules such as *"Breakfast menu, weekdays 07:00–11:00"* or *"Christmas, 1–26 Dec, override"*. Priorities, overnight slots, date ranges, a 7-day timeline view. Individual slides can also have their own time windows. |
 | **Licences** | Per TV: 7-day trial (automatic on pairing, **once per physical device**: the app sends a hashed Android device ID, so reinstalling doesn't give a new trial; browser players get no automatic trial), 1, 3, 6, 12, 24 or 36 months, lifetime, or a custom end date. Only the admin can set or renew them, and renewals can stack onto the current end date. After expiry the TV keeps playing for a 7-day grace period with warnings in the dashboard, then shows *Licence expired*, can't be published to and can't download media. **Clients & TVs** lists every licence that needs attention. |
+| **Widgets & templates** | Clock, weather, QR codes, menu/price boards, live web pages and YouTube as slides. Six ready-made templates (café, retail, reception, gym, office, simple) personalised with the business name. Slides can have show-from / show-until dates. |
+| **Layouts** | Full screen, or split screen: main area + portrait side panel (another playlist) and/or a scrolling ticker. |
+| **Emergency messages** | One button takes over every screen of a client, a site, or (admin) all clients, until ended or for a set time. |
+| **Monitoring** | 🔔 notifications for TVs going offline/online, licences ending (14 & 3 days) or expired, payments; optional emails via Resend. Live screenshot from any TV (app 1.5+). |
+| **Reports & activity** | Proof-of-play by slide/TV/playlist/day with CSV export. Activity log of who changed what. Optional approval: editors' publishes wait for a manager. |
+| **Payments** | Clients renew TV licences online through your Stripe Payment Links; licences extend automatically. |
 | **Publishing** | Edits stay as drafts until you press **Publish**. TVs update within seconds. |
 | **Reliability** | TVs keep the full schedule and all media cached, so they continue playing and switching on time without internet. They auto-start on boot, recover from crashes and reload nightly. |
 

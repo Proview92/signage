@@ -5,6 +5,9 @@ import { showInviteLink } from './team.js';
 import { licenseBadge, licenseDialog } from './license-ui.js';
 import { licenseState, licenseSummary } from '../license.js';
 import { manageSitesDialog } from './sites-ui.js';
+import { integrationsCards } from './integrations.js';
+import { emergencyDialog, overridesBanner } from './emergency.js';
+import { fmtBytes } from '../core.js';
 
 export async function clientsPage({ main, go, rerender }) {
   let [clients, screens, members, sites] = await Promise.all([
@@ -13,6 +16,8 @@ export async function clientsPage({ main, go, rerender }) {
     q(sb.from('client_members').select('client_id,user_id')),
     q(sb.from('sites').select('id,client_id,name')),
   ]);
+  const media = (await sb.from('media').select('client_id,size_bytes')).data || [];
+  const usage = (cid) => media.filter((m) => m.client_id === cid).reduce((t, m) => t + (Number(m.size_bytes) || 0), 0);
   const sname = Object.fromEntries(sites.map((x) => [x.id, x.name]));
   const tvSettings = (await sb.from('app_settings').select('pin_is_default,return_minutes,updated_at').eq('id', 1).maybeSingle()).data
     || { pin_is_default: true, return_minutes: 5 };
@@ -70,6 +75,7 @@ export async function clientsPage({ main, go, rerender }) {
   const head = h('div', { class: 'page-head' },
     h('div', {}, h('h1', {}, 'Clients & TVs'), h('p', { class: 'muted' }, `${clients.length} clients · ${screens.length} TVs · ${screens.filter((s) => ['active','expiring','lifetime'].includes(licenseState(s).state) && s.license_type !== 'trial7').length} paid · ${screens.filter((s) => s.license_type === 'trial7').length} on trial`)),
     h('div', { class: 'row' },
+      h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: rerender }) }, 'Emergency message'),
       h('button', { class: 'btn', onclick: () => pairDialog({ clients, onDone: async () => { await refreshMe(); rerender(); } }) }, icon('tv'), 'Pair a TV'),
       h('button', { class: 'btn primary', onclick: () => clientDialog() }, icon('plus'), 'New client')));
 
@@ -92,7 +98,7 @@ export async function clientsPage({ main, go, rerender }) {
       const users = members.filter((m) => m.client_id === c.id).length;
       return h('div', { class: 'list-row' },
         h('div', { class: 'grow' }, h('div', { style: { fontWeight: 650 } }, clientTitle(c)),
-          h('div', { class: 'tiny' }, [c.contact_email && c.contact_email !== clientTitle(c) ? c.contact_email : null, (() => { const n = sites.filter((x) => x.client_id === c.id).length; return `${n} site${n === 1 ? '' : 's'}`; })(), `${scr.length} TV${scr.length === 1 ? '' : 's'}`, `${users} user${users === 1 ? '' : 's'}`, c.notes ? c.notes.slice(0, 60) : null].filter(Boolean).join(' · '))),
+          h('div', { class: 'tiny' }, [c.contact_email && c.contact_email !== clientTitle(c) ? c.contact_email : null, (() => { const n = sites.filter((x) => x.client_id === c.id).length; return `${n} site${n === 1 ? '' : 's'}`; })(), `${scr.length} TV${scr.length === 1 ? '' : 's'}`, `${users} user${users === 1 ? '' : 's'}`, usage(c.id) ? fmtBytes(usage(c.id)) + ' media' : null, c.notes ? c.notes.slice(0, 60) : null].filter(Boolean).join(' · '))),
         scr.length ? h('span', { class: 'badge ' + (on === scr.length ? 'ok' : on ? 'warn' : 'bad') }, `${on}/${scr.length} online`) : null,
         h('button', { class: 'btn sm', onclick: () => manageSitesDialog(c.id, c.name, rerender) }, 'Sites'),
         h('button', { class: 'btn sm ghost icon', title: 'Edit', onclick: () => clientDialog(c) }, icon('edit')),
@@ -131,5 +137,7 @@ export async function clientsPage({ main, go, rerender }) {
           catch (e) { toast(e.message, true); }
         }))));
 
-  main.replaceChildren(head, h('div', { class: 'stack' }, attention, unassignedCard, clientsCard, allTvs, remoteCard));
+  const banner = await overridesBanner(rerender);
+  const integ = await integrationsCards(rerender);
+  main.replaceChildren(head, banner || '', h('div', { class: 'stack' }, attention, unassignedCard, clientsCard, allTvs, remoteCard, integ));
 }

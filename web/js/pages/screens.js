@@ -1,10 +1,12 @@
 import { clientLabel, clientTitle } from '../core.js';
+import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, isSlideActive } from '../renderer.js';
 import { licenseBadge } from './license-ui.js';
 import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
 import { licenseState } from '../license.js';
+import { emergencyDialog, overridesBanner } from './emergency.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -118,13 +120,14 @@ export function siteScheduleDialog({ site, tvs, playlists, onDone, go }) {
         if (def !== 'keep') await q(sb.from('screens').update({ default_playlist_id: def || null }).in('id', ids));
         if (mode === 'replace' || mode === 'clear') await q(sb.from('schedule_items').delete().in('screen_id', ids));
         if (rule) await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, screen_id: sid, client_id: state.clientId }))));
-        let ok = 0; const failed = [];
+        let ok = 0, pending = 0; const failed = [];
         if (publish) {
           for (const t of tvs) {
-            try { await rpc('publish_screen', { p_screen: t.id }); ok++; } catch { failed.push(t.name); }
+            try { const r = await publishOrRequest('screen', t.id, t.name); if (r.pending) pending++; else ok++; } catch { failed.push(t.name); }
           }
         }
-        toast(publish ? `Applied and published to ${ok} TV${ok === 1 ? '' : 's'}${failed.length ? ` (not published: ${failed.join(', ')})` : ''}` : 'Applied. Publish when ready.', failed.length > 0);
+        toast(!publish ? 'Applied. Publish when ready.' : pending ? `Applied. ${pending} TV${pending === 1 ? '' : 's'} sent to your manager for approval.`
+          : `Applied and published to ${ok} TV${ok === 1 ? '' : 's'}${failed.length ? ` (not published: ${failed.join(', ')})` : ''}`, failed.length > 0);
         onDone?.();
       } },
     ],
@@ -162,6 +165,7 @@ export async function screensPage({ main, go }) {
       h('div', {}, h('h1', {}, 'Screens'),
         h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} site${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
       h('div', { class: 'row' }, filterSel,
+        h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message'),
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Sites') : null,
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
 
@@ -174,13 +178,16 @@ export async function screensPage({ main, go }) {
           h('button', { class: 'btn primary', onclick: () => addTv() }, icon('plus'), 'Add a TV')) : null));
     }
 
+    const bannerBox = h('div');
+    overridesBanner(refresh).then((b) => b && bannerBox.replaceChildren(b));
+
     // Groups: one per site (alphabetical), then TVs with no site.
     let groups = sites.map((x) => ({ id: x.id, title: x.name, items: screens.filter((s) => s.site_id === x.id) }));
     const noSite = screens.filter((s) => !s.site_id);
     if (noSite.length) groups.push({ id: 'none', title: sites.length ? 'No site' : null, items: noSite });
     if (filter !== 'all') groups = groups.filter((g) => g.id === filter);
 
-    main.replaceChildren(head, ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
+    main.replaceChildren(head, bannerBox, ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },

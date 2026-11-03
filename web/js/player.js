@@ -5,7 +5,7 @@
 //  3. Caches all media locally so it keeps playing when offline
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
-import { SlidePlayer, resolveSchedule } from './renderer.js';
+import { LayoutPlayer, resolveSchedule } from './renderer.js';
 import { licenseState, licenseSummary } from './license.js';
 import { createRemoteMenu } from './remote.js';
 
@@ -105,7 +105,12 @@ function evaluate() {
   if (key === currentKey) return;
   currentKey = key;
   show('stage');
-  if (!player) player = new SlidePlayer($('stage'), { resolveUrl, onChange: ({ index, slide }) => { nowPlaying = slide ? `${content.playlists[playlistId]?.name} #${index + 1}` : 'idle'; } });
+  onAirId = playlistId;
+  if (!player) player = new LayoutPlayer($('stage'), {
+    resolveUrl,
+    lookup: (id) => content?.playlists?.[id] || null,
+    onChange: ({ index, slide }) => { nowPlaying = slide ? `${content?.playlists?.[onAirId]?.name} #${index + 1}` : 'idle'; playLog?.(onAirId, slide); },
+  });
   if (!playlistId) { player.clear(); nowPlaying = 'idle'; return; }
   const pl = content.playlists[playlistId];
   console.log('[signage] now playing', pl.name, rule?.label || '(default)');
@@ -114,6 +119,8 @@ function evaluate() {
   player.start();
 }
 let nowPlaying = '';
+let onAirId = null;
+let playLog = null;   // set by proof-of-play logger
 
 function apply(row) {
   if (!row) return;
@@ -127,6 +134,7 @@ function apply(row) {
 
   screen = row;
   localStorage.setItem(LS.screen, JSON.stringify(row));
+  if (row.claimed && row.screenshot_requested_at && Date.now() - new Date(row.screenshot_requested_at) < 5 * 60000) takeScreenshot();
   $('screen-name').textContent = row.name;
 
   if (!row.claimed) {
@@ -196,12 +204,102 @@ async function poll() {
     apply(data);
     $('net').classList.remove('bad');
     loadSettings();
+    loadOverrides();
   } catch { $('net').classList.add('bad'); }
 }
 
 async function heartbeat() {
   try { await sb.rpc('screen_heartbeat', { p_info: { ...deviceInfo(), playing: nowPlaying } }); } catch {}
 }
+
+// ------------------------------------------------------------ screenshots
+let shooting = false;
+async function takeScreenshot() {
+  if (shooting) return;
+  shooting = true;
+  const done = (ok, err) => sb.rpc('screenshot_done', { p_ok: ok, p_error: err || null }).then(() => {}, () => {});
+  try {
+    const nat = window.SignageNative;
+    if (!nat || typeof nat.captureScreen !== 'function') { await done(false, 'Screenshots need the PROVIEW SIGNAGE TV app version 1.5 or newer.'); return; }
+    const dataUrl = await new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('The TV took too long to capture the screen.')), 15000);
+      window.__onScreenshot = (d, err) => { clearTimeout(t); d ? resolve(d) : reject(new Error(err || 'Capture failed')); };
+      nat.captureScreen();
+    });
+    const blob = await (await fetch(dataUrl)).blob();
+    const { error } = await sb.storage.from('screenshots').upload(`${screen.id}.jpg`, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '0' });
+    if (error) throw error;
+    await done(true);
+  } catch (e) {
+    await done(false, e.message);
+  } finally {
+    shooting = false;
+  }
+}
+
+// ------------------------------------------------------------ proof-of-play
+const LS_PLAYS = 'signage.tv.plays';
+let lastPlay = null;   // { key, started }
+function bucket() { try { return JSON.parse(localStorage.getItem(LS_PLAYS) || '{}'); } catch { return {}; } }
+playLog = (playlistId, slide) => {
+  const now = Date.now();
+  const b = bucket();
+  if (lastPlay && b[lastPlay.key]) b[lastPlay.key].seconds += Math.min(3600, Math.round((now - lastPlay.started) / 1000));
+  if (!slide || !screen?.claimed) { lastPlay = null; localStorage.setItem(LS_PLAYS, JSON.stringify(b)); return; }
+  const hour = new Date(now); hour.setMinutes(0, 0, 0);
+  const key = `${hour.toISOString()}|${slide.id}`;
+  const name = slide.text?.title || slide.name || slide.type;
+  b[key] ||= { hour: hour.toISOString(), slide_id: slide.id, slide_name: name, slide_type: slide.type, media_id: slide.media_id || '',
+               playlist_id: playlistId || '', playlist_name: content?.playlists?.[playlistId]?.name || '', plays: 0, seconds: 0 };
+  b[key].plays += 1;
+  lastPlay = { key, started: now };
+  localStorage.setItem(LS_PLAYS, JSON.stringify(b));
+};
+async function flushPlays() {
+  const b = bucket();
+  const rows = Object.values(b);
+  if (!rows.length || !navigator.onLine) return;
+  // keep the slide that is playing right now (its seconds aren't final yet)
+  const keep = lastPlay ? { [lastPlay.key]: { ...b[lastPlay.key], plays: 0, seconds: 0 } } : {};
+  try {
+    const { error } = await sb.rpc('log_plays', { p_rows: rows.slice(0, 500) });
+    if (error) throw error;
+    const rest = Object.fromEntries(Object.entries(b).filter(([k]) => !rows.slice(0, 500).some((r) => `${r.hour}|${r.slide_id}` === k)));
+    localStorage.setItem(LS_PLAYS, JSON.stringify({ ...rest, ...keep }));
+  } catch {}
+}
+setInterval(flushPlays, 10 * 60000);
+setTimeout(flushPlays, 60000);
+
+// ------------------------------------------------------------ emergency messages
+const OV_COLORS = { red: ['#b91c1c', '#fff'], orange: ['#ea580c', '#fff'], blue: ['#1d4ed8', '#fff'], green: ['#15803d', '#fff'], black: ['#000', '#fff'] };
+let overrides = JSON.parse(localStorage.getItem('signage.tv.overrides') || '[]');
+let ovChannel = null;
+function paintOverride() {
+  const now = new Date().toISOString();
+  const o = overrides.find((x) => x.active && x.starts_at <= now && (!x.ends_at || x.ends_at > now));
+  const el = $('override');
+  if (!o || !screen?.claimed) { el.classList.remove('on'); return; }
+  const [bg, fg] = OV_COLORS[o.style] || OV_COLORS.red;
+  el.style.background = bg; el.style.color = fg;
+  $('ov-msg').textContent = o.message;
+  $('ov-sub').textContent = o.subtitle || '';
+  el.classList.add('on');
+}
+async function loadOverrides() {
+  try {
+    const { data, error } = await sb.from('overrides').select('*').eq('active', true).order('created_at', { ascending: false });
+    if (error) throw error;
+    overrides = data || [];
+    localStorage.setItem('signage.tv.overrides', JSON.stringify(overrides));
+  } catch {}
+  paintOverride();
+}
+function subscribeOverrides() {
+  if (ovChannel) sb.removeChannel(ovChannel);
+  ovChannel = sb.channel('overrides').on('postgres_changes', { event: '*', schema: 'public', table: 'overrides' }, () => loadOverrides()).subscribe();
+}
+setInterval(paintOverride, 10000);
 
 // ------------------------------------------------------------ remote menu
 const remote = createRemoteMenu({
@@ -232,6 +330,8 @@ async function boot() {
     apply(row);
     subscribe();
     loadSettings();
+    loadOverrides();
+    subscribeOverrides();
   } catch (e) {
     console.error(e);
     const cached = JSON.parse(localStorage.getItem(LS.screen) || 'null');

@@ -52,6 +52,8 @@ const P = {
   text: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
   dup: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/>',
   tv: '<path d="m17 2-5 5-5-5"/><rect x="2" y="7" width="20" height="15" rx="2"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
 };
 export function icon(name) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -208,6 +210,23 @@ export async function q(promise) {
   return data;
 }
 export const rpc = (fn, args) => q(sb.rpc(fn, args));
+
+/**
+ * Publish a screen or playlist. If the client requires approval and the user
+ * is an editor, a request is sent to the managers instead.
+ * Returns { published: n } or { pending: true }.
+ */
+export async function publishOrRequest(kind, id, name) {
+  try {
+    const n = await rpc(kind === 'screen' ? 'publish_screen' : 'publish_playlist', kind === 'screen' ? { p_screen: id } : { p_playlist: id });
+    return { published: kind === 'screen' ? 1 : n };
+  } catch (e) {
+    if (!/APPROVAL_REQUIRED/.test(e.message || '')) throw e;
+    const { data: existing } = await sb.from('approval_requests').select('id').eq('target_id', id).eq('status', 'pending').limit(1);
+    if (!existing?.length) await q(sb.from('approval_requests').insert({ client_id: state.clientId, kind, target_id: id, target_name: name }));
+    return { pending: true };
+  }
+}
 
 export async function refreshMe() {
   state.me = await rpc('whoami');
