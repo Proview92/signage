@@ -55,6 +55,9 @@ class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("signage", Context.MODE_PRIVATE) }
     // Fixed address (no longer changeable on the TV).
     private val playerUrl: String get() = BuildConfig.PLAYER_URL
+    /** The player may only load from our own site (old github.io address kept so its redirect still works). */
+    private fun isPlayerHost(host: String?): Boolean =
+        host != null && (host == Uri.parse(playerUrl).host || host == "app.proviewsignage.co.uk" || host == "proview92.github.io")
     /** Minutes to wait before reopening after the next time we leave; null = use admin setting. */
     private var nextReturnMinutes: Int? = null
 
@@ -129,7 +132,7 @@ class MainActivity : Activity() {
 
             @Deprecated("pre-API 24")
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean =
-                Uri.parse(url).host != Uri.parse(playerUrl).host
+                !isPlayerHost(Uri.parse(url).host)
 
             override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
                 // WebView renderer crashed or was killed for memory: rebuild it.
@@ -139,7 +142,7 @@ class MainActivity : Activity() {
 
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 // Stay inside the player; ignore navigation away
-                return request.url.host != Uri.parse(playerUrl).host
+                return !isPlayerHost(request.url.host)
             }
         }
         root.addView(w, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
