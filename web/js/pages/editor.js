@@ -306,7 +306,10 @@ export async function editorPage({ main, params: [id], go }) {
         h('button', { class: 'btn sm', onclick: () => move(sel, sel - 1), disabled: sel === 0 }, icon('up'), 'Earlier'),
         h('button', { class: 'btn sm', onclick: () => move(sel, sel + 1), disabled: sel === pl.slides.length - 1 }, icon('down'), 'Later'),
         h('button', { class: 'btn sm', onclick: () => { const c = { ...structuredClone(s), id: newSlide().id }; pl.slides.splice(sel + 1, 0, c); sel++; schedule(); paint(); } }, icon('dup'), 'Duplicate'),
-        h('button', { class: 'btn sm danger', onclick: async () => { if (!(await confirmBox('Delete slide?', 'This removes the slide from the playlist (the file stays in your media library).'))) return; pl.slides.splice(sel, 1); sel = Math.min(sel, pl.slides.length - 1); schedule(); paint(); } }, icon('trash'), 'Delete'))));
+        h('button', { class: 'btn sm danger', onclick: async () => { if (!(await confirmBox('Delete slide?', 'This removes the slide from the playlist (the file stays in your media library).'))) return; pl.slides.splice(sel, 1); sel = Math.min(sel, pl.slides.length - 1); schedule(); paint(); } }, icon('trash'), 'Delete')),
+      h('div', { class: 'full row save-row' },
+        h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast(pl.settings.auto_publish ? 'Changes saved · TVs updating' : 'Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
+        h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Use “Update TVs” to send them to the screens.'))));
   }
 
   // ------------------------------------------------ page
