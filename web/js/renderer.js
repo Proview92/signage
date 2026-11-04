@@ -1072,7 +1072,7 @@ export class WallPlayer {
   }
 }
 
-function paintTicker(el, t) {
+export function paintTicker(el, t) {
   el.replaceChildren();
   Object.assign(el.style, { background: t.bg || '#3f6fd0', color: t.color || '#ffffff', display: 'flex', alignItems: 'center',
     fontFamily: '"Inter","Segoe UI",system-ui,Roboto,Arial,sans-serif', fontSize: Math.round((TICKER_SIZES[t.size] || TICKER_H) * 0.52) + 'px', fontWeight: '700', whiteSpace: 'nowrap' });

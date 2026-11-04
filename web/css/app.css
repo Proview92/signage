@@ -489,3 +489,8 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
   .steps-mode .slides-list { flex-direction: column; }
   .steps-mode .area-rows { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
 }
+
+/* Editor preview: whole screen */
+.pv-dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); pointer-events: none; z-index: 2; }
+.pv-empty { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.45); font: 600 64px var(--font, sans-serif); border: 4px dashed rgba(255,255,255,.2); }
+.pv-outline { position: absolute; box-sizing: border-box; border: 8px solid #4f8ef7; pointer-events: none; z-index: 4; }

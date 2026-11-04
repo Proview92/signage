@@ -1,6 +1,6 @@
 import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
-import { layoutWithTicker, ITEM_TYPES, newItem, areaPixels } from '../renderer.js';
+import { layoutWithTicker, ITEM_TYPES, newItem, areaPixels, createStage, paintTicker } from '../renderer.js';
 import { SlidePlayer, LayoutPlayer, LAYOUTS, layoutLabel, normLayout, zoneCount, zonePlaylistIds, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
@@ -145,38 +145,52 @@ export async function editorPage({ main, params: [id], go }) {
     const k = 1080 / Math.max(1, Math.min(r[2], r[3]));
     return { w: Math.round(r[2] * k), h: Math.round(r[3] * k) };
   }
-  let playerShape = '';
+  // The whole TV screen: the selected slide plays in its own area (outlined); the other areas show
+  // their first slide, slightly dimmed; tickers sit where they will on the TV.
+  let comp = null;
   function refreshPreview(withTransition = false) {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(() => {
-      const shape = areaShape(pl.slides[sel]);
-      const shapeKey = shape ? `${shape.w}x${shape.h}` : (pl.settings.orientation || 'landscape');
-      if (shape) {
-        // Exactly the area's shape: as wide as the column allows, but not taller than the window.
-        previewBox.className = 'preview-box area';
-        const avail = previewBox.parentElement?.clientWidth || 640, maxH = Math.min(window.innerHeight * 0.62, 620);
-        const wPx = Math.min(avail, maxH * shape.w / shape.h);
-        Object.assign(previewBox.style, { aspectRatio: '', width: Math.round(wPx) + 'px', height: Math.round(wPx * shape.h / shape.w) + 'px' });
-      } else {
-        previewBox.className = 'preview-box' + (pl.settings.orientation === 'portrait' ? ' portrait' : '');
-        Object.assign(previewBox.style, { aspectRatio: '', width: '', height: '' });
-      }
-      if (player && playerShape !== shapeKey) { player.clear(); player.host.destroy(); previewBox.replaceChildren(); player = null; }
-      if (!player) player = new SlidePlayer(previewBox, { resolveUrl: (s) => mediaUrl(s.path), mutedOverride: true, size: shape || null });
-      playerShape = shapeKey;
-      if (!shape) player.host.setOrientation(pl.settings.orientation || 'landscape');
+      const portrait = pl.settings.orientation === 'portrait';
+      const { layout, ticker } = normLayout(pl.settings);
+      const t = ticker && pl.settings.ticker?.text ? pl.settings.ticker : null;
+      const W = portrait ? 1080 : 1920, H = portrait ? 1920 : 1080;
+      const plan = layoutWithTicker(layout, W, H, t, pl.settings.layout_split);
+      const multi = plan.zones.length > 1;
       const s = pl.slides[sel];
-      if (!s) { player.clear(); return; }
-      const prev = pl.slides[sel - 1] || pl.slides[pl.slides.length - 1];
-      const one = { ...s, schedule: null };
-      player.stop();
-      if (withTransition && prev && prev !== s) {
-        player.load({ slides: [{ ...prev, duration: 1.2, schedule: null, id: 'prev-' + prev.id }, one], settings: pl.settings });
-      } else {
-        player.load({ slides: [one], settings: pl.settings });
-      }
-      player.start();
-      setTimeout(paintEditLayer, 60);
+      const z = multi ? (s ? (s.zone || 0) : area) : 0;
+      previewBox.className = 'preview-box' + (portrait ? ' portrait' : '');
+      Object.assign(previewBox.style, { aspectRatio: '', width: '', height: '' });
+      player?.stop(); player?.host?.destroy(); comp?.destroy(); player = null;
+      previewBox.replaceChildren();
+      comp = createStage(previewBox, portrait ? 'portrait' : 'landscape');
+      plan.zones.forEach(([x, y, w, hh], i) => {
+        const k = 1080 / Math.max(1, Math.min(w, hh));
+        const size = { w: Math.round(w * k), h: Math.round(hh * k) };
+        const zEl = h('div', { class: 'pv-zone' + (i === z ? ' zone-sel' : ''), style: { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: hh + 'px', overflow: 'hidden', background: '#000' } });
+        comp.stage.appendChild(zEl);
+        if (i === z) {
+          player = new SlidePlayer(zEl, { resolveUrl: (x2) => mediaUrl(x2.path), mutedOverride: true, size });
+          if (!s) return;
+          const prev = pl.slides[sel - 1] || pl.slides[pl.slides.length - 1];
+          const one = { ...s, schedule: null };
+          if (withTransition && prev && prev !== s && (prev.zone || 0) === (s.zone || 0)) player.load({ slides: [{ ...prev, duration: 1.2, schedule: null, id: 'prev-' + prev.id }, one], settings: pl.settings });
+          else player.load({ slides: [one], settings: pl.settings });
+          player.start();
+        } else {
+          const first = pl.slides.find((x2) => (x2.zone || 0) === i);
+          if (first) (first.path ? mediaUrl(first.path).catch(() => null) : Promise.resolve(null)).then((url) => { if (zEl.isConnected) { renderStill(zEl, first, url, 'landscape', size); zEl.appendChild(h('div', { class: 'pv-dim' })); } });
+          else zEl.appendChild(h('div', { class: 'pv-empty' }, `Area ${i + 1}`));
+        }
+      });
+      if (multi) { const [x, y, w, hh] = plan.zones[z]; comp.stage.appendChild(h('div', { class: 'pv-outline', style: { left: x + 'px', top: y + 'px', width: w + 'px', height: hh + 'px' } })); }
+      plan.tickers.forEach((tk) => {
+        const [x, y, w, hh] = tk.rect;
+        const el = h('div', { style: { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: hh + 'px', overflow: 'hidden', zIndex: 3 } });
+        comp.stage.appendChild(el);
+        paintTicker(el, tk.edge === 'bottom' && plan.tickers.length > 1 && t.text2?.trim() ? { ...t, text: t.text2 } : t);
+      });
+      setTimeout(paintEditLayer, 80);
     }, 250);
   }
 
@@ -360,7 +374,7 @@ export async function editorPage({ main, params: [id], go }) {
   const editLayer = h('div', { class: 'edit-layer' });
   function paintEditLayer() {
     const s = pl.slides[sel];
-    const stage = previewBox.querySelector('.sg-stage');
+    const stage = previewBox.querySelector('.zone-sel .sg-stage') || previewBox.querySelector('.sg-stage');
     if (!previewBox.contains(editLayer)) previewBox.appendChild(editLayer);
     if (!s || !(s.items || []).length || !stage) { editLayer.replaceChildren(); return; }
     const pb = previewBox.getBoundingClientRect(), sr = stage.getBoundingClientRect();
@@ -538,7 +552,7 @@ export async function editorPage({ main, params: [id], go }) {
   function showSlide() {
     fullPlayer?.stop();
     previewCard.replaceChildren(previewBox, h('div', { class: 'tiny', style: { textAlign: 'center', marginTop: '8px' } },
-      areaCount() > 1 ? 'The selected slide, in the shape of its area' : 'The selected slide'));
+      areaCount() > 1 ? 'The whole screen: the area you’re editing is outlined' : 'The whole screen, as it will look on the TV'));
   }
   const nav = () => h('div', { class: 'row ed-nav' },
     step > 1 ? h('button', { class: 'btn', onclick: () => goStep(step - 1) }, '← Back') : h('span'),
