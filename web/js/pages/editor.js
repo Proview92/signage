@@ -168,6 +168,7 @@ export async function editorPage({ main, params: [id], go }) {
         const k = 1080 / Math.max(1, Math.min(w, hh));
         const size = { w: Math.round(w * k), h: Math.round(hh * k) };
         const zEl = h('div', { class: 'pv-zone' + (i === z ? ' zone-sel' : ''), style: { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: hh + 'px', overflow: 'hidden', background: '#000' } });
+        if (multi && i !== z && step !== 1 && step !== 4) { zEl.style.cursor = 'pointer'; zEl.title = `Select area ${i + 1}`; zEl.addEventListener('click', () => selectArea(i)); }
         comp.stage.appendChild(zEl);
         if (i === z) {
           player = new SlidePlayer(zEl, { resolveUrl: (x2) => mediaUrl(x2.path), mutedOverride: true, size });
@@ -283,6 +284,12 @@ export async function editorPage({ main, params: [id], go }) {
         h('button', { type: 'button', class: 'del', title: 'Remove from playlist', 'aria-label': 'Remove slide', onclick: (e) => { e.stopPropagation(); deleteSlide(i); } }, icon('trash'))));
     return row;
   }
+  // Select an area: highlights its box and the matching part of the screen view.
+  function selectArea(a) {
+    area = a; selItem = null;
+    sel = pl.slides.findIndex((x) => (x.zone || 0) === a);
+    paint(); refreshPreview();
+  }
   // One box per area of the layout: its size, its slides, and big "add" buttons (step 2).
   function paintList() {
     rowThumbs.length = 0;
@@ -297,7 +304,7 @@ export async function editorPage({ main, params: [id], go }) {
       const idx = pl.slides.map((x, i) => ((n < 2 || (x.zone || 0) === a) ? i : -1)).filter((i) => i >= 0);
       const other = a > 0 && !idx.length && zones[a - 1] ? allPlaylists.find((p) => p.id === zones[a - 1]) : null;
       const pick = (fn) => () => { area = a; sel = idx.includes(sel) ? sel : (idx.at(-1) ?? -1); fn(); };
-      return h('div', { class: 'area-box' + (n > 1 && a === area ? ' on' : '') },
+      return h('div', { class: 'area-box' + (n > 1 && a === area ? ' on' : ''), onclick: (e) => { if (n > 1 && a !== area && !e.target.closest('.slide-row, button, a, input')) selectArea(a); } },
         h('div', { class: 'row between area-box-head' },
           h('div', { class: 'row', style: { gap: '10px', flexWrap: 'nowrap' } },
             n > 1 ? layoutDiagram(layout, portrait, false, a, 34, null, pl.settings.layout_split) : null,

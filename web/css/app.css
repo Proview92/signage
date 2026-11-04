@@ -521,3 +521,7 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
   .ed-card-head { flex-direction: column; align-items: flex-start; gap: 2px; padding-top: 12px; padding-bottom: 10px; }
   .ed-card-head h2 { white-space: nowrap; }
 }
+
+.area-box:not(.on) { cursor: pointer; }
+.area-box:not(.on):hover { border-color: #b9cdf5; }
+.pv-zone[title]:hover > .pv-dim { opacity: .55; }
