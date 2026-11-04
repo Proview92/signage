@@ -170,7 +170,9 @@ export async function editorPage({ main, params: [id], go }) {
         mini,
         h('div', { style: { minWidth: 0 } }, h('div', { class: 't' }, slideTitle(s)),
           h('div', { class: 's' }, `${s.type === 'video' && !(s.duration > 0) ? 'Full video' : (s.duration || 8) + 's'} · ${TRANSITIONS[s.transition] || 'Fade'}${s.schedule ? ' · ⏱' : ''}`)),
-        h('div', { class: 'acts' }));
+        h('div', { class: 'acts' },
+          h('button', { type: 'button', title: 'Move earlier', 'aria-label': 'Move earlier', disabled: i === 0, onclick: (e) => { e.stopPropagation(); move(i, i - 1); } }, icon('up')),
+          h('button', { type: 'button', title: 'Move later', 'aria-label': 'Move later', disabled: i === pl.slides.length - 1, onclick: (e) => { e.stopPropagation(); move(i, i + 1); } }, icon('down'))));
       return row;
     }),
     h('div', { class: 'row', style: { padding: '6px 2px', gap: '6px', flexWrap: 'wrap' } },
@@ -303,8 +305,6 @@ export async function editorPage({ main, params: [id], go }) {
 
       h('div', { class: 'section-title' }, 'Slide'),
       h('div', { class: 'full row' },
-        h('button', { class: 'btn sm', onclick: () => move(sel, sel - 1), disabled: sel === 0 }, icon('up'), 'Earlier'),
-        h('button', { class: 'btn sm', onclick: () => move(sel, sel + 1), disabled: sel === pl.slides.length - 1 }, icon('down'), 'Later'),
         h('button', { class: 'btn sm', onclick: () => { const c = { ...structuredClone(s), id: newSlide().id }; pl.slides.splice(sel + 1, 0, c); sel++; schedule(); paint(); } }, icon('dup'), 'Duplicate'),
         h('button', { class: 'btn sm danger', onclick: async () => { if (!(await confirmBox('Delete slide?', 'This removes the slide from the playlist (the file stays in your media library).'))) return; pl.slides.splice(sel, 1); sel = Math.min(sel, pl.slides.length - 1); schedule(); paint(); } }, icon('trash'), 'Delete')),
       h('div', { class: 'full row save-row' },
