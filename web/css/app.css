@@ -282,6 +282,11 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 /* iPhone: date boxes have a built-in minimum width and centred text */
 input[type=date]::-webkit-date-and-time-value { text-align: left; min-width: 0; }
 .date-pair .date-wrap { min-width: 0; overflow: hidden; border-radius: 9px; }
+.date-pair input[type=date] { height: 44px; line-height: 24px; }
+.date-pair input[type=date].empty:not(:focus) { color: transparent; }   /* show our own “Not set” instead */
+.date-wrap:focus-within .date-ph { display: none; }
+.date-ph { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 7px; color: var(--ink-3); font-size: 15px; pointer-events: none; }
+.date-ph svg { width: 16px; height: 16px; }
 .date-wrap { position: relative; }
 .date-wrap input { padding-right: 30px; }
 .date-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: 0; border-radius: 50%; background: #efeee9; color: var(--ink-2); font-size: 16px; line-height: 1; cursor: pointer; }

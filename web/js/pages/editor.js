@@ -207,13 +207,14 @@ export async function editorPage({ main, params: [id], go }) {
       if (a && b && b < a) note.textContent = '⚠ End date is before the start date, so this slide won’t show.';
     };
     const box = (key, label) => {
-      const input = h('input', { type: 'date', value: s[key] || '' });
+      const input = h('input', { type: 'date', value: s[key] || '', onclick: () => { try { input.showPicker?.(); } catch {} } });
       const clear = h('button', { class: 'date-clear', type: 'button', title: 'Clear date', 'aria-label': `Clear ${label}` }, '×');
-      const sync = () => clear.classList.toggle('hidden', !input.value);
+      const ph = h('span', { class: 'date-ph' }, icon('calendar'), 'Not set');
+      const sync = () => { clear.classList.toggle('hidden', !input.value); ph.classList.toggle('hidden', !!input.value); input.classList.toggle('empty', !input.value); };
       input.onchange = () => { change((x) => (x[key] = input.value || null)); s[key] = input.value || null; sync(); paintNote(); };
       clear.onclick = () => { input.value = ''; input.onchange(); };
       sync();
-      return h('label', { class: 'field' }, label, h('div', { class: 'date-wrap' }, input, clear));
+      return h('label', { class: 'field' }, label, h('div', { class: 'date-wrap' }, input, ph, clear));
     };
     paintNote();
     return h('div', { class: 'full stack', style: { gap: '6px' } }, h('div', { class: 'date-pair' }, box('valid_from', 'Start date'), box('valid_until', 'End date')), note);
