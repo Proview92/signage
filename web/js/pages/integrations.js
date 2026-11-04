@@ -11,7 +11,7 @@ export async function integrationsCards(rerender) {
   // ---------------- alerts
   const alertsDialog = () => {
     const key = h('input', { type: 'password', autocomplete: 'off', placeholder: st.has_resend_key ? 'Saved — leave blank to keep' : 're_…' });
-    const from = h('input', { type: 'text', value: st.email_from || '' });
+    const from = h('input', { type: 'text', value: !st.email_from || /onboarding@resend\.dev/.test(st.email_from) ? 'PROVIEW SIGNAGE <alerts@proviewsignage.co.uk>' : st.email_from });
     const extra = h('input', { type: 'email', value: st.admin_alert_email || '', placeholder: 'Optional extra address for alerts' });
     let on = st.alerts_email_enabled, mins = String(st.alert_offline_minutes || 15), toClients = st.alerts_to_clients;
     modal({ title: 'Alerts & email', body: [
@@ -20,7 +20,7 @@ export async function integrationsCards(rerender) {
       h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: on, onchange: (e) => (on = e.target.checked) }), 'Also send alerts by email'),
       h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: toClients, onchange: (e) => (toClients = e.target.checked) }), 'Email the client’s managers and contact email too (otherwise only you)'),
       field('Resend API key', key, h('span', {}, 'Create a free account at resend.com → API Keys → Create. Paste it here yourself. It is stored encrypted.')),
-      field('Send from', from, 'Until you verify your domain in Resend, keep “onboarding@resend.dev”: it can only send to your own Resend login email. After verifying e.g. proviewsecurity.co.uk, use “PROVIEW SIGNAGE <alerts@proviewsecurity.co.uk>”.'),
+      field('Send from', from, 'The address alerts come from. It must be on a domain verified in Resend (proviewsignage.co.uk is).'),
       field('Extra alert address', extra)],
     actions: [
       { label: 'Send test email', close: false, onClick: async () => { await save(); await rpc('send_test_email'); toast('Test email sent: check your inbox (and spam)'); } },
