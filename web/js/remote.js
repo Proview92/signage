@@ -65,6 +65,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
       isApp ? ['wifi', 'Wi-Fi & network settings', `Connect to a different Wi-Fi network${settings.return_minutes ? ` · player reopens in ${settings.return_minutes} min` : ''}`] : null,
       isApp ? ['exit', `Exit to home screen${settings.return_minutes ? ` (reopens in ${settings.return_minutes} min)` : ''}`, 'For changing other TV settings'] : null,
       isApp ? ['exit-stay', 'Exit until next restart', 'Stays closed until the TV is switched off and on'] : null,
+      isApp && native()?.checkForUpdate ? ['update', 'Check for app update', `Installed: version ${native()?.appVersion?.() || '?'}`] : null,
       isApp && st.needsOverlay ? ['overlay', 'Allow automatic reopening', 'Grant “Display over other apps” so the player can reopen itself'] : null,
       ['close', 'Close menu', ''],
     ].filter(Boolean);
@@ -117,6 +118,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
       }
       case 'exit-stay': close(); native()?.exitToHome(0); break;
       case 'overlay': native()?.openOverlayPermission(); break;
+      case 'update': close(); native()?.checkForUpdate?.(true); break;
       case 'close': close(); break;
     }
   }

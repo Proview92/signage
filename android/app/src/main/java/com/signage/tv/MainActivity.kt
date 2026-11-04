@@ -79,6 +79,8 @@ class MainActivity : Activity() {
         @JavascriptInterface fun openWifi(minutes: Int) = runOnUiThread { openWifiSettings(minutes) }
         @JavascriptInterface fun networkType(): String = currentNetworkType()
         @JavascriptInterface fun captureScreen() { runOnUiThread { this@MainActivity.captureScreenNow() } }
+        @JavascriptInterface fun checkForUpdate(manual: Boolean) { Updater.check(this@MainActivity, manual) }
+        @JavascriptInterface fun versionCode(): Int = BuildConfig.VERSION_CODE
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,7 +97,14 @@ class MainActivity : Activity() {
         load()
         scheduleNightlyReload()
         handler.postDelayed({ askForOverlayIfNeeded() }, 4000)
+        scheduleUpdateChecks()
     }
+
+    /** Look for a newer app 2 minutes after starting, then every 6 hours. */
+    private val updateCheck = object : Runnable {
+        override fun run() { Updater.check(this@MainActivity, false); handler.postDelayed(this, 6 * 3600_000L) }
+    }
+    private fun scheduleUpdateChecks() { handler.removeCallbacks(updateCheck); handler.postDelayed(updateCheck, 120_000L) }
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun createWebView() {

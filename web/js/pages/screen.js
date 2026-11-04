@@ -78,6 +78,11 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     toast('TV removed'); go('screens');
   }
 
+  async function updateApp() {
+    await q(sb.from('screens').update({ update_requested_at: new Date().toISOString() }).eq('id', id));
+    toast('Update check sent. If a newer app is out, the TV shows an update screen: press OK on the remote to install.');
+  }
+
   async function reloadTv() {
     await q(sb.from('screens').update({ reload_at: new Date().toISOString() }).eq('id', id));
     toast('Reload sent to the TV');
@@ -155,6 +160,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         h('div', { class: 'row' }, h('h1', {}, screen.name), h('button', { class: 'btn ghost icon sm', onclick: editDetails, 'aria-label': 'Edit details' }, icon('edit'))),
         h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), (() => { const t = [sites.find((x) => x.id === screen.site_id)?.name, screen.location].filter(Boolean).join(' · '); return t ? h('span', { class: 'tiny' }, t) : null; })())),
       h('div', { class: 'row' },
+        /Android/.test(dinfo.app || '') ? h('button', { class: 'btn', onclick: updateApp, title: `Installed: ${dinfo.app}` }, 'Update app') : null,
         h('button', { class: 'btn', onclick: reloadTv, title: 'Force the TV app to reload' }, icon('refresh'), 'Reload TV'),
         h('button', { class: 'btn primary', onclick: publish, disabled: licenseState(screen).state === 'expired', title: licenseState(screen).state === 'expired' ? 'Licence expired' : '' }, icon('send'), 'Re-send to TV')));
 

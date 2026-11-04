@@ -183,6 +183,11 @@ function apply(row) {
     return location.reload();
   }
   if (row.reload_at) localStorage.setItem(LS.reload, row.reload_at);
+  // "Update app" pressed on the dashboard (only act on fresh requests)
+  if (row.update_requested_at && row.update_requested_at !== localStorage.getItem('signage.tv.update')) {
+    localStorage.setItem('signage.tv.update', row.update_requested_at);
+    if (Date.now() - new Date(row.update_requested_at) < 15 * 60000) { try { window.SignageNative?.checkForUpdate?.(true); } catch {} }
+  }
 
   screen = row;
   localStorage.setItem(LS.screen, JSON.stringify(row));
