@@ -1,6 +1,6 @@
 import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
-import { layoutWithTicker, ITEM_TYPES, newItem } from '../renderer.js';
+import { layoutWithTicker, ITEM_TYPES, newItem, areaPixels } from '../renderer.js';
 import { SlidePlayer, LayoutPlayer, LAYOUTS, layoutLabel, normLayout, zoneCount, zonePlaylistIds, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
@@ -199,8 +199,9 @@ export async function editorPage({ main, params: [id], go }) {
     const n = areaCount();
     if (n < 2) return null;
     const portrait = pl.settings.orientation === 'portrait';
-    const { layout } = normLayout(pl.settings);
+    const { layout, ticker } = normLayout(pl.settings);
     const zones = zonePlaylistIds(pl.settings);
+    const px = areaPixels(layout, portrait, ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split);
     return h('div', { class: 'area-tabs' },
       h('div', { class: 'tiny', style: { width: '100%' } }, 'Choose an area, then add slides to it:'),
       ...Array.from({ length: n }, (_, i) => {
@@ -208,7 +209,8 @@ export async function editorPage({ main, params: [id], go }) {
         const other = i > 0 && !count && zones[i - 1] ? allPlaylists.find((p) => p.id === zones[i - 1]) : null;
         return h('button', { type: 'button', class: 'area-tab' + (i === area ? ' on' : ''), onclick: () => { area = i; const first = areaIdx()[0]; sel = first ?? -1; paint(); } },
           layoutDiagram(layout, portrait, false, i, 40, null, pl.settings.layout_split),
-          h('span', {}, h('b', {}, `Area ${i + 1}`), h('small', {}, other ? `Plays “${other.name}”` : `${count} slide${count === 1 ? '' : 's'}`)));
+          h('span', {}, h('b', {}, `Area ${i + 1}`), h('small', {}, other ? `Plays “${other.name}”` : `${count} slide${count === 1 ? '' : 's'}`),
+            h('small', { class: 'area-px', title: 'Make pictures and videos for this area this size (double it for 4K)' }, `${px[i][0]} × ${px[i][1]} px`)));
       }));
   }
   function paintList() {

@@ -706,6 +706,10 @@ export function tickerPlace(t = {}, layout = 'full') {
   return { area, edge: m[2] || 'bottom' };
 }
 /** Areas and ticker strips for a W×H stage: { zones: [[x,y,w,h]…], tickers: [{ rect: [x,y,w,h], edge }] }. */
+/** Pixel size of each area on a Full HD screen (1920×1080, or 1080×1920 in portrait): [[w, h], …] */
+export function areaPixels(layout, portrait = false, ticker = null, split = null) {
+  return layoutWithTicker(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080, ticker, split).zones.map(([, , w, h]) => [w, h]);
+}
 export function layoutWithTicker(layout, W, H, t = null, sp = null) {
   if (!t) return { zones: layoutZones(layout, W, H, sp), tickers: [] };
   const TH = TICKER_SIZES[t.size] || TICKER_H;

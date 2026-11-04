@@ -438,3 +438,10 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
   .look-hero .auth-form { background: #f4f3ef; border-radius: 24px 24px 0 0; margin-top: -36px; position: relative; z-index: 2; padding-top: 30px; }
 }
 .auth-art > .muted { position: relative; z-index: 1; max-width: 300px; }
+
+/* Area sizes in pixels (layout window + area tabs) */
+.area-sizes { display: flex; flex-direction: column; gap: 6px; }
+.area-size-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.area-size { font-size: 12.5px; background: rgba(63,111,208,.08); border: 1px solid rgba(63,111,208,.25); color: var(--ink, #222); padding: 4px 9px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+.area-size small { color: var(--ink-3, #777); }
+.area-tab .area-px { display: block; color: #3f6fd0; font-weight: 600; font-variant-numeric: tabular-nums; }

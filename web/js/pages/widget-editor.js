@@ -1,7 +1,7 @@
 // Inspector fields for widget slides, and the playlist layout dialog.
 import { h, field, select, toast, modal, errMsg } from '../core.js';
 import { WIDGET_TYPES, geocode, youtubeId } from '../widgets.js';
-import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds, layoutWithTicker, splitControls } from '../renderer.js';
+import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds, layoutWithTicker, splitControls, areaPixels } from '../renderer.js';
 
 /** Fields for the selected widget slide. change(fn) mutates + saves; repaint() redraws the inspector. */
 export function widgetFields(s, change, repaint) {
@@ -99,8 +99,14 @@ export function layoutDialog(pl, playlists, onSave) {
   // Area sizes: sliders redraw only the pictures, so dragging stays smooth.
   const bigDiag = h('div');
   const tickDiag = h('div');
+  const sizesEl = h('div', { class: 'area-sizes' });
   const redraw = () => {
     bigDiag.replaceChildren(layoutDiagram(st.layout, portrait, false, 0, 150, st.ticker_on ? st.ticker : null, st.split));
+    // Exact size of each area, so pictures and videos can be made to fit.
+    const px = areaPixels(st.layout, portrait, st.ticker_on ? st.ticker : null, st.split);
+    sizesEl.replaceChildren(h('div', { class: 'tiny', style: { fontWeight: 600 } }, 'Make your pictures and videos this size:'),
+      h('div', { class: 'area-size-list' }, ...px.map(([w, hh], i) => h('span', { class: 'area-size' }, h('b', {}, px.length > 1 ? `Area ${i + 1}` : 'Full screen'), ` ${w} × ${hh} px`,
+        h('small', {}, ` (4K: ${w * 2} × ${hh * 2})`)))));
     tickDiag.replaceChildren(layoutDiagram(st.layout, portrait, false, -1, 96, st.ticker, st.split));
   };
   const sliders = () => {
@@ -126,7 +132,7 @@ export function layoutDialog(pl, playlists, onSave) {
     while (st.zones.length < n - 1) st.zones.push(null);
     zonesWrap.replaceChildren(...(n > 1 ? [
       h('div', { class: 'row', style: { gap: '16px', flexWrap: 'nowrap', alignItems: 'center' } }, bigDiag,
-        h('div', { class: 'stack grow', style: { gap: '10px' } }, sliders(),
+        h('div', { class: 'stack grow', style: { gap: '10px' } }, sliders(), sizesEl,
           h('div', { class: 'tiny' }, `After saving, pick an area above the slide list (Area 1, Area 2…) and press “Add media” to fill it.`))),
       !others.length ? '' : h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
         h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
