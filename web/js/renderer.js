@@ -585,6 +585,8 @@ export const LAYOUTS = {
   quad: 'Four squares (2×2)',
   side: 'Main + narrow side panel',
 };
+/** Layout name, worded for the screen's orientation. */
+export const layoutLabel = (k, portrait = false) => (portrait ? { three: 'Three rows', side: 'Main + narrow bottom panel' }[k] : null) || LAYOUTS[k] || LAYOUTS.full;
 const TICKER_H = 96, SIDE_W = 480;
 
 /** Normalise old layout values. Returns { layout, ticker:boolean }. */

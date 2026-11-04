@@ -1,7 +1,7 @@
 // Inspector fields for widget slides, and the playlist layout dialog.
 import { h, field, select, toast, modal, errMsg } from '../core.js';
 import { WIDGET_TYPES, geocode, youtubeId } from '../widgets.js';
-import { LAYOUTS, normLayout, layoutZones, zoneCount, zonePlaylistIds } from '../renderer.js';
+import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds } from '../renderer.js';
 
 /** Fields for the selected widget slide. change(fn) mutates + saves; repaint() redraws the inspector. */
 export function widgetFields(s, change, repaint) {
@@ -76,7 +76,7 @@ export function layoutDiagram(layout, portrait = false, active = false) {
   const box = h('div', { class: 'lay-diagram' + (active ? ' on' : ''), style: { width: W + 'px', height: H + 'px' } });
   layoutZones(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080).forEach(([x, y, w, hh], i) => {
     const k = W / (portrait ? 1080 : 1920);
-    box.append(h('div', { class: 'lay-zone' + (i === 0 ? ' main' : ''), style: { left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' } }, String(i + 1)));
+    box.append(h('div', { class: 'lay-zone' + (i === 0 ? ' first' : ''), style: { left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' } }, String(i + 1)));
   });
   return box;
 }
@@ -93,7 +93,7 @@ export function layoutDialog(pl, playlists, onSave) {
   const tickOn = h('input', { type: 'checkbox', checked: st.ticker_on, onchange: (e) => { st.ticker_on = e.target.checked; paint(); } });
 
   const paint = () => {
-    picker.replaceChildren(...Object.entries(LAYOUTS).map(([k, label]) =>
+    picker.replaceChildren(...Object.keys(LAYOUTS).map((k) => [k, layoutLabel(k, portrait)]).map(([k, label]) =>
       h('button', { type: 'button', class: 'lay-card' + (st.layout === k ? ' on' : ''), onclick: () => { st.layout = k; paint(); } },
         layoutDiagram(k, portrait, st.layout === k), h('span', {}, label))));
     const n = zoneCount(st.layout);
