@@ -101,7 +101,7 @@ export function layoutDialog(pl, playlists, onSave) {
     zonesWrap.replaceChildren(...(n > 1 ? [
       h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } }, layoutDiagram(st.layout, portrait),
         h('div', { class: 'tiny' }, `After saving, pick an area above the slide list (Area 1, Area 2…) and press “Add media” to fill it.`)),
-      h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
+      !others.length ? '' : h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
         h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
           ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))))),
     ] : []));
