@@ -200,6 +200,7 @@ function confirmUrl() {
   return location.origin + location.pathname + (inv ? `?invite=${inv}` : '');
 }
 
+const AUTH_LOOK = 'glow';
 async function authPage(inviteToken) {
   let invite = null;
   if (inviteToken) { try { invite = (await sb.rpc('invite_info', { p_token: inviteToken })).data; } catch {} }
@@ -295,12 +296,16 @@ async function authPage(inviteToken) {
       }
       submit.disabled = false;
     },
-  }, h('div', { class: 'brand', style: { color: 'var(--ink)', padding: 0, marginBottom: '10px' } }, brandMark(), wordmark(APP)),
+  }, h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'logo.png', alt: '' }), wordmark(APP)),
     title, sub, msg, field('Email', email), passField, pass2Field, submit,
     h('div', { class: 'row between' }, swap, forgot));
 
-  return h('div', { class: 'auth' },
+  // Sign-in page design: 'glow' | 'wall' | 'hero' (?look=… to preview another)
+  const look = new URLSearchParams(location.search).get('look') || AUTH_LOOK;
+  return h('div', { class: 'auth look-' + look },
+    h('div', { class: 'auth-bg', 'aria-hidden': 'true' }, ...Array.from({ length: 10 }, (_, i) => h('i', { class: 't' + i }))),
     h('div', { class: 'auth-art' },
+      h('img', { class: 'auth-art-logo', src: 'logo.png', alt: '' }),
       h('div', { class: 'brand', style: { padding: 0 } }, brandMark(), wordmark(APP)),
       h('h2', {}, 'Every screen, on schedule — from your phone.'),
       h('div', { class: 'tv' }),
