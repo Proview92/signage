@@ -718,6 +718,225 @@ export class LayoutPlayer {
   next() { this.players[0]?.next(); }
 }
 
+// ---------------------------------------------------------------------
+//  Video wall: several TVs show one picture together, each its own tile.
+//  screen.wall = { id, name, cols, rows, x, y, bezel }   (x/y = this TV's column/row, 0-based)
+//  Every TV in the wall works out what should be on screen from a shared clock (opts.now = server
+//  time), so slides change at the same moment and videos are kept in step while they play.
+// ---------------------------------------------------------------------
+export const WALL_BEZEL = { none: 0, thin: 14, normal: 34 };
+export function validWall(w) {
+  return !!(w && w.id && w.cols >= 1 && w.rows >= 1 && w.cols * w.rows >= 2 && w.x >= 0 && w.y >= 0 && w.x < w.cols && w.y < w.rows);
+}
+
+const PREP_MS = 3500;          // get the next slide ready this long before it starts
+
+export class WallPlayer {
+  /** opts: { resolveUrl, onChange, now:()=>ms (server time), wall } */
+  constructor(container, opts) {
+    this.container = container;
+    this.opts = opts;
+    this.now = opts.now || (() => Date.now());
+    this.wall = opts.wall;
+    this.slides = [];
+    this.current = null;
+    this.token = 0;
+    this.running = false;
+    this.vdur = {};            // video length (ms) by slide id
+    this.outer = this.host = null;
+    this.key = null;
+  }
+
+  _build(portrait) {
+    const w = this.wall;
+    const key = `${portrait}|${w.cols}x${w.rows}@${w.x},${w.y}|${w.bezel || 0}`;
+    if (key === this.key) return;
+    this._teardown();
+    this.key = key;
+    const TW = portrait ? 1080 : 1920, TH = portrait ? 1920 : 1080;
+    const gap = WALL_BEZEL[w.bezel] ?? 0;                 // hidden strip behind each bezel (tile pixels)
+    this.outer = createStage(this.container, portrait ? 'portrait' : 'landscape', { w: TW, h: TH });
+    const inner = document.createElement('div');
+    const IW = w.cols * TW + (w.cols - 1) * gap, IH = w.rows * TH + (w.rows - 1) * gap;
+    Object.assign(inner.style, { position: 'absolute', left: -w.x * (TW + gap) + 'px', top: -w.y * (TH + gap) + 'px', width: IW + 'px', height: IH + 'px', overflow: 'hidden' });
+    this.outer.stage.appendChild(inner);
+    // Lay the whole wall out with its short side = 1080, like a single screen.
+    const f = 1080 / Math.min(IW, IH);
+    this.host = createStage(inner, 'landscape', { w: Math.round(IW * f), h: Math.round(IH * f) });
+  }
+
+  _teardown() {
+    this.host?.destroy(); this.outer?.destroy();
+    this.host = this.outer = null; this.current = null; this.key = null;
+    this.container.replaceChildren();
+  }
+
+  load(pl) {
+    this.pl = pl;
+    this.slides = (pl?.slides || []).filter(Boolean);
+    this._build((pl?.settings || {}).orientation === 'portrait');
+    this.ready = this._probe();
+    if (this.running) this.start();
+  }
+
+  // Every TV must agree on each slide's length, so look up video lengths before starting.
+  async _probe() {
+    await Promise.all(this.slides.filter((s) => s.type === 'video' && !(Number(s.duration) > 0) && !this.vdur[s.id]).map(async (s) => {
+      try {
+        const url = await Promise.race([this.opts.resolveUrl(s), new Promise((r) => setTimeout(() => r(null), 30000))]);
+        if (!url) return;
+        const v = document.createElement('video');
+        v.preload = 'metadata'; v.muted = true; v.src = url;
+        const d = await new Promise((r) => { v.onloadedmetadata = () => r(v.duration); v.onerror = () => r(0); setTimeout(() => r(0), 15000); });
+        v.removeAttribute('src'); v.load();
+        if (isFinite(d) && d > 0) this.vdur[s.id] = Math.round(d * 1000);
+      } catch {}
+    }));
+  }
+
+  _len(s) {
+    const d = Number(s.duration) || 0;
+    if (d > 0) return d * 1000;
+    if (s.type === 'video') return this.vdur[s.id] || 30000;
+    return 8000;
+  }
+
+  /** The slide on air at time t: { slide, idx, start, end, single } (times in ms, server clock). */
+  segAt(t) {
+    const date = new Date(t);
+    const active = this.slides.map((s, i) => [s, i]).filter(([s]) => isSlideActive(s, date));
+    if (!active.length) return null;
+    const lens = active.map(([s]) => this._len(s));
+    const cycle = lens.reduce((a, b) => a + b, 0);
+    const off = ((t % cycle) + cycle) % cycle;
+    let acc = 0;
+    for (let k = 0; k < active.length; k++) {
+      if (off < acc + lens[k]) return { slide: active[k][0], idx: active[k][1], start: t - off + acc, end: t - off + acc + lens[k], single: active.length === 1 };
+      acc += lens[k];
+    }
+    return null;
+  }
+
+  start() {
+    this.stop();
+    this.running = true;
+    const my = this.token;
+    Promise.all([this.ready, this.opts.clockReady]).then(() => my === this.token && this.running && this._run(my));
+  }
+
+  stop() {
+    this.running = false;
+    this.token++;
+    clearInterval(this.drift);
+    clearTimeout(this.sleepT);
+  }
+
+  clear() { this.stop(); this._teardown(); }
+  next() {}                                        // the wall follows the clock; no skipping
+
+  _sleepUntil(ts, my) {
+    return new Promise((r) => {
+      const tick = () => {
+        if (my !== this.token) return r();
+        const left = ts - this.now();
+        if (left <= 0) return r();
+        this.sleepT = setTimeout(tick, Math.min(left, 30000));
+      };
+      tick();
+    });
+  }
+
+  async _prepare(slide) {
+    let url = null;
+    const isMedia = slide.type === 'image' || slide.type === 'video';
+    if (isMedia) {
+      try { url = await Promise.race([this.opts.resolveUrl(slide), new Promise((r) => setTimeout(() => r(null), 20000))]); } catch {}
+      if (!url) return null;
+    }
+    const el = buildSlide(slide, url, { mutedOverride: this.opts.mutedOverride });
+    el.style.opacity = '0';
+    const v = el.querySelector('video');
+    if (v) { v.autoplay = false; v.loop = true; v.pause?.(); }
+    this.host.stage.appendChild(el);
+    const ok = await waitReady(el, 15000);
+    if (!ok) { el.remove(); return null; }
+    return el;
+  }
+
+  async _run(my) {
+    let seg = null;
+    while (this.running && my === this.token) {
+      const t = this.now();
+      const next = seg && t < seg.end ? this.segAt(seg.end + 1) : this.segAt(t);
+      if (!next) {
+        this._swap(null, null);
+        this.opts.onChange?.({ index: -1, total: this.slides.length, idle: true });
+        seg = null;
+        await this._sleepUntil(this.now() + 30000, my);
+        continue;
+      }
+      const reuse = !!(seg && this.current && next.single && next.slide.id === seg.slide.id);
+      const el = reuse ? this.current : await this._prepare(next.slide);
+      if (my !== this.token) { if (!reuse) el?.remove(); return; }
+      await this._sleepUntil(next.start, my);
+      if (my !== this.token) { if (!reuse) el?.remove(); return; }
+      if (!reuse) { if (el) el.style.opacity = ''; this._swap(el, next.slide); }
+      this._play(next, reuse);
+      this.opts.onChange?.({ index: next.idx, total: this.slides.length, slide: next.slide });
+      seg = next;
+      await this._sleepUntil(seg.end - PREP_MS, my);
+    }
+  }
+
+  // Start the slide and keep its video in step with the shared clock.
+  _play(seg, reuse) {
+    clearInterval(this.drift);
+    const el = this.current;
+    if (!el) return;
+    if (!reuse) { startEffect(el, seg.slide, (seg.end - seg.start) / 1000); animateText(el, seg.slide.text?.anim); }
+    const v = el.querySelector('video');
+    if (!v) return;
+    const want = () => { const p = (this.now() - seg.start) / 1000; const d = v.duration; return isFinite(d) && d > 0 ? p % d : p; };
+    // Seeking takes a moment; measure it and jump once more, a little ahead, to land on time.
+    const t0 = performance.now();
+    try { v.currentTime = want(); } catch {}
+    v.addEventListener('seeked', () => {
+      const lag = (performance.now() - t0) / 1000;
+      if (Math.abs(v.currentTime - want()) > 0.06) { try { v.currentTime = want() + Math.min(lag, 1); } catch {} }
+    }, { once: true });
+    v.playbackRate = 1;
+    v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+    this.drift = setInterval(() => {
+      if (v.paused || v.seeking || !v.isConnected) return;
+      const target = want();
+      let d = v.currentTime - target;                       // + = ahead of the wall clock
+      const dur = v.duration;
+      if (isFinite(dur) && dur > 0) { if (d > dur / 2) d -= dur; if (d < -dur / 2) d += dur; }
+      if (Math.abs(d) > 0.8) { try { v.currentTime = target + 0.12; } catch {} v.playbackRate = 1; }
+      else if (Math.abs(d) > 0.025) v.playbackRate = Math.min(1.08, Math.max(0.92, 1 - d * 0.6));
+      else v.playbackRate = 1;
+    }, 500);
+  }
+
+  _swap(el, slide) {
+    const prev = this.current;
+    this.current = el;
+    const kind = slide?.transition || 'fade';
+    const anim = T[kind];
+    const ms = slide?.transition_ms ?? 900;
+    if (el) el.style.zIndex = 2;
+    if (prev) { prev.style.zIndex = 1; prev.querySelectorAll('video').forEach((v) => { try { v.pause(); } catch {} }); }
+    const cleanup = () => {
+      if (prev && prev !== this.current) { prev.querySelectorAll('video').forEach((v) => { v.removeAttribute('src'); v.load(); }); prev.remove(); }
+    };
+    if (!anim || ms <= 0 || !prev || !el) return cleanup();
+    const opt = { duration: ms, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' };
+    const a = el.animate(anim.in, opt);
+    prev.animate(anim.out, opt);
+    a.finished.then(() => { a.cancel(); cleanup(); }).catch(cleanup);
+  }
+}
+
 function paintTicker(el, t) {
   el.replaceChildren();
   Object.assign(el.style, { background: t.bg || '#3f6fd0', color: t.color || '#ffffff', display: 'flex', alignItems: 'center',

@@ -8,6 +8,8 @@ import { ruleForm } from './rule-form.js';
 import { licenseState } from '../license.js';
 import { emergencyDialog, overridesBanner } from './emergency.js';
 import { publishSummary } from './show-on-tvs.js';
+import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
+import { validWall } from '../renderer.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -40,6 +42,7 @@ export function statusBadges(screen, rules, byId) {
   out.push(isOnline(screen) ? h('span', { class: 'badge ok' }, 'Online') : h('span', { class: 'badge bad' }, screen.last_seen ? `Offline · ${timeAgo(screen.last_seen)}` : 'Offline'));
   if (needsPublish(screen, rules.filter((r) => r.screen_id === screen.id), byId)) out.push(h('span', { class: 'badge warn' }, 'Unpublished changes'));
   out.push(licenseBadge(screen));
+  if (validWall(screen.wall)) out.push(h('span', { class: 'badge', title: 'Part of a video wall' }, `Wall: ${screen.wall.name} · row ${screen.wall.y + 1}, screen ${screen.wall.x + 1}`));
   return out;
 }
 
@@ -148,8 +151,11 @@ export async function screensPage({ main, go }) {
         if (v === '__new') { go('playlists'); return; }
         sel.disabled = true;
         try {
-          await q(sb.from('screens').update({ default_playlist_id: v || null }).eq('id', s.id));
-          const r = await publishOrRequest('screen', s.id, s.name);
+          // A TV in a video wall switches the whole wall, so they stay together.
+          const group = validWall(s.wall) ? data.screens.filter((x) => x.wall?.id === s.wall.id) : [s];
+          await q(sb.from('screens').update({ default_playlist_id: v || null }).in('id', group.map((x) => x.id)));
+          let r = { pending: false };
+          for (const x of group) { const rr = await publishOrRequest('screen', x.id, x.name); if (rr.pending) r = rr; }
           toast(r.pending ? publishSummary({ ok: 0, pending: 1, failed: [] }) : `${s.name}: now showing ${data.byId[v]?.name || 'nothing'}`);
           await refresh();
         } catch (err) { toast(err.message, true); sel.disabled = false; }
@@ -190,6 +196,7 @@ export async function screensPage({ main, go }) {
       h('div', { class: 'row' }, filterSel,
         canManage() || !currentClient()?.require_approval ? h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message') : null,
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Sites') : null,
+        canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
 
     if (!screens.length) {
@@ -210,7 +217,17 @@ export async function screensPage({ main, go }) {
     if (noSite.length) groups.push({ id: 'none', title: sites.length ? 'No site' : null, items: noSite });
     if (filter !== 'all') groups = groups.filter((g) => g.id === filter);
 
-    main.replaceChildren(head, bannerBox, ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
+    const walls = wallsOf(screens);
+    const wallSection = walls.length ? h('section', { style: { marginBottom: '26px' } },
+      h('h2', { style: { marginBottom: '10px' } }, 'Video walls'),
+      h('div', { class: 'cards' }, walls.map((w) => h('div', { class: 'card pad wall-card' },
+        h('div', { class: 'row between' }, h('h3', {}, w.name), h('span', { class: 'tiny' }, `${w.cols} × ${w.rows} · ${w.tvs.filter(isOnline).length}/${w.tvs.length} online`)),
+        wallDiagram(w, screens),
+        h('div', { class: 'row between' },
+          h('span', { class: 'small muted' }, 'Plays: ' + (data.byId[w.tvs[0]?.default_playlist_id]?.name || 'nothing')),
+          canManage() ? h('button', { class: 'btn sm', onclick: () => wallDialog({ wall: w, screens, playlists: data.playlists, onDone: refresh }) }, 'Edit wall') : null))))) : null;
+
+    main.replaceChildren(head, bannerBox, wallSection || '', ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },

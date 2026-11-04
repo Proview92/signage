@@ -5,7 +5,7 @@
 //  3. Caches all media locally so it keeps playing when offline
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
-import { LayoutPlayer, onAirPlaylist } from './renderer.js';
+import { LayoutPlayer, WallPlayer, validWall, onAirPlaylist } from './renderer.js';
 import { licenseState, licenseSummary } from './license.js';
 import { createRemoteMenu } from './remote.js';
 import { shrinkImage } from './imgfit.js';
@@ -27,6 +27,27 @@ let content = null;       // published snapshot
 let player = null;
 let currentKey = null;    // playlistId + version currently loaded
 let channel = null;
+
+// ------------------------------------------------------------ shared clock (video walls)
+// Each TV estimates how far its clock is from the server's, so every TV in a wall agrees on "now".
+let clockOffset = 0, clockSyncedAt = 0, clockBusy = false;
+const serverNow = () => Date.now() + clockOffset;
+async function syncClock() {
+  if (clockBusy) return;
+  clockBusy = true;
+  try {
+    let best = null;
+    for (let i = 0; i < 6; i++) {
+      const t0 = Date.now();
+      const { data, error } = await sb.rpc('server_now');
+      const t1 = Date.now();
+      if (error || typeof data !== 'number') continue;
+      const rtt = t1 - t0;
+      if (!best || rtt < best.rtt) best = { rtt, off: data - (t0 + t1) / 2 };
+    }
+    if (best) { clockOffset = best.off; clockSyncedAt = Date.now(); console.log('[signage] clock offset', Math.round(best.off), 'ms, rtt', best.rtt); }
+  } catch {} finally { clockBusy = false; }
+}
 
 // ------------------------------------------------------------ media cache
 const objectUrls = new Map();
@@ -122,16 +143,24 @@ function evaluate() {
   if (!content) return;
   const air = onAirPlaylist(content);
   const { playlistId, rule } = air;
-  const key = playlistId ? `${air.key}:${content.version}` : `none:${content.version}`;
+  const wall = validWall(screen?.wall) ? screen.wall : null;
+  const wallKey = wall ? `|wall:${wall.id}:${wall.cols}x${wall.rows}@${wall.x},${wall.y}:${wall.bezel || ''}` : '';
+  const key = (playlistId ? `${air.key}:${content.version}` : `none:${content.version}`) + wallKey;
   if (key === currentKey) return;
   currentKey = key;
   show('stage');
   onAirId = playlistId;
-  if (!player) player = new LayoutPlayer($('stage'), {
-    resolveUrl,
-    lookup: (id) => content?.playlists?.[id] || null,
-    onChange: ({ index, slide }) => { nowPlaying = slide ? `${onAirName} #${index + 1}` : 'idle'; playLog?.(slide?._pl || onAirId, slide); },
-  });
+  const onChange = ({ index, slide }) => { nowPlaying = slide ? `${onAirName} #${index + 1}${wall ? ' (wall)' : ''}` : 'idle'; playLog?.(slide?._pl || onAirId, slide); };
+  const wantKind = wall ? 'wall' : 'layout';
+  if (player && (player.kind !== wantKind || (wall && JSON.stringify(player.wall) !== JSON.stringify(wall)))) { player.clear(); player = null; }
+  if (!player) {
+    const clockReady = wall && Date.now() - clockSyncedAt > 60000 ? syncClock() : null;
+    player = wall
+      ? new WallPlayer($('stage'), { resolveUrl, onChange, wall, now: serverNow, clockReady, mutedOverride: wall.x || wall.y ? true : undefined })
+      : new LayoutPlayer($('stage'), { resolveUrl, lookup: (id) => content?.playlists?.[id] || null, onChange });
+    player.kind = wantKind;
+    if (wall) player.wall = wall;
+  }
   if (!playlistId) { player.clear(); nowPlaying = 'idle'; return; }
   const pl = air.pl;
   onAirName = air.name;
@@ -386,6 +415,7 @@ if (!configured) {
   setInterval(evaluate, 15000);   // schedule changes & licence expiry over time
   setInterval(poll, 60000);       // safety net if realtime drops
   setInterval(heartbeat, 60000);
+  setInterval(() => { if (validWall(screen?.wall)) syncClock(); }, 10 * 60000);   // keep wall clocks agreed
   setTimeout(heartbeat, 5000);
   window.addEventListener('online', () => { poll(); });
   sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') { localStorage.removeItem(LS.screen); location.reload(); } });
