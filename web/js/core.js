@@ -272,13 +272,17 @@ export async function publishOrRequest(kind, id, name) {
 }
 
 export async function refreshMe() {
-  state.me = await rpc('whoami');
+  const me = await rpc('whoami');
+  // No signed-in user (the session ended in the background): don't carry on with an empty account.
+  if (!me?.user_id) { await sb.auth.signOut().catch(() => {}); throw new Error('Your sign-in has ended. Please sign in again.'); }
+  state.me = me;
   const ids = state.me.clients.map((c) => c.id);
   const saved = localStorage.getItem('signage.client');
   state.clientId = ids.includes(state.clientId) ? state.clientId : (ids.includes(saved) ? saved : ids[0] || null);
   return state.me;
 }
 export function setClient(id) {
+  if (!id) return;   // never switch to "no business": every page needs one
   state.clientId = id;
   localStorage.setItem('signage.client', id);
 }

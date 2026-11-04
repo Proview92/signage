@@ -69,7 +69,11 @@ async function render() {
   if (!state.me) {
     try { await refreshMe(); } catch (e) { return root.replaceChildren(errorPage(e)); }
   }
+  // Signed out (or a newer render started) while we were waiting: let that one finish instead.
+  if (!state.me || !state.session || my !== renderSeq) return;
   if (!state.me.is_admin && !state.me.clients.length) return root.replaceChildren(noAccess());
+  // Always have a valid business selected (never "none" for someone who belongs to one).
+  if (!state.me.is_admin && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
 
   let match = null, page = null, section = null;
   for (const [re, fn, sec] of routes) { const m = path.match(re); if (m) { match = m; page = fn; section = sec; break; } }

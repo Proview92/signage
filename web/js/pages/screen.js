@@ -22,6 +22,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     byId = Object.fromEntries(playlists.map((p) => [p.id, p]));
   };
   await load();
+  if (!screen.client_id) { toast('This TV has been unlinked. Pair it again from Screens → Add a TV.', true); return go('screens'); }
   if (screen.client_id !== state.clientId) { setClient(screen.client_id); return rerender(); }
 
   const plIds = () => playlists.map((p) => p.id);
