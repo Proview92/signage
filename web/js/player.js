@@ -255,7 +255,12 @@ function subscribe() {
   channel = sb.channel('screen-' + screen.id)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'screens', filter: `id=eq.${screen.id}` }, (payload) => {
       if (payload.eventType === 'DELETE') return boot();
-      apply(payload.new);
+      const n = payload.new || {};
+      // Live updates leave out large unchanged fields (like the published content) when something
+      // small changes, e.g. the TV's own heartbeat. Never treat that as "nothing published":
+      // fetch the full row instead.
+      if (n.content == null && n.claimed) return poll();
+      apply(n);
     })
     .subscribe((status) => { $('net').classList.toggle('bad', status !== 'SUBSCRIBED'); });
 }

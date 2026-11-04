@@ -73,7 +73,9 @@
       .contact { flex-direction: column; align-items: center; gap: 1.4vmin; }
       #code { font-size: 14vw; padding: 2.5vw 4vw; }
       p { max-width: 86vw; font-size: 3.4vmin; }
-      .steps { font-size: 3.4vmin; }
+      .steps { font-size: 3.4vmin; text-align: left; max-width: 80vw; }
+      .steps > div { display: flex; align-items: flex-start; gap: 1.4vmin; }
+      .steps b { flex: none; margin-right: 0; }
       .steps b { width: 5vmin; height: 5vmin; font-size: 2.6vmin; }
       h1 { font-size: 6.4vmin; }
       .brand-logo { height: 14vmin; }
@@ -100,9 +102,9 @@
     <h1>Pair this screen</h1>
     <div id="code">······</div>
     <div class="steps">
-      <div><b>1</b>On your phone or computer open <span class="url" id="dash-url"></span></div>
-      <div><b>2</b>Go to <span class="url">Screens → Add a TV</span></div>
-      <div><b>3</b>Enter the code above</div>
+      <div><b>1</b><span>On your phone or computer open <span class="url" id="dash-url"></span></span></div>
+      <div><b>2</b><span>Go to <span class="url">Screens → Add a TV</span></span></div>
+      <div><b>3</b><span>Enter the code above</span></div>
     </div>
     <div class="contact">
       <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></svg>www.proviewsignage.co.uk</span>
