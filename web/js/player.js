@@ -466,10 +466,16 @@ const remote = createRemoteMenu({
     return {
       name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
-      model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay,
+      model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
     };
   },
   onReload: () => location.reload(),
+  // Unlink from the TV's own menu: back to the pairing screen with a new code.
+  onUnlink: async () => {
+    const { data, error } = await sb.rpc('device_unpair');
+    if (error) throw error;
+    apply(data);
+  },
 });
 async function loadSettings() {
   try {

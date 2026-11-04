@@ -13,7 +13,7 @@ async function sha256hex(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function createRemoteMenu({ getStatus, onReload }) {
+export function createRemoteMenu({ getStatus, onReload, onUnlink }) {
   let settings = JSON.parse(localStorage.getItem(LS_SETTINGS) || 'null') || { pin_hash: null, return_minutes: 5 };
   let open = false, mode = 'pin', pin = '', fails = 0, lockedUntil = 0, focus = 0, closeTimer = null;
 
@@ -67,6 +67,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
       isApp ? ['exit-stay', 'Exit until next restart', 'Stays closed until the TV is switched off and on'] : null,
       isApp && native()?.checkForUpdate ? ['update', 'Check for app update', `Installed: version ${native()?.appVersion?.() || '?'}`] : null,
       isApp && st.needsOverlay ? ['overlay', 'Allow automatic reopening', 'Grant “Display over other apps” so the player can reopen itself'] : null,
+      st.paired && onUnlink ? ['unlink', 'Unlink this TV', 'Disconnect it from its account and show the pairing code again'] : null,
       ['close', 'Close menu', ''],
     ].filter(Boolean);
     $body.innerHTML = `<div class="rm-list">${items.map(([k, t, s]) => `<button data-k="${esc(k)}"><b>${esc(t)}</b>${s ? `<span>${esc(s)}</span>` : ''}</button>`).join('')}</div>`;
@@ -84,6 +85,15 @@ export function createRemoteMenu({ getStatus, onReload }) {
     ];
     $body.innerHTML = `<table class="rm-table">${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>
       <div class="rm-list"><button data-k="back"><b>Back</b></button></div>`;
+    focus = 0; paintFocus();
+  }
+
+  function renderUnlink(msg = '') {
+    mode = 'confirm';
+    $title.textContent = 'Unlink this TV?';
+    $body.innerHTML = `<p class="rm-note">This TV will stop playing and disconnect from <b>${esc(getStatus().name || 'its account')}</b>. Its schedule is removed, and it shows a new pairing code so it can be added again.</p>
+      ${msg ? `<p class="rm-note rm-err">${esc(msg)}</p>` : ''}
+      <div class="rm-list"><button data-k="unlink-no"><b>Cancel</b></button><button data-k="unlink-yes" class="rm-danger"><b>Yes, unlink this TV</b></button></div>`;
     focus = 0; paintFocus();
   }
 
@@ -120,6 +130,13 @@ export function createRemoteMenu({ getStatus, onReload }) {
       case 'overlay': native()?.openOverlayPermission(); break;
       case 'update': close(); native()?.checkForUpdate?.(true); break;
       case 'close': close(); break;
+      case 'unlink': renderUnlink(); break;
+      case 'unlink-no': renderMenu(); break;
+      case 'unlink-yes': {
+        $body.innerHTML = '<p class="rm-note">Unlinking…</p>';
+        Promise.resolve(onUnlink()).then(() => close(), (e) => renderUnlink('Could not unlink: ' + (e?.message || 'check the internet connection')));
+        break;
+      }
     }
   }
 
@@ -172,7 +189,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
     if (e.key === 'Enter' || e.key === ' ') return activate();
     if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'GoBack' || e.key === 'BrowserBack') {
       if (mode === 'pin' && pin && e.key === 'Backspace') return pressPin('⌫');
-      if (mode === 'status') return renderMenu();
+      if (mode === 'status' || mode === 'confirm') return renderMenu();
       return close();
     }
     if (mode === 'pin' && /^\d$/.test(e.key)) return pressPin(e.key);
@@ -185,7 +202,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
   });
 
   // Hooks for the Android app
-  window.signageRemote = { open: show, close, isOpen: () => open, back: () => { if (!open) return false; if (mode === 'status') renderMenu(); else close(); return true; } };
+  window.signageRemote = { open: show, close, isOpen: () => open, back: () => { if (!open) return false; if (mode === 'status' || mode === 'confirm') renderMenu(); else close(); return true; } };
   if (settings.pin_hash) { try { native()?.setConfig(JSON.stringify(settings)); } catch {} }
 
   return { setSettings, open: show, close, isOpen: () => open };
