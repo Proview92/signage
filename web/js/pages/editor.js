@@ -1,5 +1,6 @@
 import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
+import { layoutWithTicker } from '../renderer.js';
 import { SlidePlayer, LayoutPlayer, LAYOUTS, layoutLabel, normLayout, zoneCount, zonePlaylistIds, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
@@ -21,7 +22,7 @@ export async function editorPage({ main, params: [id], go }) {
   const insertAt = () => (sel >= 0 && inArea(pl.slides[sel]) ? sel + 1 : (areaIdx().at(-1) ?? pl.slides.length - 1) + 1);
   const zoneProp = () => (areaCount() > 1 && area > 0 ? { zone: area } : {});
   // In a split layout, pictures and videos are fitted inside their area instead of being cut off.
-  const areaFit = (kind) => (areaCount() > 1 ? (kind === 'image' ? 'blur' : 'contain') : 'cover');
+  const areaFit = () => (areaCount() > 1 ? 'stretch' : 'cover');
   delete pl.settings.auto_publish;   // option removed: TVs update when you press Update TVs / Publish
   let saveTimer = null, saving = false, dirty = false, player = null, previewTimer = null;
 
@@ -120,12 +121,36 @@ export async function editorPage({ main, params: [id], go }) {
 
   // ------------------------------------------------ preview
   const previewBox = h('div', { class: 'preview-box' });
+  // The shape of the area a slide plays in (split layouts), sized like the TV lays it out (short side = 1080).
+  function areaShape(s) {
+    if (!s || areaCount() < 2) return null;
+    const portrait = pl.settings.orientation === 'portrait';
+    const { layout, ticker } = normLayout(pl.settings);
+    const plan = layoutWithTicker(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080, ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split);
+    const r = plan.zones[s.zone || 0] || plan.zones[0];
+    const k = 1080 / Math.min(r[2], r[3]);
+    return { w: Math.round(r[2] * k), h: Math.round(r[3] * k) };
+  }
+  let playerShape = '';
   function refreshPreview(withTransition = false) {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(() => {
-      previewBox.className = 'preview-box' + (pl.settings.orientation === 'portrait' ? ' portrait' : '');
-      if (!player) player = new SlidePlayer(previewBox, { resolveUrl: (s) => mediaUrl(s.path), mutedOverride: true });
-      player.host.setOrientation(pl.settings.orientation || 'landscape');
+      const shape = areaShape(pl.slides[sel]);
+      const shapeKey = shape ? `${shape.w}x${shape.h}` : (pl.settings.orientation || 'landscape');
+      if (shape) {
+        // Exactly the area's shape: as wide as the column allows, but not taller than the window.
+        previewBox.className = 'preview-box area';
+        const avail = previewBox.parentElement?.clientWidth || 640, maxH = Math.min(window.innerHeight * 0.62, 620);
+        const wPx = Math.min(avail, maxH * shape.w / shape.h);
+        Object.assign(previewBox.style, { aspectRatio: '', width: Math.round(wPx) + 'px', height: Math.round(wPx * shape.h / shape.w) + 'px' });
+      } else {
+        previewBox.className = 'preview-box' + (pl.settings.orientation === 'portrait' ? ' portrait' : '');
+        Object.assign(previewBox.style, { aspectRatio: '', width: '', height: '' });
+      }
+      if (player && playerShape !== shapeKey) { player.clear(); player.host.destroy(); previewBox.replaceChildren(); player = null; }
+      if (!player) player = new SlidePlayer(previewBox, { resolveUrl: (s) => mediaUrl(s.path), mutedOverride: true, size: shape || null });
+      playerShape = shapeKey;
+      if (!shape) player.host.setOrientation(pl.settings.orientation || 'landscape');
       const s = pl.slides[sel];
       if (!s) { player.clear(); return; }
       const prev = pl.slides[sel - 1] || pl.slides[pl.slides.length - 1];
@@ -215,7 +240,7 @@ export async function editorPage({ main, params: [id], go }) {
     const s = pl.slides[i], el = rowThumbs[i];
     if (!s || !el) return;
     const url = s.path ? await mediaUrl(s.path).catch(() => null) : null;
-    renderStill(el, s, url, pl.settings.orientation);
+    renderStill(el, s, url, pl.settings.orientation, areaShape(s));
   }
 
   // Start / End date side by side. Empty = the slide shows all the time until it's stopped or deleted.
@@ -324,7 +349,7 @@ export async function editorPage({ main, params: [id], go }) {
           const [m] = (await pickMedia({ multiple: false })) || [];
           if (m) { change((x) => Object.assign(x, { type: m.kind, media_id: m.id, path: m.path, name: m.name, video_duration: m.duration_s ? Number(m.duration_s) : undefined, duration: m.kind === 'video' ? 0 : (x.duration || 8) })); paintInspector(); }
         } }, 'Replace…'),
-        h('div', { class: 'seg' }, [['cover', areaCount() > 1 ? 'Fill area' : 'Fill screen'], ['contain', 'Fit whole'], ...(s.type === 'image' ? [['blur', 'Fit + blur']] : [])].map(([v, l]) =>
+        h('div', { class: 'seg' }, [['stretch', areaCount() > 1 ? 'Stretch to area' : 'Stretch to screen'], ['cover', 'Fill (crop)'], ['contain', 'Fit whole'], ...(s.type === 'image' ? [['blur', 'Fit + blur']] : [])].map(([v, l]) =>
           h('button', { type: 'button', class: (s.fit || 'cover') === v ? 'on' : '', onclick: () => { change((x) => { x.fit = v; x.fit_set = true; }); paintInspector(); } }, l))),
         isVideo ? h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: s.muted === false, onchange: (e) => change((x) => (x.muted = !e.target.checked), { list: false }) }), 'Play sound on TV') : null) : null,
       h('div', { class: 'full' }, field('Background', sw)),
@@ -395,8 +420,8 @@ export async function editorPage({ main, params: [id], go }) {
     pl.slides.forEach((s) => { if ((s.zone || 0) >= n) delete s.zone; });
     // Switching to a split layout: fit existing pictures/videos inside their area so nothing is cut off.
     // (Slides where someone picked the fit by hand keep their choice.)
-    if (n > 1) pl.slides.forEach((s) => { if ((s.type === 'image' || s.type === 'video') && !s.fit_set && (s.fit || 'cover') === 'cover') s.fit = areaFit(s.type); });
-    if (n <= 1 && before > 1) pl.slides.forEach((s) => { if (!s.fit_set && (s.fit === 'blur' || s.fit === 'contain')) s.fit = 'cover'; });
+    if (n > 1) pl.slides.forEach((s) => { if ((s.type === 'image' || s.type === 'video') && !s.fit_set) s.fit = 'stretch'; });
+    if (n <= 1 && before > 1) pl.slides.forEach((s) => { if (!s.fit_set && s.fit !== 'cover') s.fit = 'cover'; });
     if (area >= n) area = 0;
     schedule(); paintLayoutBtn(); paint();
     toast(n > 1 ? `Layout saved. Pick an area above the slides and add media to it.` : 'Layout saved');

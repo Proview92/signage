@@ -192,6 +192,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 @supports not (aspect-ratio: 1) { .preview-box { height: 0; padding-top: 56.25%; } }
 .preview-box.portrait { width: auto; height: min(62vh, 720px); aspect-ratio: 9/16; margin: 0 auto; }
 .preview-box > .sg-host { position: absolute; inset: 0; }
+.preview-box.area { aspect-ratio: auto; margin: 0 auto; padding-top: 0; }
 .inspector { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
 .inspector .full { grid-column: 1 / -1; }
 .section-title { font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); grid-column: 1/-1; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }

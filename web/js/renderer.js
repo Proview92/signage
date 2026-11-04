@@ -69,7 +69,7 @@ export function newSlide(partial = {}) {
     transition: 'none',      // new slides: no transition, no motion (can be changed per slide)
     transition_ms: 900,
     effect: 'none',
-    fit: 'cover',            // cover (fill) | contain (whole picture) | blur (whole picture on a blurred copy)
+    fit: 'cover',            // cover (fill, may crop) | contain (whole picture) | blur (whole picture on a blurred copy) | stretch (resized to exactly fill)
     bg: '#000000',
     muted: true,
     text: { title: '', subtitle: '', position: 'bottom-left', color: '#ffffff', size: 'm', box: true, anim: 'fade-up' },
@@ -265,7 +265,7 @@ export function buildSlide(slide, url, { forPreview = false, mutedOverride } = {
   if (media) {
     media.className = 'sg-media';
     const fitWhole = slide.fit === 'contain' || slide.fit === 'blur';
-    media.style.objectFit = fitWhole ? 'contain' : 'cover';
+    media.style.objectFit = slide.fit === 'stretch' ? 'fill' : fitWhole ? 'contain' : 'cover';
     const wrap = document.createElement('div');
     wrap.className = 'sg-media-wrap';
     // "Fit + blur": a soft, enlarged copy of the picture fills the spare space behind it.
@@ -566,10 +566,10 @@ export class SlidePlayer {
 }
 
 // Render a single static frame (used for thumbnails).
-export function renderStill(container, slide, url, orientation = 'landscape') {
+export function renderStill(container, slide, url, orientation = 'landscape', size = null) {
   container.__sgStill?.destroy();          // stop the previous stage's resize watcher
   container.replaceChildren();
-  const st = createStage(container, orientation);
+  const st = createStage(container, orientation, size);
   const el = buildSlide(slide, url, { forPreview: true, mutedOverride: true });
   st.stage.appendChild(el);
   container.__sgStill = st;
