@@ -575,7 +575,8 @@ export function renderStill(container, slide, url, orientation = 'landscape') {
 //    (older values 'ticker' / 'side-ticker' still work)
 //  Each slide has slide.zone = area index (0 = area 1). An area with no slides of its own can
 //  instead play another playlist: settings.zones = [playlistId for area 2, area 3, area 4].
-//  settings.ticker_on + settings.ticker: { text, speed: 'slow'|'normal'|'fast', bg, color }
+//  settings.ticker_on + settings.ticker: { text, speed: 'slow'|'normal'|'fast', bg, color,
+//    position: 'bottom'|'top'|'both'|'<area index>:bottom|top|both', text2 (bottom text when 'both'), size: 'small'|'normal'|'large', dir: 'rtl'|'ltr' }
 // ---------------------------------------------------------------------
 export const LAYOUTS = {
   full: 'Full screen',
@@ -620,6 +621,33 @@ export function layoutZones(layout, W, H) {
 }
 export const zoneCount = (layout) => layoutZones(layout, 1920, 1080).length;
 
+export const TICKER_SIZES = { small: 64, normal: TICKER_H, large: 140 };
+/** Where the ticker sits: { area: null | index, edge: 'top'|'bottom' }. */
+export function tickerPlace(t = {}, layout = 'full') {
+  const m = /^(?:(\d+):)?(top|bottom|both)$/.exec(t.position || 'bottom') || [];
+  let area = m[1] != null ? +m[1] : null;
+  if (area != null && area >= zoneCount(layout)) area = null;
+  if (area != null && zoneCount(layout) < 2) area = null;
+  return { area, edge: m[2] || 'bottom' };
+}
+/** Areas and ticker strips for a W×H stage: { zones: [[x,y,w,h]…], tickers: [{ rect: [x,y,w,h], edge }] }. */
+export function layoutWithTicker(layout, W, H, t = null) {
+  if (!t) return { zones: layoutZones(layout, W, H), tickers: [] };
+  const TH = TICKER_SIZES[t.size] || TICKER_H;
+  const { area, edge } = tickerPlace(t, layout);
+  const top = edge !== 'bottom', bottom = edge !== 'top';
+  const cut = ([x, y, w, h]) => [x, y + (top ? TH : 0), w, h - (top ? TH : 0) - (bottom ? TH : 0)];
+  const strips = ([x, y, w, h]) => [...(top ? [{ rect: [x, y, w, TH], edge: 'top' }] : []), ...(bottom ? [{ rect: [x, y + h - TH, w, TH], edge: 'bottom' }] : [])];
+  if (area == null) {
+    const [, cy, , ch] = cut([0, 0, W, H]);
+    return { zones: layoutZones(layout, W, ch).map(([x, y, w, h]) => [x, y + cy, w, h]), tickers: strips([0, 0, W, H]) };
+  }
+  const zones = layoutZones(layout, W, H);
+  const box = zones[area];
+  zones[area] = cut(box);
+  return { zones, tickers: strips(box) };
+}
+
 /** Playlist ids for areas 2…n. */
 export function zonePlaylistIds(st = {}) {
   const { layout } = normLayout(st);
@@ -644,7 +672,7 @@ export class LayoutPlayer {
     this.players = [];
     this.host?.destroy();
     this.host = null;
-    this.tickerEl = null;
+    this.tickerEls = [];
     this.container.replaceChildren();
   }
 
@@ -655,7 +683,7 @@ export class LayoutPlayer {
     const { layout, ticker: tickerOn } = normLayout(st);
     const ticker = tickerOn && st.ticker?.text ? st.ticker : null;
     const extras = zonePlaylistIds(st).map((id) => (id ? this.opts.lookup?.(id) || null : null));
-    const key = `${portrait}|${layout}|${!!ticker}`;
+    const key = `${portrait}|${layout}|${ticker ? `${ticker.position || 'bottom'}|${ticker.size || 'normal'}` : ''}`;
     if (key !== this.key) {
       this._reset();
       this.key = key;
@@ -663,12 +691,13 @@ export class LayoutPlayer {
         this.players = [new SlidePlayer(this.container, this.opts)];
       } else {
         this.host = createStage(this.container, portrait ? 'portrait' : 'landscape');
-        const SW = portrait ? 1080 : 1920, SH = (portrait ? 1920 : 1080) - (ticker ? TICKER_H : 0);
+        const SW = portrait ? 1080 : 1920, SH = portrait ? 1920 : 1080;
+        const plan = layoutWithTicker(layout, SW, SH, ticker);
         const zone = (x, y, w, h) => { const z = document.createElement('div'); Object.assign(z.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', overflow: 'hidden', background: '#000' }); this.host.stage.appendChild(z); return z; };
-        this.players = layoutZones(layout, SW, SH).map(([x, y, w, h], i) =>
+        this.players = plan.zones.map(([x, y, w, h], i) =>
           // Lay each area out at "full-screen scale" (its short side = 1080) so text and pictures keep sensible proportions.
           { const k = 1080 / Math.min(w, h); return new SlidePlayer(zone(x, y, w, h), { ...this.opts, size: { w: Math.round(w * k), h: Math.round(h * k) }, onChange: i === 0 ? this.opts.onChange : null }); });
-        if (ticker) this.tickerEl = zone(0, SH, SW, TICKER_H);
+        this.tickerEls = plan.tickers.map((tk) => { const z = zone(...tk.rect); z.style.zIndex = '2'; z.dataset.edge = tk.edge; return z; });
       }
     }
     if (this.players.length > 1) {
@@ -679,7 +708,7 @@ export class LayoutPlayer {
         p.load(mine.length ? { name: pl?.name, settings: pl?.settings || {}, slides: mine } : (extras[i] || { slides: [], settings: {} }));
       });
     } else this.players[0].load(pl);
-    if (this.tickerEl && ticker) paintTicker(this.tickerEl, ticker);
+    if (ticker) this.tickerEls.forEach((el) => paintTicker(el, el.dataset.edge === 'bottom' && this.tickerEls.length > 1 && ticker.text2?.trim() ? { ...ticker, text: ticker.text2 } : ticker));
     if (this.running) this.players.forEach((p) => p.start());
   }
 
@@ -692,7 +721,7 @@ export class LayoutPlayer {
 function paintTicker(el, t) {
   el.replaceChildren();
   Object.assign(el.style, { background: t.bg || '#3f6fd0', color: t.color || '#ffffff', display: 'flex', alignItems: 'center',
-    fontFamily: '"Inter","Segoe UI",system-ui,Roboto,Arial,sans-serif', fontSize: '50px', fontWeight: '700', whiteSpace: 'nowrap' });
+    fontFamily: '"Inter","Segoe UI",system-ui,Roboto,Arial,sans-serif', fontSize: Math.round((TICKER_SIZES[t.size] || TICKER_H) * 0.52) + 'px', fontWeight: '700', whiteSpace: 'nowrap' });
   const track = document.createElement('div');
   Object.assign(track.style, { display: 'inline-flex', willChange: 'transform' });
   const text = String(t.text).split('\n').map((x) => x.trim()).filter(Boolean).join('     •     ');
@@ -701,6 +730,8 @@ function paintTicker(el, t) {
   requestAnimationFrame(() => {
     const w = track.firstChild.getBoundingClientRect().width / ((el.getBoundingClientRect().width / (el.offsetWidth || 1920)) || 1);
     const pxPerSec = { slow: 90, normal: 150, fast: 240 }[t.speed] || 150;
-    track.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${w}px)` }], { duration: Math.max(4000, (w / pxPerSec) * 1000), iterations: Infinity });
+    const frames = [{ transform: 'translateX(0)' }, { transform: `translateX(-${w}px)` }];
+    if (t.dir === 'ltr') frames.reverse();
+    track.animate(frames, { duration: Math.max(4000, (w / pxPerSec) * 1000), iterations: Infinity });
   });
 }

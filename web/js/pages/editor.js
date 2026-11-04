@@ -385,7 +385,7 @@ export async function editorPage({ main, params: [id], go }) {
     } }, l)));
 
   const layoutBtn = h('button', { class: 'btn', title: 'Full screen, side panel or ticker' });
-  const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait', false, 0, 30), `Layout: ${layoutLabel(n.layout, pl.settings.orientation === 'portrait')}${n.ticker ? ' + ticker' : ''}`); };
+  const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait', false, 0, 30, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null), `Layout: ${layoutLabel(n.layout, pl.settings.orientation === 'portrait')}${n.ticker ? ' + ticker' : ''}`); };
   layoutBtn.onclick = () => layoutDialog(pl, allPlaylists, (st) => {
     Object.assign(pl.settings, st);
     const n = areaCount();

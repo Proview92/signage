@@ -1,7 +1,7 @@
 // Inspector fields for widget slides, and the playlist layout dialog.
 import { h, field, select, toast, modal, errMsg } from '../core.js';
 import { WIDGET_TYPES, geocode, youtubeId } from '../widgets.js';
-import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds } from '../renderer.js';
+import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds, layoutWithTicker } from '../renderer.js';
 
 /** Fields for the selected widget slide. change(fn) mutates + saves; repaint() redraws the inspector. */
 export function widgetFields(s, change, repaint) {
@@ -71,24 +71,28 @@ export function widgetFields(s, change, repaint) {
 
 /** Playlist layout: full screen, side panel, ticker. */
 /** Small picture of a layout (areas numbered). */
-export function layoutDiagram(layout, portrait = false, active = false, hi = 0, size = 96) {
+export function layoutDiagram(layout, portrait = false, active = false, hi = 0, size = 96, ticker = null) {
   const W = portrait ? Math.round(size * 9 / 16) : size, H = portrait ? size : Math.round(size * 9 / 16);
   const box = h('div', { class: 'lay-diagram' + (active ? ' on' : ''), style: { width: W + 'px', height: H + 'px' } });
-  layoutZones(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080).forEach(([x, y, w, hh], i) => {
-    const k = W / (portrait ? 1080 : 1920);
-    box.append(h('div', { class: 'lay-zone' + (i === hi ? ' first' : ''), style: { left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' } }, String(i + 1)));
-  });
+  const k = W / (portrait ? 1080 : 1920);
+  const plan = layoutWithTicker(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080, ticker);
+  const pos = ([x, y, w, hh]) => ({ left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' });
+  plan.zones.forEach((r, i) => box.append(h('div', { class: 'lay-zone' + (i === hi ? ' first' : ''), style: pos(r) }, String(i + 1))));
+  plan.tickers.forEach((tk) => box.append(h('div', { class: 'lay-ticker', style: pos(tk.rect) })));
   return box;
 }
 
 export function layoutDialog(pl, playlists, onSave) {
   const portrait = pl.settings.orientation === 'portrait';
   const norm = normLayout(pl.settings);
-  const st = { layout: norm.layout, ticker_on: norm.ticker, zones: zonePlaylistIds(pl.settings), ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff', ...(pl.settings.ticker || {}) } };
+  const st = { layout: norm.layout, ticker_on: norm.ticker, zones: zonePlaylistIds(pl.settings), ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff', position: 'bottom', size: 'normal', dir: 'rtl', ...(pl.settings.ticker || {}) } };
   const others = playlists.filter((p) => p.id !== pl.id);
   const picker = h('div', { class: 'lay-grid' });
   const zonesWrap = h('div', { class: 'stack', style: { gap: '10px' } });
   const tickWrap = h('div', { class: 'stack' });
+  const posWrap = h('div', { class: 'stack', style: { gap: '8px' } });
+  const text2 = h('textarea', { rows: 2, value: st.ticker.text2 || '', placeholder: 'Leave empty to show the same text on both' });
+  const text2Wrap = field('Bottom ticker text (optional)', text2);
   const text = h('textarea', { rows: 3, value: st.ticker.text || '', placeholder: 'One message per line, e.g.\nFree Wi-Fi: CAFE-GUEST\nOpen 7am–7pm every day' });
   const tickOn = h('input', { type: 'checkbox', checked: st.ticker_on, onchange: (e) => { st.ticker_on = e.target.checked; paint(); } });
 
@@ -106,8 +110,19 @@ export function layoutDialog(pl, playlists, onSave) {
           ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))))),
     ] : []));
     tickWrap.classList.toggle('hidden', !st.ticker_on);
+    // Ticker position: whole screen, or inside one area.
+    const areaOpts = n > 1 ? Array.from({ length: n }, (_, i) => [[`${i}:top`, `Top of area ${i + 1}`], [`${i}:bottom`, `Bottom of area ${i + 1}`], [`${i}:both`, `Top and bottom of area ${i + 1}`]]).flat() : [];
+    const valid = ['bottom', 'top', 'both', ...areaOpts.map((o) => o[0])];
+    if (!valid.includes(st.ticker.position)) st.ticker.position = 'bottom';
+    text2Wrap.classList.toggle('hidden', !/both$/.test(st.ticker.position));
+    posWrap.replaceChildren(h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } },
+      layoutDiagram(st.layout, portrait, false, -1, 96, st.ticker),
+      h('div', { class: 'grow' }, field('Position', select([['bottom', 'Bottom of screen'], ['top', 'Top of screen'], ['both', 'Top and bottom of screen'], ...areaOpts], st.ticker.position, (v) => { st.ticker.position = v; paint(); })))));
   };
-  tickWrap.append(field('Ticker text', text),
+  tickWrap.append(field('Ticker text', text), posWrap, text2Wrap,
+    h('div', { class: 'grid2' },
+      field('Size', select([['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']], st.ticker.size, (v) => { st.ticker.size = v; paint(); })),
+      field('Scroll direction', select([['rtl', 'Right to left ←'], ['ltr', 'Left to right →']], st.ticker.dir, (v) => (st.ticker.dir = v)))),
     h('div', { class: 'grid3' },
       field('Speed', select([['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], st.ticker.speed, (v) => (st.ticker.speed = v))),
       field('Background', h('input', { type: 'color', value: st.ticker.bg, oninput: (e) => (st.ticker.bg = e.target.value) })),
@@ -119,11 +134,12 @@ export function layoutDialog(pl, playlists, onSave) {
     body: [
       h('div', { class: 'tiny' }, 'Split the screen into areas. Each area plays its own pictures, videos or text at the same time.'),
       picker, zonesWrap,
-      h('label', { class: 'row small', style: { fontWeight: 600 } }, tickOn, 'Add a scrolling ticker along the bottom'),
+      h('label', { class: 'row small', style: { fontWeight: 600 } }, tickOn, 'Add a scrolling ticker'),
       tickWrap,
     ],
     actions: [{ label: 'Cancel' }, { label: 'Save layout', class: 'primary', onClick: () => {
       st.ticker.text = text.value;
+      st.ticker.text2 = /both$/.test(st.ticker.position) ? text2.value : '';
       const n = zoneCount(st.layout);
       const zones = st.zones.slice(0, n - 1);
       if (st.ticker_on && !text.value.trim()) throw new Error('Enter the ticker text');
