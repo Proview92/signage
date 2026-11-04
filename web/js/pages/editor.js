@@ -20,6 +20,8 @@ export async function editorPage({ main, params: [id], go }) {
   const areaIdx = () => pl.slides.map((s, i) => (inArea(s) ? i : -1)).filter((i) => i >= 0);
   const insertAt = () => (sel >= 0 && inArea(pl.slides[sel]) ? sel + 1 : (areaIdx().at(-1) ?? pl.slides.length - 1) + 1);
   const zoneProp = () => (areaCount() > 1 && area > 0 ? { zone: area } : {});
+  // In a split layout, pictures and videos are fitted inside their area instead of being cut off.
+  const areaFit = (kind) => (areaCount() > 1 ? (kind === 'image' ? 'blur' : 'contain') : 'cover');
   delete pl.settings.auto_publish;   // option removed: TVs update when you press Update TVs / Publish
   let saveTimer = null, saving = false, dirty = false, player = null, previewTimer = null;
 
@@ -50,7 +52,7 @@ export async function editorPage({ main, params: [id], go }) {
     const slides = picked.map((m) => newSlide({
       type: m.kind, media_id: m.id, path: m.path, name: m.name,
       duration: m.kind === 'video' ? 0 : 8, video_duration: m.duration_s ? Number(m.duration_s) : undefined,
-      effect: 'none', text: { ...newSlide().text, title: '', subtitle: '' }, ...zoneProp(),
+      effect: 'none', fit: areaFit(m.kind), text: { ...newSlide().text, title: '', subtitle: '' }, ...zoneProp(),
     }));
     const at = insertAt();
     pl.slides.splice(at, 0, ...slides);
@@ -322,8 +324,8 @@ export async function editorPage({ main, params: [id], go }) {
           const [m] = (await pickMedia({ multiple: false })) || [];
           if (m) { change((x) => Object.assign(x, { type: m.kind, media_id: m.id, path: m.path, name: m.name, video_duration: m.duration_s ? Number(m.duration_s) : undefined, duration: m.kind === 'video' ? 0 : (x.duration || 8) })); paintInspector(); }
         } }, 'Replace…'),
-        h('div', { class: 'seg' }, [['cover', 'Fill screen'], ['contain', 'Fit whole image']].map(([v, l]) =>
-          h('button', { type: 'button', class: (s.fit || 'cover') === v ? 'on' : '', onclick: () => { change((x) => (x.fit = v)); paintInspector(); } }, l))),
+        h('div', { class: 'seg' }, [['cover', areaCount() > 1 ? 'Fill area' : 'Fill screen'], ['contain', 'Fit whole'], ...(s.type === 'image' ? [['blur', 'Fit + blur']] : [])].map(([v, l]) =>
+          h('button', { type: 'button', class: (s.fit || 'cover') === v ? 'on' : '', onclick: () => { change((x) => { x.fit = v; x.fit_set = true; }); paintInspector(); } }, l))),
         isVideo ? h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: s.muted === false, onchange: (e) => change((x) => (x.muted = !e.target.checked), { list: false }) }), 'Play sound on TV') : null) : null,
       h('div', { class: 'full' }, field('Background', sw)),
 
@@ -387,9 +389,14 @@ export async function editorPage({ main, params: [id], go }) {
   const layoutBtn = h('button', { class: 'btn', title: 'Full screen, side panel or ticker' });
   const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait', false, 0, 30, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split), `Layout: ${layoutLabel(n.layout, pl.settings.orientation === 'portrait')}${n.ticker ? ' + ticker' : ''}`); };
   layoutBtn.onclick = () => layoutDialog(pl, allPlaylists, (st) => {
+    const before = areaCount();
     Object.assign(pl.settings, st);
     const n = areaCount();
     pl.slides.forEach((s) => { if ((s.zone || 0) >= n) delete s.zone; });
+    // Switching to a split layout: fit existing pictures/videos inside their area so nothing is cut off.
+    // (Slides where someone picked the fit by hand keep their choice.)
+    if (n > 1) pl.slides.forEach((s) => { if ((s.type === 'image' || s.type === 'video') && !s.fit_set && (s.fit || 'cover') === 'cover') s.fit = areaFit(s.type); });
+    if (n <= 1 && before > 1) pl.slides.forEach((s) => { if (!s.fit_set && (s.fit === 'blur' || s.fit === 'contain')) s.fit = 'cover'; });
     if (area >= n) area = 0;
     schedule(); paintLayoutBtn(); paint();
     toast(n > 1 ? `Layout saved. Pick an area above the slides and add media to it.` : 'Layout saved');
