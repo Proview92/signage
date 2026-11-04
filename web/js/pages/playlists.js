@@ -1,5 +1,6 @@
 import { sb, state, h, icon, q, toast, confirmBox, timeAgo, fmtDuration, mediaUrl } from '../core.js';
-import { renderStill } from '../renderer.js';
+import { renderStill, LAYOUTS, layoutLabel } from '../renderer.js';
+import { layoutDiagram } from './widget-editor.js';
 import { templateGallery } from './templates.js';
 import { showOnTvsDialog } from './show-on-tvs.js';
 import { pickMedia } from './media.js';
@@ -18,25 +19,40 @@ export async function playlistsPage({ main, go }) {
   ]);
   const usedOn = (pid) => new Set([...screens.filter((s) => s.default_playlist_id === pid).map((s) => s.id), ...rules.filter((r) => r.playlist_id === pid).map((r) => r.screen_id)]).size;
 
-  // Media-first: pick pictures/videos → playlist is built → offer to show on TVs.
-  const create = async () => {
-    const picked = await pickMedia({ multiple: true, title: 'New playlist: choose pictures & videos', okLabel: 'Create playlist', allowEmpty: true });
-    if (picked === null) return;
-    const slides = picked.map((m) => newSlide({
-      type: m.kind, media_id: m.id, path: m.path, name: m.name,
-      duration: m.kind === 'video' ? 0 : 8, video_duration: m.duration_s ? Number(m.duration_s) : undefined,
-      effect: 'none', text: { ...newSlide().text, title: '', subtitle: '' },
-    }));
+  // New playlist: name, landscape or portrait, and a layout, then straight into the editor.
+  const create = () => {
+    const st = { orientation: 'landscape', layout: 'full' };
     const name = h('input', { type: 'text', value: '', placeholder: 'e.g. Breakfast menu, Window promos', required: true, autocomplete: 'off', oninput: () => name.classList.remove('invalid') });
-    modal({ title: 'Name your playlist', body: [field('Playlist name (required)', name), h('div', { class: 'tiny' }, `${slides.length} slide${slides.length === 1 ? '' : 's'}. You can add text, widgets and effects next.`)],
-      actions: [{ label: 'Cancel' },
-        { label: 'Edit first', onClick: async () => { const p = await make(); go('playlist/' + p.id); } },
-        slides.length ? { label: 'Publish', class: 'primary', onClick: async () => { const p = await make(); setTimeout(() => showOnTvsDialog(p, { onDone: () => go('playlists') }), 50); } } : null].filter(Boolean) });
-    async function make() {
-      const n = name.value.trim();
-      if (!n) { name.classList.add('invalid'); name.focus(); throw new Error('Please give the playlist a name'); }
-      return q(sb.from('playlists').insert({ client_id: state.clientId, name: n, slides, settings: { orientation: 'landscape' } }).select().single());
-    }
+    const orientEl = h('div', { class: 'orient-grid' });
+    const layoutEl = h('div', { class: 'lay-grid' });
+    const paint = () => {
+      const portrait = st.orientation === 'portrait';
+      orientEl.replaceChildren(...[['landscape', 'Landscape', 'TV mounted wide (16:9)'], ['portrait', 'Portrait', 'TV mounted tall (9:16)']].map(([v, l, d]) =>
+        h('button', { type: 'button', class: 'orient-card' + (st.orientation === v ? ' on' : ''), onclick: () => { st.orientation = v; paint(); } },
+          h('span', { class: 'orient-shape ' + v }), h('span', {}, h('b', {}, l), h('small', {}, d)))));
+      layoutEl.replaceChildren(...Object.keys(LAYOUTS).map((k) =>
+        h('button', { type: 'button', class: 'lay-card' + (st.layout === k ? ' on' : ''), onclick: () => { st.layout = k; paint(); } },
+          layoutDiagram(k, portrait, st.layout === k), h('span', {}, layoutLabel(k, portrait)))));
+    };
+    paint();
+    modal({
+      title: 'New playlist',
+      wide: true,
+      body: [
+        field('Playlist name (required)', name),
+        h('div', { class: 'small', style: { fontWeight: 600 } }, 'Screen orientation'),
+        orientEl,
+        h('div', { class: 'small', style: { fontWeight: 600 } }, 'Layout'),
+        h('div', { class: 'tiny', style: { marginTop: '-6px' } }, 'Split the screen into areas, or keep it full screen. You can change this later.'),
+        layoutEl,
+      ],
+      actions: [{ label: 'Cancel' }, { label: 'Create and edit', class: 'primary', onClick: async () => {
+        const n = name.value.trim();
+        if (!n) { name.classList.add('invalid'); name.focus(); throw new Error('Please give the playlist a name'); }
+        const p = await q(sb.from('playlists').insert({ client_id: state.clientId, name: n, slides: [], settings: { orientation: st.orientation, layout: st.layout } }).select().single());
+        go('playlist/' + p.id);
+      } }],
+    });
   };
 
   const head = h('div', { class: 'page-head' },

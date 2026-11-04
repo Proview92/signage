@@ -361,3 +361,14 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .item-card { border: 1px solid var(--line, #e3e5ec); border-radius: 10px; padding: 8px 10px; }
 .item-card.on { border-color: #4f8ef7; }
 .item-head { cursor: pointer; gap: 8px; }
+
+/* New playlist: orientation choice */
+.orient-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.orient-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1.5px solid var(--line, #e3e5ec); border-radius: 12px; background: #fff; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.orient-card.on { border-color: #3f6fd0; background: rgba(63,111,208,.06); }
+.orient-card b { display: block; font-size: 14px; }
+.orient-card small { display: block; color: var(--ink-3, #777); font-size: 12px; }
+.orient-shape { flex: none; border: 2px solid #3f6fd0; border-radius: 4px; background: linear-gradient(135deg, #2f84d4, #5a5fbb); }
+.orient-shape.landscape { width: 48px; height: 27px; }
+.orient-shape.portrait { width: 27px; height: 48px; }
+@media (max-width: 560px) { .orient-grid { grid-template-columns: 1fr; } }
