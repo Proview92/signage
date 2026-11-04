@@ -19,40 +19,11 @@ export async function playlistsPage({ main, go }) {
   ]);
   const usedOn = (pid) => new Set([...screens.filter((s) => s.default_playlist_id === pid).map((s) => s.id), ...rules.filter((r) => r.playlist_id === pid).map((r) => r.screen_id)]).size;
 
-  // New playlist: name, landscape or portrait, and a layout, then straight into the editor.
-  const create = () => {
-    const st = { orientation: 'landscape', layout: 'full' };
-    const name = h('input', { type: 'text', value: '', placeholder: 'e.g. Breakfast menu, Window promos', required: true, autocomplete: 'off', oninput: () => name.classList.remove('invalid') });
-    const orientEl = h('div', { class: 'orient-grid' });
-    const layoutEl = h('div', { class: 'lay-grid' });
-    const paint = () => {
-      const portrait = st.orientation === 'portrait';
-      orientEl.replaceChildren(...[['landscape', 'Landscape', 'TV mounted wide (16:9)'], ['portrait', 'Portrait', 'TV mounted tall (9:16)']].map(([v, l, d]) =>
-        h('button', { type: 'button', class: 'orient-card' + (st.orientation === v ? ' on' : ''), onclick: () => { st.orientation = v; paint(); } },
-          h('span', { class: 'orient-shape ' + v }), h('span', {}, h('b', {}, l), h('small', {}, d)))));
-      layoutEl.replaceChildren(...Object.keys(LAYOUTS).map((k) =>
-        h('button', { type: 'button', class: 'lay-card' + (st.layout === k ? ' on' : ''), onclick: () => { st.layout = k; paint(); } },
-          layoutDiagram(k, portrait, st.layout === k), h('span', {}, layoutLabel(k, portrait)))));
-    };
-    paint();
-    modal({
-      title: 'New playlist',
-      wide: true,
-      body: [
-        field('Playlist name (required)', name),
-        h('div', { class: 'small', style: { fontWeight: 600 } }, 'Screen orientation'),
-        orientEl,
-        h('div', { class: 'small', style: { fontWeight: 600 } }, 'Layout'),
-        h('div', { class: 'tiny', style: { marginTop: '-6px' } }, 'Split the screen into areas, or keep it full screen. You can change this later.'),
-        layoutEl,
-      ],
-      actions: [{ label: 'Cancel' }, { label: 'Create and edit', class: 'primary', onClick: async () => {
-        const n = name.value.trim();
-        if (!n) { name.classList.add('invalid'); name.focus(); throw new Error('Please give the playlist a name'); }
-        const p = await q(sb.from('playlists').insert({ client_id: state.clientId, name: n, slides: [], settings: { orientation: st.orientation, layout: st.layout } }).select().single());
-        go('playlist/' + p.id);
-      } }],
-    });
+  // New playlist: straight into the editor's first step (name, screen and layout are set there).
+  const create = async () => {
+    const p = await q(sb.from('playlists').insert({ client_id: state.clientId, name: 'Untitled playlist', slides: [], settings: { orientation: 'landscape', layout: 'full', needs_name: true } }).select().single());
+    try { sessionStorage.setItem('signage.editorStep.' + p.id, '1'); } catch {}
+    go('playlist/' + p.id);
   };
 
   const head = h('div', { class: 'page-head' },

@@ -5,7 +5,7 @@ import { SlidePlayer, LayoutPlayer, LAYOUTS, layoutLabel, normLayout, zoneCount,
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
 import { WIDGET_TYPES, widgetDefaults, isWidget } from '../widgets.js';
-import { widgetFields, layoutDialog, layoutDiagram } from './widget-editor.js';
+import { widgetFields, layoutPanel, layoutDiagram } from './widget-editor.js';
 import { showOnTvsDialog } from './show-on-tvs.js';
 
 export async function editorPage({ main, params: [id], go }) {
@@ -524,7 +524,9 @@ export async function editorPage({ main, params: [id], go }) {
   const contentEl = h('div', { class: 'stack' });
   const fullBox = h('div', { class: 'preview-box' });
   let fullPlayer = null;
-  function goStep(n) { step = n; try { sessionStorage.setItem(STEP_KEY, String(n)); } catch {} save(); paint(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function goStep(n) {
+    if (step === 1 && n !== 1 && needsName()) { toast('Please give the playlist a name first', true); contentEl.querySelector('input')?.focus(); return; }
+    step = n; try { sessionStorage.setItem(STEP_KEY, String(n)); } catch {} save(); paint(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
   function paintSteps() {
     stepsEl.replaceChildren(...STEPS.map(([n, l]) => h('button', { type: 'button', class: (n === step ? 'on' : n < step ? 'done' : ''), onclick: () => goStep(n) },
       h('span', { class: 'n' }, n < step ? '✓' : String(n)), h('span', { class: 'l' }, l))));
@@ -545,23 +547,24 @@ export async function editorPage({ main, params: [id], go }) {
   const nav = () => h('div', { class: 'row ed-nav' },
     step > 1 ? h('button', { class: 'btn', onclick: () => goStep(step - 1) }, '← Back') : h('span'),
     step < 4 ? h('button', { class: 'btn primary', onclick: () => goStep(step + 1) }, `Next: ${STEPS[step][1]} →`) : '');
+  const needsName = () => !!pl.settings.needs_name;
   function setupCard() {
-    const portrait = pl.settings.orientation === 'portrait';
-    const n = normLayout(pl.settings);
-    const px = areaPixels(n.layout, portrait, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split);
+    const nameField = h('input', { type: 'text', value: needsName() ? '' : pl.name, placeholder: 'e.g. Breakfast menu, Window promos', autocomplete: 'off',
+      oninput: (e) => {
+        const v = e.target.value.trim();
+        e.target.classList.toggle('invalid', !v);
+        if (v) { pl.name = v; delete pl.settings.needs_name; nameInput.value = v; schedule(); }
+      } });
+    if (needsName()) setTimeout(() => nameField.focus(), 50);
     return h('div', { class: 'card pad stack' },
       h('h2', { style: { margin: 0 } }, 'Screen & layout'),
+      field('Playlist name (required)', nameField),
       h('div', { class: 'small', style: { fontWeight: 600 } }, 'How is the TV mounted?'),
       h('div', { class: 'orient-grid' }, ...[['landscape', 'Landscape', 'Wide (16:9)'], ['portrait', 'Portrait', 'Tall (9:16)']].map(([v, l, d]) =>
         h('button', { type: 'button', class: 'orient-card' + ((pl.settings.orientation || 'landscape') === v ? ' on' : ''), onclick: () => { pl.settings.orientation = v; schedule(); paint(); } },
           h('span', { class: 'orient-shape ' + v }), h('span', {}, h('b', {}, l), h('small', {}, d))))),
       h('div', { class: 'small', style: { fontWeight: 600, marginTop: '6px' } }, 'Layout'),
-      h('div', { class: 'row', style: { gap: '16px', flexWrap: 'nowrap', alignItems: 'center' } },
-        layoutDiagram(n.layout, portrait, false, 0, 120, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split),
-        h('div', { class: 'stack', style: { gap: '6px' } },
-          h('b', {}, layoutLabel(n.layout, portrait) + (n.ticker ? ' + scrolling ticker' : '')),
-          h('div', { class: 'area-size-list' }, ...px.map(([w, hh], i) => h('span', { class: 'area-size' }, h('b', {}, px.length > 1 ? `Area ${i + 1}` : 'Full screen'), ` ${w} × ${hh} px`))),
-          h('div', {}, h('button', { class: 'btn', onclick: () => layoutBtn.onclick() }, 'Change layout, sizes & ticker…')))),
+      layoutPanel(pl, allPlaylists, applyLayout),
       nav());
   }
   function publishCard() {
@@ -603,7 +606,7 @@ export async function editorPage({ main, params: [id], go }) {
   }
 
   const nameInput = h('input', { type: 'text', value: pl.name, style: { fontSize: '22px', fontWeight: 750, border: '1px solid transparent', background: 'transparent', padding: '4px 6px', marginLeft: '-6px' },
-    oninput: (e) => { const v = e.target.value.trim(); e.target.classList.toggle('invalid', !v); if (v) { pl.name = v; schedule(); } },
+    oninput: (e) => { const v = e.target.value.trim(); e.target.classList.toggle('invalid', !v); if (v) { pl.name = v; delete pl.settings.needs_name; schedule(); } },
     onblur: (e) => { if (!e.target.value.trim()) { e.target.value = pl.name; e.target.classList.remove('invalid'); toast('A playlist needs a name', true); } } });
   const orient = h('div', { class: 'seg' }, [['landscape', 'Landscape'], ['portrait', 'Portrait']].map(([v, l]) =>
     h('button', { type: 'button', class: (pl.settings.orientation || 'landscape') === v ? 'on' : '', onclick: (e) => {
@@ -612,9 +615,9 @@ export async function editorPage({ main, params: [id], go }) {
       paint();
     } }, l)));
 
-  const layoutBtn = h('button', { class: 'btn', title: 'Full screen, side panel or ticker' });
-  const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait', false, 0, 30, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split), `Layout: ${layoutLabel(n.layout, pl.settings.orientation === 'portrait')}${n.ticker ? ' + ticker' : ''}`); };
-  layoutBtn.onclick = () => layoutDialog(pl, allPlaylists, (st) => {
+  // Layout settings change live from the panel on step 1.
+  let fullTimer = null;
+  function applyLayout(st) {
     const before = areaCount();
     Object.assign(pl.settings, st);
     const n = areaCount();
@@ -624,10 +627,10 @@ export async function editorPage({ main, params: [id], go }) {
     if (n > 1) pl.slides.forEach((s) => { if ((s.type === 'image' || s.type === 'video') && !s.fit_set) s.fit = 'stretch'; });
     if (n <= 1 && before > 1) pl.slides.forEach((s) => { if (!s.fit_set && s.fit !== 'cover') s.fit = 'cover'; });
     if (area >= n) area = 0;
-    schedule(); paintLayoutBtn(); paint();
-    toast(n > 1 ? `Layout saved. Pick an area above the slides and add media to it.` : 'Layout saved');
-  });
-  paintLayoutBtn();
+    schedule();
+    clearTimeout(fullTimer);
+    fullTimer = setTimeout(() => { if (step === 1 || step === 4) { fullPlayer?.stop(); fullPlayer?.load(pl); fullPlayer?.start(); } }, 250);
+  }
 
   main.replaceChildren(
     h('div', { class: 'page-head' },

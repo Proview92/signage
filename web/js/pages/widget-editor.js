@@ -82,7 +82,8 @@ export function layoutDiagram(layout, portrait = false, active = false, hi = 0, 
   return box;
 }
 
-export function layoutDialog(pl, playlists, onSave) {
+/** All layout settings as a panel on the page. Every change is applied straight away through onApply(settings). */
+export function layoutPanel(pl, playlists, onApply) {
   const portrait = pl.settings.orientation === 'portrait';
   const norm = normLayout(pl.settings);
   const st = { layout: norm.layout, ticker_on: norm.ticker, zones: zonePlaylistIds(pl.settings), split: { ...(pl.settings.layout_split || {}) }, ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff', position: 'bottom', size: 'normal', dir: 'rtl', ...(pl.settings.ticker || {}) } };
@@ -91,9 +92,20 @@ export function layoutDialog(pl, playlists, onSave) {
   const zonesWrap = h('div', { class: 'stack', style: { gap: '10px' } });
   const tickWrap = h('div', { class: 'stack' });
   const posWrap = h('div', { class: 'stack', style: { gap: '8px' } });
-  const text2 = h('textarea', { rows: 2, value: st.ticker.text2 || '', placeholder: 'Leave empty to show the same text on both' });
+  // Push the current settings to the playlist (typing waits a moment, so it doesn't redraw on every key).
+  let tTimer = null;
+  const commit = () => {
+    clearTimeout(tTimer);
+    st.ticker.text = text.value;
+    st.ticker.text2 = /both$/.test(st.ticker.position) ? text2.value : '';
+    const n = zoneCount(st.layout);
+    const zones = st.zones.slice(0, n - 1);
+    onApply({ layout: st.layout, zones, side_playlist_id: st.layout === 'side' ? zones[0] : null, ticker_on: st.ticker_on, ticker: { ...st.ticker }, layout_split: splitControls(st.layout, portrait).length ? { ...st.split } : {} });
+  };
+  const commitSoon = () => { clearTimeout(tTimer); tTimer = setTimeout(commit, 500); };
+  const text2 = h('textarea', { rows: 2, value: st.ticker.text2 || '', placeholder: 'Leave empty to show the same text on both', oninput: commitSoon });
   const text2Wrap = field('Bottom ticker text (optional)', text2);
-  const text = h('textarea', { rows: 3, value: st.ticker.text || '', placeholder: 'One message per line, e.g.\nFree Wi-Fi: CAFE-GUEST\nOpen 7am–7pm every day' });
+  const text = h('textarea', { rows: 3, value: st.ticker.text || '', placeholder: 'One message per line, e.g.\nFree Wi-Fi: CAFE-GUEST\nOpen 7am–7pm every day', oninput: commitSoon });
   const tickOn = h('input', { type: 'checkbox', checked: st.ticker_on, onchange: (e) => { st.ticker_on = e.target.checked; paint(); } });
 
   // Area sizes: sliders redraw only the pictures, so dragging stays smooth.
@@ -117,7 +129,7 @@ export function layoutDialog(pl, playlists, onSave) {
         const val = h('b', { class: 'tiny' });
         const pct = () => Math.round((st.split[k] ?? def) * 100);
         const input = h('input', { type: 'range', min: 10, max: 90, step: 1, value: pct(), class: 'lay-range',
-          oninput: (e) => { st.split[k] = Number(e.target.value) / 100; val.textContent = pct() + '%'; redraw(); } });
+          oninput: (e) => { st.split[k] = Number(e.target.value) / 100; val.textContent = pct() + '%'; redraw(); commitSoon(); } });
         val.textContent = pct() + '%';
         return h('label', { class: 'lay-slider' }, h('span', { class: 'small' }, label), input, val);
       }),
@@ -133,10 +145,10 @@ export function layoutDialog(pl, playlists, onSave) {
     zonesWrap.replaceChildren(...(n > 1 ? [
       h('div', { class: 'row', style: { gap: '16px', flexWrap: 'nowrap', alignItems: 'center' } }, bigDiag,
         h('div', { class: 'stack grow', style: { gap: '10px' } }, sliders(), sizesEl,
-          h('div', { class: 'tiny' }, `After saving, pick an area above the slide list (Area 1, Area 2…) and press “Add media” to fill it.`))),
+          h('div', { class: 'tiny' }, `Next, in “Add content”, fill each area with pictures, videos or text.`))),
       !others.length ? '' : h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
         h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
-          ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))))),
+          ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => { st.zones[i] = v || null; commit(); }))))),
     ] : []));
     tickWrap.classList.toggle('hidden', !st.ticker_on);
     redraw();
@@ -148,32 +160,22 @@ export function layoutDialog(pl, playlists, onSave) {
     posWrap.replaceChildren(h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } },
       tickDiag,
       h('div', { class: 'grow' }, field('Position', select([['bottom', 'Bottom of screen'], ['top', 'Top of screen'], ['both', 'Top and bottom of screen'], ...areaOpts], st.ticker.position, (v) => { st.ticker.position = v; paint(); })))));
+    if (painted) commit();
+    painted = true;
   };
+  let painted = false;
   tickWrap.append(field('Ticker text', text), posWrap, text2Wrap,
     h('div', { class: 'grid2' },
       field('Size', select([['small', 'Small'], ['normal', 'Normal'], ['large', 'Large']], st.ticker.size, (v) => { st.ticker.size = v; paint(); })),
-      field('Scroll direction', select([['rtl', 'Right to left ←'], ['ltr', 'Left to right →']], st.ticker.dir, (v) => (st.ticker.dir = v)))),
+      field('Scroll direction', select([['rtl', 'Right to left ←'], ['ltr', 'Left to right →']], st.ticker.dir, (v) => { st.ticker.dir = v; commit(); }))),
     h('div', { class: 'grid3' },
-      field('Speed', select([['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], st.ticker.speed, (v) => (st.ticker.speed = v))),
-      field('Background', h('input', { type: 'color', value: st.ticker.bg, oninput: (e) => (st.ticker.bg = e.target.value) })),
-      field('Text colour', h('input', { type: 'color', value: st.ticker.color, oninput: (e) => (st.ticker.color = e.target.value) }))));
+      field('Speed', select([['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], st.ticker.speed, (v) => { st.ticker.speed = v; commit(); })),
+      field('Background', h('input', { type: 'color', value: st.ticker.bg, oninput: (e) => { st.ticker.bg = e.target.value; commitSoon(); } })),
+      field('Text colour', h('input', { type: 'color', value: st.ticker.color, oninput: (e) => { st.ticker.color = e.target.value; commitSoon(); } }))));
   paint();
-  modal({
-    title: 'Screen layout',
-    wide: true,
-    body: [
-      h('div', { class: 'tiny' }, 'Split the screen into areas. Each area plays its own pictures, videos or text at the same time.'),
-      picker, zonesWrap,
-      h('label', { class: 'row small', style: { fontWeight: 600 } }, tickOn, 'Add a scrolling ticker'),
-      tickWrap,
-    ],
-    actions: [{ label: 'Cancel' }, { label: 'Save layout', class: 'primary', onClick: () => {
-      st.ticker.text = text.value;
-      st.ticker.text2 = /both$/.test(st.ticker.position) ? text2.value : '';
-      const n = zoneCount(st.layout);
-      const zones = st.zones.slice(0, n - 1);
-      if (st.ticker_on && !text.value.trim()) throw new Error('Enter the ticker text');
-      onSave({ layout: st.layout, zones, side_playlist_id: st.layout === 'side' ? zones[0] : null, ticker_on: st.ticker_on, ticker: st.ticker, layout_split: splitControls(st.layout, portrait).length ? st.split : {} });
-    } }],
-  });
+  return h('div', { class: 'stack layout-panel' },
+    h('div', { class: 'tiny' }, 'Split the screen into areas. Each area plays its own pictures, videos or text at the same time.'),
+    picker, zonesWrap,
+    h('label', { class: 'row small', style: { fontWeight: 600, marginTop: '6px' } }, tickOn, 'Add a scrolling ticker'),
+    tickWrap);
 }
