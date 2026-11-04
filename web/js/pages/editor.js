@@ -139,7 +139,7 @@ export async function editorPage({ main, params: [id], go }) {
     const { layout, ticker } = normLayout(pl.settings);
     const plan = layoutWithTicker(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080, ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split);
     const r = plan.zones[s.zone || 0] || plan.zones[0];
-    const k = 1080 / Math.min(r[2], r[3]);
+    const k = 1080 / Math.max(1, Math.min(r[2], r[3]));
     return { w: Math.round(r[2] * k), h: Math.round(r[3] * k) };
   }
   let playerShape = '';
@@ -337,7 +337,7 @@ export async function editorPage({ main, params: [id], go }) {
     editLayer.replaceChildren(...s.items.map((it) => {
       const box = h('div', { class: 'edit-box' + (it.id === selItem ? ' on' : ''), title: ITEM_TYPES[it.type] });
       const place = () => Object.assign(box.style, { left: it.x * 100 + '%', top: it.y * 100 + '%', width: it.w * 100 + '%', height: it.h * 100 + '%' });
-      const live = () => previewBox.querySelectorAll(`.sg-item[data-id="${it.id}"]`).forEach((el) => Object.assign(el.style, { left: it.x * 100 + '%', top: it.y * 100 + '%', width: it.w * 100 + '%', height: it.h * 100 + '%' }));
+      const live = () => previewBox.querySelectorAll(`.sg-item[data-id="${it.id}"]`).forEach((el) => { Object.assign(el.style, { left: it.x * 100 + '%', top: it.y * 100 + '%', width: it.w * 100 + '%', height: it.h * 100 + '%' }); el._fit?.(); });
       place();
       const grip = h('div', { class: 'edit-grip', title: 'Drag to resize' });
       box.append(h('span', { class: 'edit-label' }, ITEM_TYPES[it.type]), grip);
@@ -360,7 +360,8 @@ export async function editorPage({ main, params: [id], go }) {
       return box;
     }));
   }
-  window.addEventListener('resize', () => paintEditLayer());
+  const onResize = () => paintEditLayer();
+  window.addEventListener('resize', onResize);
 
   function paintInspector() {
     const s = pl.slides[sel];
@@ -523,5 +524,5 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'stack' }, h('div', { class: 'card pad' }, previewBox), h('div', { class: 'card' }, inspEl))));
   paint();
 
-  return () => { save(); clearTimeout(previewTimer); player?.stop(); window.removeEventListener('beforeunload', beforeUnload); };
+  return () => { save(); clearTimeout(previewTimer); player?.stop(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('resize', onResize); };
 }

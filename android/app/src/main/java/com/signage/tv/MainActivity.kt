@@ -81,6 +81,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun captureScreen() { runOnUiThread { this@MainActivity.captureScreenNow() } }
         @JavascriptInterface fun checkForUpdate(manual: Boolean) { Updater.check(this@MainActivity, manual) }
         @JavascriptInterface fun versionCode(): Int = BuildConfig.VERSION_CODE
+        @JavascriptInterface fun updateAvailable(): String = Updater.available(this@MainActivity) ?: ""
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

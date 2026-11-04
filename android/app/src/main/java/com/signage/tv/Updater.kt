@@ -43,13 +43,19 @@ object Updater {
         val info = JSONObject(get(VERSION_URL).toString(Charsets.UTF_8))
         val code = info.optInt("versionCode", 0)
         val name = info.optString("versionName", "")
+        val prefs = activity.getSharedPreferences("signage", Context.MODE_PRIVATE)
         if (code <= BuildConfig.VERSION_CODE) {
+            prefs.edit().remove("update_available").apply()
             if (manual) toast(activity, "The app is up to date (version ${BuildConfig.VERSION_NAME})")
             return
         }
+        // Remember it, so the dashboard can show "update available" for this TV.
+        prefs.edit().putString("update_available", name).putInt("update_code", code).apply()
+        // Automatic checks never put anything on screen (nobody may be there to press OK).
+        // They only install when Android allows a silent update: Android 12+, with this app as its own installer.
+        if (!manual && !canUpdateSilently(activity)) { Log.i(TAG, "update $name available; waiting for Update app"); return }
         // Android 8+: the app needs "Install unknown apps" once. Open that page so someone can switch it on.
         if (Build.VERSION.SDK_INT >= 26 && !activity.packageManager.canRequestPackageInstalls()) {
-            val prefs = activity.getSharedPreferences("signage", Context.MODE_PRIVATE)
             val last = prefs.getLong("unknown_sources_asked", 0)
             if (manual || System.currentTimeMillis() - last > 24 * 3600_000L) {
                 prefs.edit().putLong("unknown_sources_asked", System.currentTimeMillis()).apply()
@@ -74,11 +80,24 @@ object Updater {
             if (manual) toast(activity, "The app is up to date (version ${BuildConfig.VERSION_NAME})")
             return
         }
-        install(activity, file)
+        install(activity, file, manual)
     }
 
-    private fun install(ctx: Context, apk: File) {
+    private fun canUpdateSilently(ctx: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 31 || !ctx.packageManager.canRequestPackageInstalls()) return false
+        return try { ctx.packageManager.getInstallSourceInfo(ctx.packageName).installingPackageName == ctx.packageName } catch (_: Exception) { false }
+    }
+
+    /** Newer version waiting to be installed (name), or null. */
+    fun available(ctx: Context): String? {
+        val p = ctx.getSharedPreferences("signage", Context.MODE_PRIVATE)
+        return if (p.getInt("update_code", 0) > BuildConfig.VERSION_CODE) p.getString("update_available", null) else null
+    }
+
+    private fun install(ctx: Context, apk: File, manual: Boolean) {
         val installer = ctx.packageManager.packageInstaller
+        // Drop any half-finished update from an earlier try.
+        for (old in installer.mySessions) { try { installer.abandonSession(old.sessionId) } catch (_: Exception) {} }
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         params.setAppPackageName(ctx.packageName)
         if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
@@ -86,7 +105,7 @@ object Updater {
         installer.openSession(id).use { s ->
             s.openWrite("base.apk", 0, apk.length()).use { out -> apk.inputStream().use { it.copyTo(out) }; s.fsync(out) }
             val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
-            val pi = PendingIntent.getBroadcast(ctx, id, Intent(ctx, InstallReceiver::class.java), flags)
+            val pi = PendingIntent.getBroadcast(ctx, id, Intent(ctx, InstallReceiver::class.java).putExtra("manual", manual), flags)
             s.commit(pi.intentSender)
         }
     }
@@ -116,8 +135,10 @@ object Updater {
 /** Gets the installer's answer; shows Android's "Update this app?" screen when it needs a press of OK. */
 class InstallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        val manual = intent.getBooleanExtra("manual", false)
         when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                if (!manual) return   // never cover the screen on an unattended TV
                 @Suppress("DEPRECATION")
                 val confirm = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
                               else intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
@@ -125,6 +146,7 @@ class InstallReceiver : BroadcastReceiver() {
             }
             PackageInstaller.STATUS_SUCCESS -> Unit   // BootReceiver (MY_PACKAGE_REPLACED) reopens the app
             else -> {
+                if (!manual) return
                 val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "cancelled"
                 Toast.makeText(context, "Update not installed: $msg", Toast.LENGTH_LONG).show()
             }

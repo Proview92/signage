@@ -93,9 +93,13 @@ function buildItems(slide, el, opts) {
       zIndex: '3', overflow: 'hidden', borderRadius: '24px', background: it.panel ? (it.panelColor || 'rgba(0,0,0,.45)') : 'transparent' });
     const inner = document.createElement('div');
     Object.assign(inner.style, { position: 'absolute', left: '50%', top: '50%', width: dw + 'px', height: dh + 'px' });
+    // Sizes are in stage pixels, which never change once on screen, so fit once it is attached
+    // (the editor calls box._fit() again while dragging). No observers left running on the TV.
     const fit = () => { const k = Math.min(box.clientWidth / dw, box.clientHeight / dh) || 0; inner.style.transform = `translate(-50%, -50%) scale(${k})`; };
-    if ('ResizeObserver' in window) new ResizeObserver(fit).observe(box);
-    requestAnimationFrame(fit);
+    box._fit = fit;
+    let tries = 0;
+    const wait = () => { if (box.isConnected && box.clientWidth) fit(); else if (++tries < 120) requestAnimationFrame(wait); };
+    requestAnimationFrame(wait);
     if (it.type === 'text') textItem(inner, it);
     else buildWidget({ type: it.type, widget: it.widget || {}, text: { color: it.color || '#ffffff' } }, inner, opts);
     box.appendChild(inner);
@@ -674,7 +678,7 @@ export function layoutZones(layout, W, H, sp = null) {
     case 'split-v': { const lw = R(W * f('a')); return [[0, 0, lw, H], [lw, 0, W - lw, H]]; }
     case 'split-h': { const th = R(H * f('a')); return [[0, 0, W, th], [0, th, W, H - th]]; }
     case 'three': {
-      const a = f('a'), b = Math.min(f('b'), 0.9 - a);
+      const a = Math.min(f('a'), 0.8), b = Math.min(Math.max(f('b'), 0.1), 0.9 - a);   // every area keeps at least 10%
       if (portrait) { const h1 = R(H * a), h2 = R(H * b); return [[0, 0, W, h1], [0, h1, W, h2], [0, h1 + h2, W, H - h1 - h2]]; }
       const w1 = R(W * a), w2 = R(W * b); return [[0, 0, w1, H], [w1, 0, w2, H], [w1 + w2, 0, W - w1 - w2, H]];
     }
@@ -707,7 +711,7 @@ export function layoutWithTicker(layout, W, H, t = null, sp = null) {
   const TH = TICKER_SIZES[t.size] || TICKER_H;
   const { area, edge } = tickerPlace(t, layout);
   const top = edge !== 'bottom', bottom = edge !== 'top';
-  const cut = ([x, y, w, h]) => [x, y + (top ? TH : 0), w, h - (top ? TH : 0) - (bottom ? TH : 0)];
+  const cut = ([x, y, w, h]) => [x, y + (top ? TH : 0), w, Math.max(1, h - (top ? TH : 0) - (bottom ? TH : 0))];
   const strips = ([x, y, w, h]) => [...(top ? [{ rect: [x, y, w, TH], edge: 'top' }] : []), ...(bottom ? [{ rect: [x, y + h - TH, w, TH], edge: 'bottom' }] : [])];
   if (area == null) {
     const [, cy, , ch] = cut([0, 0, W, H]);
@@ -767,7 +771,7 @@ export class LayoutPlayer {
         const zone = (x, y, w, h) => { const z = document.createElement('div'); Object.assign(z.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', overflow: 'hidden', background: '#000' }); this.host.stage.appendChild(z); return z; };
         this.players = plan.zones.map(([x, y, w, h], i) =>
           // Lay each area out at "full-screen scale" (its short side = 1080) so text and pictures keep sensible proportions.
-          { const k = 1080 / Math.min(w, h); return new SlidePlayer(zone(x, y, w, h), { ...this.opts, size: { w: Math.round(w * k), h: Math.round(h * k) }, onChange: i === 0 ? this.opts.onChange : null }); });
+          { const k = 1080 / Math.max(1, Math.min(w, h)); return new SlidePlayer(zone(x, y, w, h), { ...this.opts, size: { w: Math.round(w * k), h: Math.round(h * k) }, onChange: i === 0 ? this.opts.onChange : null }); });
         this.tickerEls = plan.tickers.map((tk) => { const z = zone(...tk.rect); z.style.zIndex = '2'; z.dataset.edge = tk.edge; return z; });
       }
     }
@@ -1018,7 +1022,7 @@ function paintTicker(el, t) {
   for (let i = 0; i < 2; i++) { const s = document.createElement('span'); s.textContent = text + '     •     '; s.style.paddingRight = '0'; s.style.whiteSpace = 'pre'; track.appendChild(s); }
   el.appendChild(track);
   requestAnimationFrame(() => {
-    const w = track.firstChild.getBoundingClientRect().width / ((el.getBoundingClientRect().width / (el.offsetWidth || 1920)) || 1);
+    const w = track.firstChild.offsetWidth;   // layout width: unaffected by stage scaling or TV rotation
     const pxPerSec = { slow: 90, normal: 150, fast: 240 }[t.speed] || 150;
     const frames = [{ transform: 'translateX(0)' }, { transform: `translateX(-${w}px)` }];
     if (t.dir === 'ltr') frames.reverse();

@@ -89,6 +89,16 @@ async function download(path, onProgress) {
     const res = await fetch(data.signedUrl, { signal: ctl.signal });
     if (!res.ok) throw new Error('download failed ' + res.status);
     const total = Number(res.headers.get('content-length')) || 0;
+    const big = !isImagePath(path) && total > 20 * 1048576;
+    if (big && res.body && window.TransformStream && 'caches' in window) {
+      // Large videos go straight to the TV's storage while counting progress, instead of being held in memory.
+      let got = 0;
+      const counter = new TransformStream({ transform(chunk, ctl) { got += chunk.length; poke(); onProgress?.(total ? got / total : 0, got, total); ctl.enqueue(chunk); } });
+      const c = await caches.open(MEDIA_CACHE);
+      await c.put('/__media/' + path, new Response(res.body.pipeThrough(counter), { headers: { 'content-type': res.headers.get('content-type') || 'video/mp4', 'x-fit': '1' } }));
+      clearTimeout(idle);
+      return (await c.match('/__media/' + path)).blob();
+    }
     if (res.body?.getReader) {
       const reader = res.body.getReader(), parts = [];
       let got = 0;
@@ -169,6 +179,7 @@ async function prepare(next) {
     if (failed) setTimeout(() => content === next && prepare(next), 60000);
   }
   if (gen !== prepGen) return;
+  $('upd').classList.remove('on');
   if (content !== next) { content = next; currentKey = null; }
   evaluate();
   prune();
@@ -237,13 +248,17 @@ let playLog = null;   // set by proof-of-play logger
 
 function apply(row) {
   if (!row) return;
-  // remote reload
+  // Remote reload. Only a NEWER request counts (an older saved copy of the row must never trigger one,
+  // or the TV could reload over and over).
   const known = localStorage.getItem(LS.reload);
-  if (row.reload_at && known && row.reload_at !== known) {
-    localStorage.setItem(LS.reload, row.reload_at);
-    return location.reload();
+  const newer = row.reload_at && (!known || new Date(row.reload_at) > new Date(known));
+  if (newer) localStorage.setItem(LS.reload, row.reload_at);
+  if (newer && known) {
+    // A publish also stamps reload_at (same moment as published_at). For that, don't restart the page:
+    // fetch the latest row and let prepare() download, then switch, while the old content keeps playing.
+    if (row.published_at && row.reload_at === row.published_at) setTimeout(poll, 500);
+    else { localStorage.setItem(LS.screen, JSON.stringify(row)); return location.reload(); }   // "Reload TV" button
   }
-  if (row.reload_at) localStorage.setItem(LS.reload, row.reload_at);
   // "Update app" pressed on the dashboard (only act on fresh requests)
   if (row.update_requested_at && row.update_requested_at !== localStorage.getItem('signage.tv.update')) {
     localStorage.setItem('signage.tv.update', row.update_requested_at);
@@ -257,13 +272,13 @@ function apply(row) {
   $('screen-name').textContent = row.name;
 
   if (!row.claimed) {
-    content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear();
+    content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear(); $('upd').classList.remove('on');
     $('code').textContent = row.pairing_code || '······';
     return show('pair');
   }
   if (isExpired()) return evaluate();
   if (!row.content) {
-    content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear();
+    content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear(); $('upd').classList.remove('on');
     $('wait-name').textContent = row.name;
     return show('wait');
   }
@@ -292,6 +307,7 @@ function deviceInfo() {
     ua: navigator.userAgent.slice(0, 160),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     display: window.innerHeight > window.innerWidth ? 'portrait' : 'landscape',
+    app_update: (() => { try { return window.SignageNative?.updateAvailable?.() || undefined; } catch { return undefined; } })(),
   };
 }
 
