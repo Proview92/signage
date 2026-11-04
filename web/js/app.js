@@ -200,7 +200,7 @@ function confirmUrl() {
   return location.origin + location.pathname + (inv ? `?invite=${inv}` : '');
 }
 
-const AUTH_LOOK = 'glow';
+const AUTH_LOOK = 'classic';   // original design; 'glow' | 'wall' | 'hero' also available
 async function authPage(inviteToken) {
   let invite = null;
   if (inviteToken) { try { invite = (await sb.rpc('invite_info', { p_token: inviteToken })).data; } catch {} }
