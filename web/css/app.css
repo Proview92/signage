@@ -188,8 +188,9 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .slide-row .mini > .sg-host { position: absolute; inset: 0; }
 .slide-row .t { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slide-row .s { font-size: 12px; color: var(--ink-3); }
-.preview-box { aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; position: relative; background: #000; }
-.preview-box.portrait { aspect-ratio: 9/16; max-height: 62vh; margin: 0 auto; }
+.preview-box { width: 100%; aspect-ratio: 16/9; flex: none; border-radius: 10px; overflow: hidden; position: relative; background: #000; }
+@supports not (aspect-ratio: 1) { .preview-box { height: 0; padding-top: 56.25%; } }
+.preview-box.portrait { width: auto; height: min(62vh, 720px); aspect-ratio: 9/16; margin: 0 auto; }
 .preview-box > .sg-host { position: absolute; inset: 0; }
 .inspector { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
 .inspector .full { grid-column: 1 / -1; }
