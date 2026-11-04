@@ -158,7 +158,7 @@ function templateThumb(t, n) {
 export function templateGallery(go) {
   const name = h('input', { type: 'text', placeholder: 'Business name, e.g. Bella Pizza', value: state.me?.clients?.find((c) => c.id === state.clientId)?.name || '' });
   const plName = h('input', { type: 'text', value: '', placeholder: 'e.g. Lunch menu', autocomplete: 'off', oninput: () => plName.classList.remove('invalid') });
-  let pick = TEMPLATES[0].id;
+  let pick = null;   // nothing chosen until you click a template (click again to unselect)
   let filter = 'All';
   const FILTERS = ['All', 'Full screen', 'Split screen', 'Portrait', 'Ticker', 'Widgets on slides'];
   const isFull = (t) => !t.settings || (t.settings.layout || 'full') === 'full';
@@ -169,8 +169,7 @@ export function templateGallery(go) {
     const n = name.value.trim() || 'Your business';
     tabs.replaceChildren(...FILTERS.map((f) => h('button', { type: 'button', class: f === filter ? 'on' : '', onclick: () => { filter = f; paint(); } }, f)));
     const list = shown();
-    if (!list.some((t) => t.id === pick)) pick = list[0]?.id;
-    grid.replaceChildren(...list.map((t) => h('div', { class: 'card screen-card media-item' + (t.id === pick ? ' selected' : ''), style: { cursor: 'pointer' }, onclick: () => { pick = t.id; paint(); } },
+    grid.replaceChildren(...list.map((t) => h('div', { class: 'card screen-card media-item' + (t.id === pick ? ' selected' : ''), style: { cursor: 'pointer' }, onclick: () => { pick = pick === t.id ? null : t.id; paint(); } },
       templateThumb(t, n), h('div', { class: 'check' }, '✓'),
       h('div', { class: 'screen-meta' }, h('h3', {}, t.name), h('div', { class: 'tiny' }, t.desc),
         (t.tags || []).length ? h('div', { class: 'row', style: { gap: '4px', marginTop: '4px' } }, ...t.tags.map((g) => h('span', { class: 'badge plain' }, g))) : ''))));
@@ -181,6 +180,7 @@ export function templateGallery(go) {
     h('div', { class: 'tiny' }, 'Everything is editable afterwards: text, prices, colours, pictures, layout and timings.')],
   actions: [{ label: 'Cancel' }, { label: 'Create playlist', class: 'primary', onClick: async () => {
     const t = TEMPLATES.find((x) => x.id === pick);
+    if (!t) throw new Error('Choose a template first');
     const pn = plName.value.trim();
     if (!pn) { plName.classList.add('invalid'); plName.focus(); throw new Error('Please give the playlist a name'); }
     const n = name.value.trim() || 'Your business';
