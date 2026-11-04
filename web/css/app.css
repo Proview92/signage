@@ -278,7 +278,10 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .date-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }   /* stays side by side on phones */
 .inspector label.row { flex-wrap: nowrap; }   /* keep tick boxes next to their text */
 .date-pair > * { min-width: 0; }
-.date-pair input[type=date] { min-width: 0; width: 100%; }
+.date-pair input[type=date] { min-width: 0; width: 100%; max-width: 100%; display: block; box-sizing: border-box; -webkit-appearance: none; appearance: none; }
+/* iPhone: date boxes have a built-in minimum width and centred text */
+input[type=date]::-webkit-date-and-time-value { text-align: left; min-width: 0; }
+.date-pair .date-wrap { min-width: 0; overflow: hidden; border-radius: 9px; }
 .date-wrap { position: relative; }
 .date-wrap input { padding-right: 30px; }
 .date-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: 0; border-radius: 50%; background: #efeee9; color: var(--ink-2); font-size: 16px; line-height: 1; cursor: pointer; }
