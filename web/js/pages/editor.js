@@ -296,8 +296,8 @@ export async function editorPage({ main, params: [id], go }) {
       ]),
 
       h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
-      field('Show from (date)', h('input', { type: 'date', value: s.valid_from || '', onchange: (e) => change((x) => (x.valid_from = e.target.value || null)) })),
-      field('Show until (date)', h('input', { type: 'date', value: s.valid_until || '', onchange: (e) => change((x) => (x.valid_until = e.target.value || null)) }), 'After this date the slide stops showing by itself.'),
+      field('Active from date', h('input', { type: 'date', value: s.valid_from || '', onchange: (e) => change((x) => (x.valid_from = e.target.value || null)) })),
+      field('End date', h('input', { type: 'date', value: s.valid_until || '', onchange: (e) => change((x) => (x.valid_until = e.target.value || null)) }), 'After this date the slide stops showing by itself.'),
       h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
       schedBody,
 

@@ -60,7 +60,7 @@ export function ruleForm(playlists, rule = null) {
     field('On these days', chips),
     h('label', { class: 'row small', style: { fontWeight: 600 } }, ad, 'All day'),
     times,
-    h('div', { class: 'grid2' }, field('Starting on (optional)', sd), field('Ending on (optional)', ed)),
+    h('div', { class: 'grid2' }, field('Active from date (optional)', sd), field('End date (optional)', ed)),
     field('Priority', prio, 'When rules overlap, the higher priority plays. Use “Override” for one-off events.'),
   ];
 
