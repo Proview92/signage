@@ -126,6 +126,27 @@ const toMin = (t) => { if (!t) return null; const [h, m] = String(t).split(':').
 export function ruleMatches(rule, now = new Date()) {
   const today = localDate(now);
   const mins = now.getHours() * 60 + now.getMinutes();
+  // Different times on each day.
+  if (rule.day_times && Object.keys(rule.day_times).length) {
+    const dayOk = (d) => !Array.isArray(rule.days) || !rule.days.length || rule.days.includes(d);
+    const dateOk = (ds) => !(rule.start_date && ds < rule.start_date) && !(rule.end_date && ds > rule.end_date);
+    const win = (d) => {
+      const t = rule.day_times[d] || { from: rule.start_time, to: rule.end_time };
+      const a = toMin(t.from), b = toMin(t.to);
+      return a == null && b == null ? [0, 24 * 60] : [a ?? 0, b ?? 24 * 60];
+    };
+    const d = now.getDay();
+    if (dayOk(d) && dateOk(today)) {
+      const [a, b] = win(d);
+      if (a <= b ? (mins >= a && mins < b) : mins >= a) return true;
+    }
+    const y = new Date(now); y.setDate(y.getDate() - 1);
+    if (dayOk(y.getDay()) && dateOk(localDate(y))) {
+      const [a, b] = win(y.getDay());
+      if (a > b && mins < b) return true;      // yesterday's slot running past midnight
+    }
+    return false;
+  }
   const a = toMin(rule.start_time), b = toMin(rule.end_time);
   const start = a ?? 0, end = b ?? 24 * 60;
   const overnight = start > end;
@@ -172,6 +193,14 @@ export function onAirPlaylist(content, now = new Date()) {
 }
 
 export function describeRule(r) {
+  if (r.day_times && Object.keys(r.day_times).length) {
+    const ds = r.days?.length ? [...r.days] : [0, 1, 2, 3, 4, 5, 6];
+    const order = [1, 2, 3, 4, 5, 6, 0].filter((d) => ds.includes(d));
+    const fmtT = (d) => { const t = r.day_times[d] || { from: r.start_time, to: r.end_time }; return t.from || t.to ? `${(t.from || '00:00').slice(0, 5)}–${(t.to || '24:00').slice(0, 5)}` : 'all day'; };
+    const parts = order.map((d) => `${DAY_NAMES[d]} ${fmtT(d)}`).join(', ');
+    const fmt = (s) => new Date(s + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    return parts + (r.start_date || r.end_date ? ` · ${r.start_date ? fmt(r.start_date) : '…'} → ${r.end_date ? fmt(r.end_date) : '…'}` : '');
+  }
   const days = !r.days || !r.days.length || r.days.length === 7 ? 'Every day'
     : (JSON.stringify([...r.days].sort()) === '[1,2,3,4,5]' ? 'Weekdays'
     : (JSON.stringify([...r.days].sort()) === '[0,6]' ? 'Weekends'
