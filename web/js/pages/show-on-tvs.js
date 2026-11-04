@@ -1,6 +1,6 @@
 // One dialog to put a playlist on TVs: pick TVs/sites, choose "all the time"
 // or "only at certain times", and it goes live straight away.
-import { sb, state, h, q, toast, modal, field, select, publishOrRequest, isOnline } from '../core.js';
+import { sb, state, h, q, toast, modal, field, select, publishOrRequest, isOnline, confirmBox } from '../core.js';
 import { loadSites } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
 import { licenseState } from '../license.js';
@@ -57,8 +57,10 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
   ]);
   if (!screens.length) { toast('Add a TV first: Screens → Add a TV', true); return; }
   const plName = Object.fromEntries(playlists.map((p) => [p.id, p.name]));
-  const usesIt = (s) => s.default_playlist_id === playlist.id || rules.some((r) => r.screen_id === s.id && r.playlist_id === playlist.id);
-  const chosen = new Set(screens.filter(usesIt).map((s) => s.id));
+  const usesIt = (s) => s.default_playlist_id === playlist.id || (s.also_playlist_ids || []).includes(playlist.id) || rules.some((r) => r.screen_id === s.id && r.playlist_id === playlist.id);
+  // TVs already showing this playlist: ticked to start with. Publishing just updates them to the latest version.
+  const had = new Set(screens.filter(usesIt).map((s) => s.id));
+  const chosen = new Set(had);
   let mode = 'always';
 
   const list = h('div', { class: 'stack', style: { gap: '4px', maxHeight: '42vh', overflow: 'auto' } });
@@ -75,7 +77,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
         const blocked = L.state === 'expired' || L.state === 'none';
         return h('label', { class: 'row', style: { padding: '8px 10px', borderRadius: '8px', background: chosen.has(s.id) ? 'var(--accent-soft)' : '#faf9f6', flexWrap: 'nowrap', opacity: blocked ? '.55' : '1' } },
           h('input', { type: 'checkbox', checked: chosen.has(s.id), disabled: blocked, onchange: (e) => { e.target.checked ? chosen.add(s.id) : chosen.delete(s.id); paint(); } }),
-          h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name),
+          h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name, had.has(s.id) ? h('span', { class: 'badge plain', style: { marginLeft: '8px', fontSize: '11px' } }, chosen.has(s.id) ? 'Showing this' : 'Will stop showing') : null),
             h('div', { class: 'tiny' }, blocked ? 'Licence needed' : s.default_playlist_id ? `Now: ${[s.default_playlist_id, ...(s.also_playlist_ids || [])].map((i) => plName[i]).filter(Boolean).join(' + ') || '—'}` : 'Nothing playing yet')),
           h('span', { class: 'badge ' + (isOnline(s) ? 'ok' : 'bad') }, isOnline(s) ? 'Online' : 'Offline'));
       }));
@@ -94,15 +96,28 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
           h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { screens.forEach((s) => { const L = licenseState(s); if (L.state !== 'expired' && L.state !== 'none') chosen.add(s.id); }); paint(); } }, 'Select all'),
           h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { chosen.clear(); paint(); } }, 'Clear'))),
       list,
-      field('When should it play?', select([['always', 'All the time (replaces what these TVs play now)'], ['times', 'Only at certain times (e.g. breakfast, weekends)']], mode, (v) => { mode = v; ruleWrap.classList.toggle('hidden', v !== 'times'); })),
+      had.size ? h('div', { class: 'notice info small' }, `Already on ${had.size} TV${had.size === 1 ? '' : 's'} (ticked). Publishing updates them to this version — nothing is added twice. Untick a TV to take it off; tick another TV to add it.`) : null,
+      field(had.size ? 'For newly ticked TVs: when should it play?' : 'When should it play?', select([['always', 'All the time (replaces what these TVs play now)'], ['times', 'Only at certain times (e.g. breakfast, weekends)']], mode, (v) => { mode = v; ruleWrap.classList.toggle('hidden', v !== 'times'); })),
       ruleWrap,
     ],
     actions: [{ label: 'Cancel' }, { label: 'Publish', class: 'primary', onClick: async () => {
-      const ids = [...chosen];
-      if (!ids.length) throw new Error('Tick at least one TV');
-      const rule = mode === 'times' ? form.read() : null;
-      if (mode === 'always') {
-        const picked = screens.filter((s) => chosen.has(s.id));
+      const removed = screens.filter((s) => had.has(s.id) && !chosen.has(s.id));
+      const ids = [...chosen].filter((id) => !had.has(id));          // newly added TVs only
+      if (!chosen.size && !removed.length) throw new Error('Tick at least one TV');
+      if (removed.length && !(await confirmBox('Take it off these TVs?', `“${playlist.name}” will stop showing on ${removed.map((s) => s.name).join(', ')}.`, 'Take it off', true))) return false;
+      // 1) take it off unticked TVs
+      for (const s of removed) {
+        const also = (s.also_playlist_ids || []).filter((x) => x !== playlist.id);
+        const patch = { also_playlist_ids: also };
+        if (s.default_playlist_id === playlist.id) { patch.default_playlist_id = also[0] || null; patch.also_playlist_ids = also.slice(1); }
+        await q(sb.from('screens').update(patch).eq('id', s.id));
+        await q(sb.from('schedule_items').delete().eq('screen_id', s.id).eq('playlist_id', playlist.id));
+      }
+      // 2) put it on newly ticked TVs
+      const rule = ids.length && mode === 'times' ? form.read() : null;
+      if (!ids.length) { /* only updating / removing */ }
+      else if (mode === 'always') {
+        const picked = screens.filter((s) => ids.includes(s.id));
         const conflicts = picked.filter((s) => s.default_playlist_id && s.default_playlist_id !== playlist.id);
         let how = 'replace';
         if (conflicts.length) { how = await replaceOrAdd(playlist, conflicts, plName); if (!how) return false; }
@@ -113,8 +128,9 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
           if (empty.length) await q(sb.from('screens').update({ default_playlist_id: playlist.id }).in('id', empty));
           for (const s of conflicts) if (!(s.also_playlist_ids || []).includes(playlist.id)) await q(sb.from('screens').update({ also_playlist_ids: [...(s.also_playlist_ids || []), playlist.id] }).eq('id', s.id));
         }
-      } else await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, playlist_id: playlist.id, screen_id: sid, client_id: state.clientId }))));
-      const res = await publishScreens(screens.filter((s) => chosen.has(s.id)));
+      } else if (rule) await q(sb.from('schedule_items').insert(ids.map((sid) => ({ ...rule, playlist_id: playlist.id, screen_id: sid, client_id: state.clientId }))));
+      // 3) send the latest version to every affected TV (existing, new and removed)
+      const res = await publishScreens(screens.filter((s) => chosen.has(s.id) || removed.includes(s)));
       toast(publishSummary(res), res.failed.length > 0);
       onDone?.();
     } }],

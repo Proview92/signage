@@ -109,15 +109,6 @@ export async function editorPage({ main, params: [id], go }) {
     }, 4000);
   }
 
-  async function publish() {
-    await save();
-    const r = await publishOrRequest('playlist', id, pl.name);
-    if (r.pending) return toast('Sent to your manager for approval. It goes live once they approve it.');
-    const n = r.published;
-    if (n) toast(`Updated ${n} TV${n > 1 ? 's' : ''}`);
-    else showOnTvsDialog(pl);
-  }
-
   // ------------------------------------------------ preview
   const previewBox = h('div', { class: 'preview-box' });
   function refreshPreview(withTransition = false) {
@@ -341,7 +332,7 @@ export async function editorPage({ main, params: [id], go }) {
         h('button', { class: 'btn sm danger', onclick: () => deleteSlide(sel) }, icon('trash'), 'Delete')),
       h('div', { class: 'full row save-row' },
         h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast('Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
-        h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Use “Update TVs” to send them to the screens.'))));
+        h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Press “Publish” to send them to your TVs.'))));
   }
 
   // ------------------------------------------------ page
@@ -374,7 +365,6 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'row' }, orient,
         layoutBtn,
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
-        h('button', { class: 'btn', onclick: publish, title: 'Send your latest changes to the TVs that already show this playlist' }, icon('refresh'), 'Update TVs'),
         h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish'))),
     h('div', { class: 'editor' },
       h('div', { class: 'card' }, listEl),
