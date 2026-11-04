@@ -1,6 +1,6 @@
 import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
-import { layoutWithTicker } from '../renderer.js';
+import { layoutWithTicker, ITEM_TYPES, newItem } from '../renderer.js';
 import { SlidePlayer, LayoutPlayer, LAYOUTS, layoutLabel, normLayout, zoneCount, zonePlaylistIds, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
@@ -14,6 +14,7 @@ export async function editorPage({ main, params: [id], go }) {
   const allPlaylists = await q(sb.from('playlists').select('id,name,slides,settings').eq('client_id', state.clientId));
   const lookup = (pid) => (pid === pl.id ? pl : allPlaylists.find((x) => x.id === pid)) || null;
   let sel = pl.slides.length ? 0 : -1;
+  let selItem = null;   // id of the widget box being edited on the current slide
   // Split-screen: which area of the layout we're editing (slides carry .zone = area index)
   let area = 0;
   const areaCount = () => zoneCount(normLayout(pl.settings).layout);
@@ -69,23 +70,33 @@ export async function editorPage({ main, params: [id], go }) {
   const hasOverlay = (x) => x.type === 'text' || !!(x.text && (x.text.on || x.text.title || x.text.subtitle));
   function addWidget() {
     const cur = pl.slides[sel];
-    const canOverlay = cur && cur.type !== 'text' && !hasOverlay(cur);
-    let type = canOverlay ? 'overlay' : 'clock';
-    modal({ title: 'Add a widget', body: [
-      h('div', { class: 'stack', style: { gap: '8px' } },
-        canOverlay ? h('label', { class: 'row', style: { fontWeight: 600, gap: '10px' } }, h('input', { type: 'radio', name: 'wt', value: 'overlay', checked: true, onchange: () => (type = 'overlay') }), 'Text overlay',
-          h('span', { class: 'tiny', style: { fontWeight: 400 } }, 'Headline & sub-text on top of the selected slide')) : null,
-        canOverlay ? h('div', { class: 'tiny', style: { margin: '2px 0 4px' } }, 'Or add a new widget slide:') : null,
-        Object.entries(WIDGET_TYPES).map(([k, l]) =>
+    // Widgets go on top of the selected slide (drag to place), or become a full-screen slide of their own.
+    let where = cur ? 'on' : 'slide';
+    let type = cur ? 'text' : 'clock';
+    const desc = { text: 'Headline and a line of text', clock: 'Time and date', weather: 'Current weather + forecast (needs internet)', qr: 'Scan-to-open link',
+      menu: 'Items with prices, in columns', web: 'Show a live web page', youtube: 'Play a YouTube video (needs internet)' };
+    const list = h('div', { class: 'stack', style: { gap: '8px' } });
+    const paintList = () => {
+      const types = where === 'on' ? ITEM_TYPES : WIDGET_TYPES;
+      if (!types[type]) type = Object.keys(types)[0];
+      list.replaceChildren(...Object.entries(types).map(([k, l]) =>
         h('label', { class: 'row', style: { fontWeight: 600, gap: '10px' } }, h('input', { type: 'radio', name: 'wt', value: k, checked: k === type, onchange: () => (type = k) }), l,
-          h('span', { class: 'tiny', style: { fontWeight: 400 } }, {
-            clock: 'Large time and date', weather: 'Current weather + forecast (needs internet)', qr: 'Scan-to-open link',
-            menu: 'Items with prices, in columns', web: 'Show a live web page', youtube: 'Play a YouTube video (needs internet)' }[k]))))],
+          h('span', { class: 'tiny', style: { fontWeight: 400 } }, desc[k] || ''))));
+    };
+    paintList();
+    modal({ title: 'Add a widget', body: [
+      cur ? h('div', { class: 'seg', style: { marginBottom: '6px' } },
+        ...[['on', 'On this slide (drag to place)'], ['slide', 'As a full-screen slide']].map(([v, l]) =>
+          h('button', { type: 'button', class: where === v ? 'on' : '', onclick: (e) => { where = v; [...e.currentTarget.parentNode.children].forEach((b) => b.classList.toggle('on', b === e.currentTarget)); paintList(); } }, l))) : null,
+      list],
     actions: [{ label: 'Cancel' }, { label: 'Add', class: 'primary', onClick: () => {
-      if (type === 'overlay') {
-        cur.text = { ...newSlide().text, ...(cur.text || {}), on: true, title: cur.text?.title || 'Your headline' };
+      if (where === 'on' && cur) {
+        const it = newItem(type, widgetDefaults);
+        (cur.items || (cur.items = [])).push(it);
+        selItem = it.id;
         schedule(); paint();
-        setTimeout(() => inspEl.querySelector('.overlay-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+        setTimeout(() => inspEl.querySelector('.items-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+        toast('Drag the box on the preview to move it. Drag its corner to resize.');
         return;
       }
       const d = widgetDefaults(type);
@@ -162,6 +173,7 @@ export async function editorPage({ main, params: [id], go }) {
         player.load({ slides: [one], settings: pl.settings });
       }
       player.start();
+      setTimeout(paintEditLayer, 60);
     }, 250);
   }
 
@@ -281,6 +293,75 @@ export async function editorPage({ main, params: [id], go }) {
     refreshPreview(transition);
   }
 
+  // ------------------------------------------------ widgets placed on the slide
+  function changeItem(id, mut, opts) {
+    change((x) => { const it = (x.items || []).find((i) => i.id === id); if (it) mut(it); }, opts);
+  }
+  function itemsSection(s) {
+    const items = s.items || [];
+    if (selItem && !items.some((i) => i.id === selItem)) selItem = null;
+    if (!items.length) return '';
+    return h('div', { class: 'full stack items-section', style: { gap: '10px' } },
+      h('div', { class: 'section-title' }, 'Widgets on this slide'),
+      h('div', { class: 'tiny' }, 'Drag a box on the preview to move it, or drag its corner to resize.'),
+      ...items.map((it) => {
+        const open = it.id === selItem;
+        const head = h('div', { class: 'row between item-head' + (open ? ' on' : ''), onclick: () => { selItem = open ? null : it.id; paintInspector(); paintEditLayer(); } },
+          h('b', { class: 'small' }, ITEM_TYPES[it.type] || it.type, it.type === 'text' && it.text?.title ? ` · ${it.text.title.slice(0, 24)}` : ''),
+          h('div', { class: 'row', style: { gap: '4px' } },
+            h('button', { class: 'btn sm ghost', type: 'button', onclick: (e) => { e.stopPropagation(); selItem = it.id; paintInspector(); paintEditLayer(); } }, open ? 'Editing' : 'Edit'),
+            h('button', { class: 'btn sm ghost danger', type: 'button', title: 'Remove this widget', onclick: (e) => { e.stopPropagation(); change((x) => { x.items = (x.items || []).filter((i) => i.id !== it.id); }); if (selItem === it.id) selItem = null; paintInspector(); } }, icon('trash'))));
+        if (!open) return h('div', { class: 'item-card' }, head);
+        const ch = (mut, opts) => changeItem(it.id, mut, opts);
+        const fields = it.type === 'text'
+          ? [h('div', { class: 'full' }, field('Headline', h('input', { type: 'text', value: it.text?.title || '', oninput: (e) => ch((x) => { x.text = { ...(x.text || {}), title: e.target.value }; }) }))),
+             h('div', { class: 'full' }, field('Line of text', h('input', { type: 'text', value: it.text?.subtitle || '', oninput: (e) => ch((x) => { x.text = { ...(x.text || {}), subtitle: e.target.value }; }) }))),
+             field('Align', select([['left', 'Left'], ['center', 'Centre'], ['right', 'Right']], it.align || 'left', (v) => ch((x) => (x.align = v))))]
+          : widgetFields(it, (mut, opts) => ch(mut, opts), paintInspector).slice(1);
+        return h('div', { class: 'item-card on' }, head,
+          h('div', { class: 'inspector', style: { padding: 0, marginTop: '8px' } }, ...fields,
+            field('Text colour', h('input', { type: 'color', value: it.color || '#ffffff', oninput: (e) => ch((x) => (x.color = e.target.value)) })),
+            h('label', { class: 'row small', style: { fontWeight: 600, alignSelf: 'end' } }, h('input', { type: 'checkbox', checked: !!it.panel, onchange: (e) => ch((x) => (x.panel = e.target.checked)) }), 'Dark panel behind it')));
+      }));
+  }
+
+  // Draggable boxes drawn over the preview, one per widget on the selected slide.
+  const editLayer = h('div', { class: 'edit-layer' });
+  function paintEditLayer() {
+    const s = pl.slides[sel];
+    const stage = previewBox.querySelector('.sg-stage');
+    if (!previewBox.contains(editLayer)) previewBox.appendChild(editLayer);
+    if (!s || !(s.items || []).length || !stage) { editLayer.replaceChildren(); return; }
+    const pb = previewBox.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    Object.assign(editLayer.style, { left: sr.left - pb.left + 'px', top: sr.top - pb.top + 'px', width: sr.width + 'px', height: sr.height + 'px' });
+    editLayer.replaceChildren(...s.items.map((it) => {
+      const box = h('div', { class: 'edit-box' + (it.id === selItem ? ' on' : ''), title: ITEM_TYPES[it.type] });
+      const place = () => Object.assign(box.style, { left: it.x * 100 + '%', top: it.y * 100 + '%', width: it.w * 100 + '%', height: it.h * 100 + '%' });
+      const live = () => previewBox.querySelectorAll(`.sg-item[data-id="${it.id}"]`).forEach((el) => Object.assign(el.style, { left: it.x * 100 + '%', top: it.y * 100 + '%', width: it.w * 100 + '%', height: it.h * 100 + '%' }));
+      place();
+      const grip = h('div', { class: 'edit-grip', title: 'Drag to resize' });
+      box.append(h('span', { class: 'edit-label' }, ITEM_TYPES[it.type]), grip);
+      const drag = (e, resize) => {
+        e.preventDefault(); e.stopPropagation();
+        if (selItem !== it.id) { selItem = it.id; paintInspector(); editLayer.querySelectorAll('.edit-box').forEach((b) => b.classList.toggle('on', b === box)); }
+        const W = editLayer.clientWidth, H = editLayer.clientHeight, sx = e.clientX, sy = e.clientY, o = { x: it.x, y: it.y, w: it.w, h: it.h };
+        const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+        const move = (ev) => {
+          const dx = (ev.clientX - sx) / W, dy = (ev.clientY - sy) / H;
+          if (resize) { it.w = clamp(o.w + dx, 0.05, 1 - it.x); it.h = clamp(o.h + dy, 0.05, 1 - it.y); }
+          else { it.x = clamp(o.x + dx, 0, 1 - it.w); it.y = clamp(o.y + dy, 0, 1 - it.h); }
+          place(); live();
+        };
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); schedule(); paintThumb(sel); };
+        window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+      };
+      box.addEventListener('pointerdown', (e) => drag(e, false));
+      grip.addEventListener('pointerdown', (e) => drag(e, true));
+      return box;
+    }));
+  }
+  window.addEventListener('resize', () => paintEditLayer());
+
   function paintInspector() {
     const s = pl.slides[sel];
     if (!s) {
@@ -352,6 +433,7 @@ export async function editorPage({ main, params: [id], go }) {
         h('div', { class: 'seg' }, [['stretch', areaCount() > 1 ? 'Stretch to area' : 'Stretch to screen'], ['cover', 'Fill (crop)'], ['contain', 'Fit whole'], ...(s.type === 'image' ? [['blur', 'Fit + blur']] : [])].map(([v, l]) =>
           h('button', { type: 'button', class: (s.fit || 'cover') === v ? 'on' : '', onclick: () => { change((x) => { x.fit = v; x.fit_set = true; }); paintInspector(); } }, l))),
         isVideo ? h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: s.muted === false, onchange: (e) => change((x) => (x.muted = !e.target.checked), { list: false }) }), 'Play sound on TV') : null) : null,
+      itemsSection(s),
       h('div', { class: 'full' }, field('Background', sw)),
 
       h('div', { class: 'section-title' }, 'Timing'),

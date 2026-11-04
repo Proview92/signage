@@ -350,3 +350,14 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .lay-slider { display: grid; grid-template-columns: 150px 1fr 44px; align-items: center; gap: 10px; }
 .lay-range { width: 100%; accent-color: #3f6fd0; }
 @media (max-width: 640px) { .lay-slider { grid-template-columns: 1fr 44px; } .lay-slider > span { grid-column: 1 / -1; } }
+
+/* Widgets placed on a slide: drag boxes over the editor preview */
+.edit-layer { position: absolute; pointer-events: none; z-index: 5; }
+.edit-box { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255,255,255,.9); outline: 1px solid rgba(0,0,0,.35); cursor: move; pointer-events: auto; touch-action: none; border-radius: 4px; }
+.edit-box:hover { background: rgba(79,142,247,.08); }
+.edit-box.on { border: 2px solid #4f8ef7; background: rgba(79,142,247,.08); }
+.edit-grip { position: absolute; right: -2px; bottom: -2px; width: 16px; height: 16px; background: #4f8ef7; border: 2px solid #fff; border-radius: 4px; cursor: nwse-resize; touch-action: none; }
+.edit-label { position: absolute; left: 4px; top: 4px; font: 600 11px var(--font); background: #4f8ef7; color: #fff; padding: 1px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+.item-card { border: 1px solid var(--line, #e3e5ec); border-radius: 10px; padding: 8px 10px; }
+.item-card.on { border-color: #4f8ef7; }
+.item-head { cursor: pointer; gap: 8px; }

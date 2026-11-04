@@ -59,6 +59,50 @@ export const BACKGROUNDS = {
 
 export const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// ---------------------------------------------------------------------
+//  Widgets placed on top of a slide: slide.items = [{ id, type, x, y, w, h (fractions of the slide),
+//  widget, color, panel, text:{title,subtitle}, align }]. Each is drawn at a fixed design size and
+//  scaled to fit its box, so it looks the same at any size.
+// ---------------------------------------------------------------------
+export const ITEM_TYPES = { text: 'Text box', clock: 'Clock & date', weather: 'Weather', qr: 'QR code', menu: 'Menu / price list' };
+const ITEM_DESIGN = { text: [1400, 420], clock: [1300, 480], weather: [1600, 860], qr: [700, 790], menu: [1600, 1000] };
+export function newItem(type, widgetDefaults) {
+  const rect = { text: [0.08, 0.68, 0.6, 0.22], clock: [0.62, 0.05, 0.34, 0.16], weather: [0.58, 0.05, 0.38, 0.26], qr: [0.78, 0.58, 0.18, 0.36], menu: [0.05, 0.08, 0.5, 0.84] }[type] || [0.3, 0.3, 0.4, 0.3];
+  const d = type === 'text' ? {} : (widgetDefaults?.(type) || {});
+  return {
+    id: crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2),
+    type, x: rect[0], y: rect[1], w: rect[2], h: rect[3],
+    widget: d.widget || {}, color: '#ffffff', panel: type !== 'qr',
+    ...(type === 'text' ? { text: { title: 'Your headline', subtitle: '' }, align: 'left' } : {}),
+  };
+}
+function textItem(inner, it) {
+  const a = it.align || 'left';
+  Object.assign(inner.style, { display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: { left: 'flex-start', center: 'center', right: 'flex-end' }[a], textAlign: a, color: it.color || '#fff', padding: '0 60px', boxSizing: 'border-box', textShadow: it.panel ? '' : '0 4px 24px rgba(0,0,0,.45)' });
+  const t = it.text || {};
+  if (t.title) { const d = document.createElement('div'); d.textContent = t.title; Object.assign(d.style, { fontSize: '150px', fontWeight: '800', lineHeight: '1.05', letterSpacing: '-0.02em' }); inner.appendChild(d); }
+  if (t.subtitle) { const d = document.createElement('div'); d.textContent = t.subtitle; Object.assign(d.style, { fontSize: '70px', fontWeight: '500', marginTop: '18px', opacity: '.92' }); inner.appendChild(d); }
+}
+function buildItems(slide, el, opts) {
+  for (const it of slide.items || []) {
+    const [dw, dh] = ITEM_DESIGN[it.type] || [1200, 600];
+    const box = document.createElement('div');
+    box.className = 'sg-item';
+    box.dataset.id = it.id;
+    Object.assign(box.style, { position: 'absolute', left: it.x * 100 + '%', top: it.y * 100 + '%', width: it.w * 100 + '%', height: it.h * 100 + '%',
+      zIndex: '3', overflow: 'hidden', borderRadius: '24px', background: it.panel ? (it.panelColor || 'rgba(0,0,0,.45)') : 'transparent' });
+    const inner = document.createElement('div');
+    Object.assign(inner.style, { position: 'absolute', left: '50%', top: '50%', width: dw + 'px', height: dh + 'px' });
+    const fit = () => { const k = Math.min(box.clientWidth / dw, box.clientHeight / dh) || 0; inner.style.transform = `translate(-50%, -50%) scale(${k})`; };
+    if ('ResizeObserver' in window) new ResizeObserver(fit).observe(box);
+    requestAnimationFrame(fit);
+    if (it.type === 'text') textItem(inner, it);
+    else buildWidget({ type: it.type, widget: it.widget || {}, text: { color: it.color || '#ffffff' } }, inner, opts);
+    box.appendChild(inner);
+    el.appendChild(box);
+  }
+}
+
 export function newSlide(partial = {}) {
   return {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)),
@@ -304,6 +348,7 @@ export function buildSlide(slide, url, { forPreview = false, mutedOverride } = {
     }
     el.appendChild(box);
   }
+  buildItems(slide, el, { forPreview });
   return el;
 }
 
