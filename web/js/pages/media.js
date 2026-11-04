@@ -81,9 +81,54 @@ function askQuality(files) {
   });
 }
 
+// PDFs: every page becomes a sharp picture (rendered at 4K size, then resized like any picture),
+// so TVs only ever have to show plain images.
+const PDF_MAX_PAGES = 50;
+async function pdfToImages(file, progressEl) {
+  const status = h('div', { class: 'upload-row' }, h('div', { style: { width: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, file.name), h('span', { class: 'tiny' }, 'Reading PDF…'));
+  progressEl?.append(status);
+  try {
+    const pdfjs = await import('../../vendor/pdfjs/pdf.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('../../vendor/pdfjs/pdf.worker.mjs', import.meta.url).href;
+    const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const n = Math.min(doc.numPages, PDF_MAX_PAGES);
+    if (doc.numPages > PDF_MAX_PAGES) toast(`${file.name} has ${doc.numPages} pages. Only the first ${PDF_MAX_PAGES} were added.`);
+    const base = file.name.replace(/\.pdf$/i, '');
+    const out = [];
+    for (let i = 1; i <= n; i++) {
+      status.lastChild.textContent = `Converting page ${i} of ${n}…`;
+      const page = await doc.getPage(i);
+      const vp1 = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: 3840 / Math.max(vp1.width, vp1.height) });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.92));
+      canvas.width = canvas.height = 0; page.cleanup();
+      if (blob) out.push(new File([blob], n > 1 ? `${base} – page ${i}.jpg` : `${base}.jpg`, { type: 'image/jpeg' }));
+    }
+    doc.destroy();
+    status.remove();
+    return out;
+  } catch (e) {
+    status.lastChild.textContent = 'Could not read this PDF';
+    toast(`${file.name}: ${errMsg(e)}`, true);
+    return [];
+  }
+}
+
 export async function uploadFiles(files, progressEl, folder = null) {
   const out = [];
   files = [...files];
+  // Turn any PDFs into one picture per page first.
+  const isPdf = (f) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+  if (files.some(isPdf)) {
+    const expanded = [];
+    for (const f of files) expanded.push(...(isPdf(f) ? await pdfToImages(f, progressEl) : [f]));
+    files = expanded;
+  }
   const quality = await askQuality(files);
   if (!quality) return out;
   const k4 = quality === '4k';
@@ -92,7 +137,7 @@ export async function uploadFiles(files, progressEl, folder = null) {
     const bar = h('div');
     const row = h('div', { class: 'upload-row' }, h('div', { style: { width: '40%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, file.name), h('div', { class: 'bar' }, bar), h('span', { class: 'tiny' }, fmtBytes(file.size)));
     progressEl?.append(row);
-    if (!kind) { row.lastChild.textContent = 'Not a picture or video'; continue; }
+    if (!kind) { row.lastChild.textContent = 'Not a picture, video or PDF'; continue; }
     try {
       // Pictures are resized to the chosen quality so TVs show them smoothly.
       if (kind === 'image') {
@@ -136,14 +181,14 @@ function mediaThumb(m, url) {
 }
 
 function uploader(onUploaded, getFolder = () => null) {
-  const input = h('input', { type: 'file', multiple: true, accept: 'image/*,video/*', class: 'hidden', onchange: async () => { const f = [...input.files]; input.value = ''; onUploaded(await uploadFiles(f, progress, getFolder())); } });
+  const input = h('input', { type: 'file', multiple: true, accept: 'image/*,video/*,application/pdf,.pdf', class: 'hidden', onchange: async () => { const f = [...input.files]; input.value = ''; onUploaded(await uploadFiles(f, progress, getFolder())); } });
   const progress = h('div', { style: { marginTop: '10px' } });
   const dz = h('div', { class: 'dropzone',
     ondragover: (e) => { e.preventDefault(); dz.classList.add('over'); },
     ondragleave: () => dz.classList.remove('over'),
     ondrop: async (e) => { e.preventDefault(); dz.classList.remove('over'); onUploaded(await uploadFiles([...e.dataTransfer.files], progress, getFolder())); } },
-    h('div', { style: { fontWeight: 650, color: 'var(--ink)' } }, 'Drop pictures or videos here'),
-    h('div', { class: 'small', style: { margin: '4px 0 12px' } }, 'JPG, PNG, WebP, GIF, MP4 or WebM. On a phone you can pick from your camera roll.'),
+    h('div', { style: { fontWeight: 650, color: 'var(--ink)' } }, 'Drop pictures, videos or PDFs here'),
+    h('div', { class: 'small', style: { margin: '4px 0 12px' } }, 'JPG, PNG, WebP, GIF, MP4, WebM or PDF (each page becomes a picture). On a phone you can pick from your camera roll.'),
     h('button', { class: 'btn primary', type: 'button', onclick: () => input.click() }, icon('upload'), 'Choose files'),
     input, progress);
   return dz;
