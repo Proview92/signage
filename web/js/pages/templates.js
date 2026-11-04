@@ -64,6 +64,7 @@ export const TEMPLATES = [
 
 export function templateGallery(go) {
   const name = h('input', { type: 'text', placeholder: 'Business name, e.g. Bella Pizza', value: state.me?.clients?.find((c) => c.id === state.clientId)?.name || '' });
+  const plName = h('input', { type: 'text', value: '', placeholder: 'e.g. Lunch menu', autocomplete: 'off', oninput: () => plName.classList.remove('invalid') });
   let pick = TEMPLATES[0].id;
   const grid = h('div', { class: 'cards', style: { gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: '12px' } });
   const paint = () => grid.replaceChildren(...TEMPLATES.map((t) => {
@@ -75,12 +76,14 @@ export function templateGallery(go) {
   }));
   name.addEventListener('change', paint);
   paint();
-  modal({ title: 'Start from a template', wide: true, body: [field('Business name (used in the slides)', name), grid,
+  modal({ title: 'Start from a template', wide: true, body: [h('div', { class: 'grid2' }, field('Playlist name (required)', plName), field('Business name (used in the slides)', name)), grid,
     h('div', { class: 'tiny' }, 'Everything is editable afterwards: text, prices, colours, pictures and timings.')],
   actions: [{ label: 'Cancel' }, { label: 'Create playlist', class: 'primary', onClick: async () => {
     const t = TEMPLATES.find((x) => x.id === pick);
+    const pn = plName.value.trim();
+    if (!pn) { plName.classList.add('invalid'); plName.focus(); throw new Error('Please give the playlist a name'); }
     const n = name.value.trim() || 'Your business';
-    const p = await q(sb.from('playlists').insert({ client_id: state.clientId, name: `${t.name} — ${n}`, slides: t.build(n), settings: { orientation: 'landscape' } }).select().single());
+    const p = await q(sb.from('playlists').insert({ client_id: state.clientId, name: pn, slides: t.build(n), settings: { orientation: 'landscape' } }).select().single());
     toast('Playlist created from template');
     go('playlist/' + p.id);
   } }] });

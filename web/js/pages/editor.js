@@ -345,7 +345,8 @@ export async function editorPage({ main, params: [id], go }) {
   }
 
   const nameInput = h('input', { type: 'text', value: pl.name, style: { fontSize: '22px', fontWeight: 750, border: '1px solid transparent', background: 'transparent', padding: '4px 6px', marginLeft: '-6px' },
-    oninput: (e) => { pl.name = e.target.value || 'Untitled playlist'; schedule(); } });
+    oninput: (e) => { const v = e.target.value.trim(); e.target.classList.toggle('invalid', !v); if (v) { pl.name = v; schedule(); } },
+    onblur: (e) => { if (!e.target.value.trim()) { e.target.value = pl.name; e.target.classList.remove('invalid'); toast('A playlist needs a name', true); } } });
   const orient = h('div', { class: 'seg' }, [['landscape', 'Landscape'], ['portrait', 'Portrait']].map(([v, l]) =>
     h('button', { type: 'button', class: (pl.settings.orientation || 'landscape') === v ? 'on' : '', onclick: (e) => {
       pl.settings.orientation = v; schedule();

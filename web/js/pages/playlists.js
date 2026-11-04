@@ -27,13 +27,15 @@ export async function playlistsPage({ main, go }) {
       duration: m.kind === 'video' ? 0 : 8, video_duration: m.duration_s ? Number(m.duration_s) : undefined,
       effect: m.kind === 'image' ? 'kenburns' : 'none', text: { ...newSlide().text, title: '', subtitle: '' },
     }));
-    const name = h('input', { type: 'text', value: `New playlist ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` });
-    modal({ title: 'Name your playlist', body: [field('Playlist name', name), h('div', { class: 'tiny' }, `${slides.length} slide${slides.length === 1 ? '' : 's'}. You can add text, widgets and effects next.`)],
+    const name = h('input', { type: 'text', value: '', placeholder: 'e.g. Breakfast menu, Window promos', required: true, autocomplete: 'off', oninput: () => name.classList.remove('invalid') });
+    modal({ title: 'Name your playlist', body: [field('Playlist name (required)', name), h('div', { class: 'tiny' }, `${slides.length} slide${slides.length === 1 ? '' : 's'}. You can add text, widgets and effects next.`)],
       actions: [{ label: 'Cancel' },
         { label: 'Edit first', onClick: async () => { const p = await make(); go('playlist/' + p.id); } },
         slides.length ? { label: 'Publish', class: 'primary', onClick: async () => { const p = await make(); setTimeout(() => showOnTvsDialog(p, { onDone: () => go('playlists') }), 50); } } : null].filter(Boolean) });
     async function make() {
-      return q(sb.from('playlists').insert({ client_id: state.clientId, name: name.value.trim() || 'New playlist', slides, settings: { orientation: 'landscape' } }).select().single());
+      const n = name.value.trim();
+      if (!n) { name.classList.add('invalid'); name.focus(); throw new Error('Please give the playlist a name'); }
+      return q(sb.from('playlists').insert({ client_id: state.clientId, name: n, slides, settings: { orientation: 'landscape' } }).select().single());
     }
   };
 

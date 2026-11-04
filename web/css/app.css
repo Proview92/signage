@@ -291,6 +291,7 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; min-width: 0; 
 .date-wrap input { padding-right: 30px; }
 .date-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: 0; border-radius: 50%; background: #efeee9; color: var(--ink-2); font-size: 16px; line-height: 1; cursor: pointer; }
 .date-clear:hover { background: #e2e1db; }
+input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !important; background: #fff8f7 !important; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 44px; }
 .pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 34px; border: 0; background: transparent; color: var(--ink-3); border-radius: 8px; cursor: pointer; display: grid; place-items: center; }
