@@ -19,7 +19,7 @@ const LS = { screen: 'signage.tv.screen', reload: 'signage.tv.reload' };
 const MEDIA_CACHE = 'signage-media-v1';
 
 const $ = (id) => document.getElementById(id);
-const views = { boot: $('boot'), pair: $('pair'), wait: $('wait'), stage: $('stage'), expired: $('expired'), error: $('error') };
+const views = { boot: $('boot'), pair: $('pair'), wait: $('wait'), loading: $('loading'), stage: $('stage'), expired: $('expired'), error: $('error') };
 function show(name) { for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === name); }
 
 let screen = null;        // our screens row
@@ -27,6 +27,7 @@ let content = null;       // published snapshot
 let player = null;
 let currentKey = null;    // playlistId + version currently loaded
 let channel = null;
+let pendingVersion = null;  // content version being downloaded
 
 // ------------------------------------------------------------ shared clock (video walls)
 // Each TV estimates how far its clock is from the server's, so every TV in a wall agrees on "now".
@@ -70,16 +71,36 @@ async function cacheGet(path) {
   if (isImagePath(path) && !r.headers.get('x-fit')) return fitAndStore(c, path, blob);
   return blob;
 }
-async function download(path) {
+/** Is this file already stored on the TV? (cheap check, doesn't read the file) */
+async function isCached(path) {
+  if (objectUrls.has(path)) return true;
+  if (!('caches' in window)) return false;
+  try { return !!(await (await caches.open(MEDIA_CACHE)).match('/__media/' + path)); } catch { return false; }
+}
+async function download(path, onProgress) {
   const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(path, 3600);
   if (error) throw error;
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 10 * 60000);   // never hang forever on a dead connection
-  let res;
-  try { res = await fetch(data.signedUrl, { signal: ctl.signal }); }
-  finally { clearTimeout(t); }
-  if (!res.ok) throw new Error('download failed ' + res.status);
-  const blob = await res.blob();
+  // Never hang forever on a dead connection: give up if no data arrives for 60 seconds.
+  let idle = setTimeout(() => ctl.abort(), 60000);
+  const poke = () => { clearTimeout(idle); idle = setTimeout(() => ctl.abort(), 60000); };
+  let blob;
+  try {
+    const res = await fetch(data.signedUrl, { signal: ctl.signal });
+    if (!res.ok) throw new Error('download failed ' + res.status);
+    const total = Number(res.headers.get('content-length')) || 0;
+    if (res.body?.getReader) {
+      const reader = res.body.getReader(), parts = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value); got += value.length; poke();
+        onProgress?.(total ? got / total : 0, got, total);
+      }
+      blob = new Blob(parts, { type: res.headers.get('content-type') || '' });
+    } else blob = await res.blob();
+  } finally { clearTimeout(idle); }
   const c = 'caches' in window ? await caches.open(MEDIA_CACHE) : null;
   return fitAndStore(c, path, blob);
 }
@@ -104,15 +125,55 @@ function allPaths(c) {
   for (const p of Object.values(c?.playlists || {})) for (const s of p.slides || []) if (s.path) set.add(s.path);
   return set;
 }
-let prefetchGen = 0;
-async function prefetchAndPrune(c) {
-  const gen = ++prefetchGen;
-  const paths = allPaths(c);
-  for (const p of paths) {
-    if (gen !== prefetchGen) return;     // newer content arrived: that run takes over
-    try { if (!objectUrls.has(p) && !(await cacheGet(p))) await download(p); } catch (e) { console.warn('prefetch', p, e.message); }
+// New content is only switched to once every picture and video it needs is stored on the TV,
+// so playback never stalls waiting for a download. While it downloads, the TV keeps playing
+// what it had (with a small "Updating" badge), or shows a progress screen if it had nothing.
+let prepGen = 0;
+const fmtMB = (b) => (b / 1048576 >= 10 ? Math.round(b / 1048576) : (b / 1048576).toFixed(1)) + ' MB';
+function showProgress(onScreen, done, total, frac, got, size) {
+  const pct = Math.round(((done + Math.min(1, frac)) / total) * 100);
+  if (onScreen) {
+    $('upd').classList.add('on');
+    $('upd-text').textContent = `Updating content · ${pct}%`;
+  } else {
+    show('loading');
+    $('load-bar').style.width = pct + '%';
+    $('load-detail').textContent = `File ${Math.min(done + 1, total)} of ${total}${size ? ` · ${fmtMB(got)} of ${fmtMB(size)}` : ''} · ${pct}%`;
   }
-  if (gen !== prefetchGen) return;
+}
+async function prepare(next) {
+  const gen = ++prepGen;
+  const paths = [...allPaths(next)];
+  const missing = [];
+  for (const p of paths) if (!(await isCached(p))) missing.push(p);
+  if (gen !== prepGen) return;
+  if (missing.length) {
+    const playing = !!player && currentKey && currentKey !== 'expired' && views.stage.classList.contains('on');
+    console.log('[signage] downloading', missing.length, 'file(s) before playing');
+    let failed = 0;
+    for (let i = 0; i < missing.length; i++) {
+      let ok = false;
+      for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+        if (gen !== prepGen) return;            // newer content arrived: that run takes over
+        try {
+          showProgress(playing, i, missing.length, 0, 0, 0);
+          await download(missing[i], (f, got, size) => gen === prepGen && showProgress(playing, i, missing.length, f, got, size));
+          ok = true;
+        } catch (e) { console.warn('download', missing[i], e.message); if (attempt < 2) await new Promise((r) => setTimeout(r, 3000)); }
+      }
+      if (!ok) failed++;
+    }
+    if (gen !== prepGen) return;
+    $('upd').classList.remove('on');
+    // Anything that still failed (e.g. no internet) is skipped by the player and retried later.
+    if (failed) setTimeout(() => content === next && prepare(next), 60000);
+  }
+  if (gen !== prepGen) return;
+  if (content !== next) { content = next; currentKey = null; }
+  evaluate();
+  prune();
+}
+async function prune() {
   // Only ever prune against the latest content.
   const keep = allPaths(content);
   for (const [p, u] of objectUrls) if (!keep.has(p)) { URL.revokeObjectURL(u); objectUrls.delete(p); }
@@ -196,20 +257,22 @@ function apply(row) {
   $('screen-name').textContent = row.name;
 
   if (!row.claimed) {
-    content = null; currentKey = null; player?.clear();
+    content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear();
     $('code').textContent = row.pairing_code || '······';
     return show('pair');
   }
   if (isExpired()) return evaluate();
   if (!row.content) {
-    content = null; currentKey = null; player?.clear();
+    content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear();
     $('wait-name').textContent = row.name;
     return show('wait');
   }
   if (currentKey === 'expired') currentKey = null;
   if (!content || content.version !== row.content.version) {
-    content = row.content;
-    prefetchAndPrune(content);
+    // Don't switch yet: prepare() swaps it in once all its media is on the TV.
+    if (pendingVersion !== row.content.version) { pendingVersion = row.content.version; prepare(row.content); }
+    if (content) evaluate();
+    return;
   }
   evaluate();
 }
