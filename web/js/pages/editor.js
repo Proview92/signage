@@ -195,6 +195,30 @@ export async function editorPage({ main, params: [id], go }) {
     renderStill(el, s, url, pl.settings.orientation);
   }
 
+  // Start / End date side by side. Empty = the slide shows all the time until it's stopped or deleted.
+  function dateRange(s) {
+    const fmt = (d) => new Date(d + 'T00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    const note = h('div', { class: 'tiny' });
+    const paintNote = () => {
+      const a = s.valid_from, b = s.valid_until;
+      note.textContent = !a && !b ? 'No dates: this slide shows all the time, until you stop or delete it.'
+        : a && b ? `Shows from ${fmt(a)} to the end of ${fmt(b)}.`
+        : a ? `Starts on ${fmt(a)}, then shows until you stop or delete it.` : `Shows now until the end of ${fmt(b)}.`;
+      if (a && b && b < a) note.textContent = '⚠ End date is before the start date, so this slide won’t show.';
+    };
+    const box = (key, label) => {
+      const input = h('input', { type: 'date', value: s[key] || '' });
+      const clear = h('button', { class: 'date-clear', type: 'button', title: 'Clear date', 'aria-label': `Clear ${label}` }, '×');
+      const sync = () => clear.classList.toggle('hidden', !input.value);
+      input.onchange = () => { change((x) => (x[key] = input.value || null)); s[key] = input.value || null; sync(); paintNote(); };
+      clear.onclick = () => { input.value = ''; input.onchange(); };
+      sync();
+      return h('label', { class: 'field' }, label, h('div', { class: 'date-wrap' }, input, clear));
+    };
+    paintNote();
+    return h('div', { class: 'full stack', style: { gap: '6px' } }, h('div', { class: 'date-pair' }, box('valid_from', 'Start date'), box('valid_until', 'End date')), note);
+  }
+
   // ------------------------------------------------ inspector
   const inspEl = h('div', { class: 'card-body' });
   function change(mut, { list = true, transition = false } = {}) {
@@ -306,8 +330,7 @@ export async function editorPage({ main, params: [id], go }) {
       ]),
 
       h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
-      field('Active from date', h('input', { type: 'date', value: s.valid_from || '', onchange: (e) => change((x) => (x.valid_from = e.target.value || null)) })),
-      field('End date', h('input', { type: 'date', value: s.valid_until || '', onchange: (e) => change((x) => (x.valid_until = e.target.value || null)) }), 'After this date the slide stops showing by itself.'),
+      dateRange(s),
       h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
       schedBody,
 
