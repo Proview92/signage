@@ -100,8 +100,8 @@ export function layoutDialog(pl, playlists, onSave) {
     while (st.zones.length < n - 1) st.zones.push(null);
     zonesWrap.replaceChildren(...(n > 1 ? [
       h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } }, layoutDiagram(st.layout, portrait),
-        h('div', { class: 'tiny' }, `After saving, choose an area above the slide list and add pictures, videos or text to it. Each area plays its own slides at the same time.`)),
-      h('details', { class: 'tiny' }, h('summary', { style: { cursor: 'pointer', fontWeight: 600 } }, 'Advanced: play another playlist in an area instead'),
+        h('div', { class: 'tiny' }, `After saving, pick an area above the slide list (Area 1, Area 2…) and press “Add media” to fill it.`)),
+      h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
         h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
           ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))))),
     ] : []));
@@ -117,7 +117,7 @@ export function layoutDialog(pl, playlists, onSave) {
     title: 'Screen layout',
     wide: true,
     body: [
-      h('div', { class: 'tiny' }, 'Split the screen into areas. Each area plays its own playlist at the same time.'),
+      h('div', { class: 'tiny' }, 'Split the screen into areas. Each area plays its own pictures, videos or text at the same time.'),
       picker, zonesWrap,
       h('label', { class: 'row small', style: { fontWeight: 600 } }, tickOn, 'Add a scrolling ticker along the bottom'),
       tickWrap,
