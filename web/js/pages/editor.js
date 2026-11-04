@@ -13,6 +13,7 @@ export async function editorPage({ main, params: [id], go }) {
   const allPlaylists = await q(sb.from('playlists').select('id,name,slides,settings').eq('client_id', state.clientId));
   const lookup = (pid) => (pid === pl.id ? pl : allPlaylists.find((x) => x.id === pid)) || null;
   let sel = pl.slides.length ? 0 : -1;
+  delete pl.settings.auto_publish;   // option removed: TVs update when you press Update TVs / Publish
   let saveTimer = null, saving = false, dirty = false, player = null, previewTimer = null;
 
   // ------------------------------------------------ saving
@@ -26,8 +27,7 @@ export async function editorPage({ main, params: [id], go }) {
     saving = true; dirty = false; status.textContent = 'Saving…';
     try {
       await q(sb.from('playlists').update({ name: pl.name, slides: pl.slides, settings: pl.settings }).eq('id', id));
-      status.textContent = pl.settings.auto_publish ? 'Saved · updating TVs…' : 'All changes saved';
-      if (pl.settings.auto_publish) autoPublish();
+      status.textContent = 'All changes saved';
     } catch (e) { dirty = true; status.textContent = 'Not saved'; toast(errMsg(e), true); }
     saving = false; savingP = null; done();
     if (dirty) schedule();
@@ -316,7 +316,7 @@ export async function editorPage({ main, params: [id], go }) {
         h('button', { class: 'btn sm', onclick: () => { const c = { ...structuredClone(s), id: newSlide().id }; pl.slides.splice(sel + 1, 0, c); sel++; schedule(); paint(); } }, icon('dup'), 'Duplicate'),
         h('button', { class: 'btn sm danger', onclick: () => deleteSlide(sel) }, icon('trash'), 'Delete')),
       h('div', { class: 'full row save-row' },
-        h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast(pl.settings.auto_publish ? 'Changes saved · TVs updating' : 'Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
+        h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast('Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
         h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Use “Update TVs” to send them to the screens.'))));
   }
 
@@ -351,10 +351,7 @@ export async function editorPage({ main, params: [id], go }) {
         layoutBtn,
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
         h('button', { class: 'btn', onclick: publish, title: 'Send your latest changes to the TVs that already show this playlist' }, icon('refresh'), 'Update TVs'),
-        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish')),
-      h('label', { class: 'row small', style: { fontWeight: 600, width: '100%', justifyContent: 'flex-end' }, title: 'Every save is sent to the TVs showing this playlist, a few seconds later' },
-        h('input', { type: 'checkbox', checked: !!pl.settings.auto_publish, onchange: (e) => { pl.settings.auto_publish = e.target.checked; schedule(); toast(e.target.checked ? 'TVs will update automatically as you edit' : 'Auto-update off: use “Update TVs” when ready'); } }),
-        'Update TVs automatically as I edit')),
+        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish'))),
     h('div', { class: 'editor' },
       h('div', { class: 'card' }, listEl),
       h('div', { class: 'stack' }, h('div', { class: 'card pad' }, previewBox), h('div', { class: 'card' }, inspEl))));
