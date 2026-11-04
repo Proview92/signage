@@ -145,7 +145,7 @@ export function layoutPanel(pl, playlists, onApply) {
     zonesWrap.replaceChildren(...(n > 1 ? [
       h('div', { class: 'row', style: { gap: '16px', flexWrap: 'nowrap', alignItems: 'center' } }, bigDiag,
         h('div', { class: 'stack grow', style: { gap: '10px' } }, sliders(), sizesEl,
-          h('div', { class: 'tiny' }, `Next, in “Add content”, fill each area with pictures, videos or text.`))),
+          h('div', { class: 'tiny' }, `Next, in “Add / edit content”, fill each area with pictures, videos or text.`))),
       !others.length ? '' : h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
         h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
           ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => { st.zones[i] = v || null; commit(); }))))),

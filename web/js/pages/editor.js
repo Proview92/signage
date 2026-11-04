@@ -456,21 +456,9 @@ export async function editorPage({ main, params: [id], go }) {
             field('Until', h('input', { type: 'time', value: sch.to || '', onchange: (e) => change((x) => (x.schedule.to = e.target.value)) })))) : null;
 
     const head = h('div', { class: 'full insp-head' }, h('span', { class: 'tiny' }, areaCount() > 1 ? `Area ${(s.zone || 0) + 1} › ` : ''),
-      h('b', {}, (step === 3 ? 'Timing & schedule: ' : 'Editing: ') + slideTitle(s)));
+      h('b', {}, (step === 3 ? 'Schedule: ' : 'Editing: ') + slideTitle(s)));
     if (step === 3) {
       inspEl.replaceChildren(h('div', { class: 'inspector' }, head,
-      h('div', { class: 'section-title' }, 'Timing'),
-      field('Show for (seconds)', dur),
-      isVideo ? h('label', { class: 'row small', style: { alignSelf: 'end', fontWeight: 600, paddingBottom: '10px' } }, fullVideo, 'Play the whole video') : h('div'),
-
-      h('div', { class: 'section-title' }, 'Transition & effect'),
-      field('Transition in', select(TRANSITIONS, s.transition || 'fade', (v) => change((x) => (x.transition = v), { transition: true }))),
-      field('Speed', h('input', { type: 'range', min: 200, max: 2500, step: 100, value: s.transition_ms ?? 900, onchange: (e) => change((x) => (x.transition_ms = Number(e.target.value)), { transition: true, list: false }) })),
-      field('Motion effect', select(EFFECTS, s.effect || 'none', (v) => change((x) => (x.effect = v)))),
-      h('div', { class: 'row', style: { alignSelf: 'end' } },
-        h('button', { class: 'btn sm', onclick: () => refreshPreview(true) }, icon('play'), 'Replay'),
-        h('button', { class: 'btn sm ghost', onclick: () => { pl.slides.forEach((x) => { x.transition = s.transition; x.transition_ms = s.transition_ms; }); schedule(); paintList(); toast('Transition applied to all slides'); } }, 'Apply to all')),
-
       h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
       dateRange(s),
       h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
@@ -493,6 +481,18 @@ export async function editorPage({ main, params: [id], go }) {
         isVideo ? h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: s.muted === false, onchange: (e) => change((x) => (x.muted = !e.target.checked), { list: false }) }), 'Play sound on TV') : null) : null,
       itemsSection(s),
       h('div', { class: 'full' }, field('Background', sw)),
+      h('div', { class: 'section-title' }, 'Timing'),
+      field('Show for (seconds)', dur),
+      isVideo ? h('label', { class: 'row small', style: { alignSelf: 'end', fontWeight: 600, paddingBottom: '10px' } }, fullVideo, 'Play the whole video') : h('div'),
+
+      h('div', { class: 'section-title' }, 'Transition & effect'),
+      field('Transition in', select(TRANSITIONS, s.transition || 'fade', (v) => change((x) => (x.transition = v), { transition: true }))),
+      field('Speed', h('input', { type: 'range', min: 200, max: 2500, step: 100, value: s.transition_ms ?? 900, onchange: (e) => change((x) => (x.transition_ms = Number(e.target.value)), { transition: true, list: false }) })),
+      field('Motion effect', select(EFFECTS, s.effect || 'none', (v) => change((x) => (x.effect = v)))),
+      h('div', { class: 'row', style: { alignSelf: 'end' } },
+        h('button', { class: 'btn sm', onclick: () => refreshPreview(true) }, icon('play'), 'Replay'),
+        h('button', { class: 'btn sm ghost', onclick: () => { pl.slides.forEach((x) => { x.transition = s.transition; x.transition_ms = s.transition_ms; }); schedule(); paintList(); toast('Transition applied to all slides'); } }, 'Apply to all')),
+
 
       ...(!hasOverlay(s) ? [] : [
       h('div', { class: 'section-title row between overlay-section' }, s.type === 'text' ? 'Text' : 'Text overlay',
@@ -518,7 +518,7 @@ export async function editorPage({ main, params: [id], go }) {
   // ------------------------------------------------ page
   const totalEl = h('span', { class: 'tiny' });
   // ------------------------------------------------ steps
-  const STEPS = [[1, 'Screen & layout'], [2, 'Add content'], [3, 'Timing & schedule'], [4, 'Choose TVs & publish']];
+  const STEPS = [[1, 'Screen & layout'], [2, 'Add / edit content'], [3, 'Schedule'], [4, 'Choose TVs & publish']];
   const stepsEl = h('div', { class: 'ed-steps' });
   const previewCard = h('div', { class: 'card pad ed-preview' });
   const contentEl = h('div', { class: 'stack' });
@@ -578,7 +578,7 @@ export async function editorPage({ main, params: [id], go }) {
         h('div', {}, h('span', { class: 'tiny' }, 'Screen'), h('b', {}, `${portrait ? 'Portrait' : 'Landscape'} · ${layoutLabel(n.layout, portrait)}${n.ticker ? ' + ticker' : ''}`)),
         h('div', {}, h('span', { class: 'tiny' }, 'Slides'), h('b', {}, per.length > 1 ? per.map((c, i) => `Area ${i + 1}: ${c}`).join(' · ') : String(per[0]))),
         h('div', {}, h('span', { class: 'tiny' }, 'Loop length'), h('b', {}, fmtDuration(playlistLength(pl))))),
-      !pl.slides.length ? h('div', { class: 'notice' }, 'This playlist has no slides yet. Go back to “Add content” first.') : '',
+      !pl.slides.length ? h('div', { class: 'notice' }, 'This playlist has no slides yet. Go back to “Add / edit content” first.') : '',
       h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview full screen'),
         h('button', { class: 'btn primary', disabled: !pl.slides.length, onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Choose TVs & publish')),
@@ -594,8 +594,8 @@ export async function editorPage({ main, params: [id], go }) {
       return;
     }
     contentEl.replaceChildren(
-      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, step === 2 ? 'Add content' : 'Timing & schedule'),
-        h('span', { class: 'tiny' }, step === 2 ? 'Add pictures, videos, text or widgets to each area. Click a slide to edit it.' : 'Click a slide to set how long it shows, its transition, effect and when it plays.')),
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, step === 2 ? 'Add / edit content' : 'Schedule'),
+        h('span', { class: 'tiny' }, step === 2 ? 'Add pictures, videos, text or widgets to each area. Click a slide to edit it, including how long it shows and its transition.' : 'Click a slide to choose the dates, days and times it plays.')),
         areaEl, listEl),
       h('div', { class: 'card' }, inspEl),
       nav());
