@@ -623,7 +623,7 @@ export async function editorPage({ main, params: [id], go }) {
       return;
     }
     contentEl.replaceChildren(
-      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, step === 2 ? 'Add / edit content' : 'Schedule'),
+      h('div', { class: 'card' }, h('div', { class: 'card-head ed-card-head' }, h('h2', {}, step === 2 ? 'Add / edit content' : 'Schedule'),
         h('span', { class: 'tiny' }, step === 2 ? 'Add pictures, videos, text or widgets to each area. Click a slide to edit it, including how long it shows and its transition.' : 'Click a slide to choose the dates, days and times it plays.')),
         areaEl, listEl),
       h('div', { class: 'card' }, inspEl),
@@ -662,11 +662,11 @@ export async function editorPage({ main, params: [id], go }) {
   }
 
   main.replaceChildren(
-    h('div', { class: 'page-head' },
+    h('div', { class: 'page-head ed-head' },
       h('div', { class: 'grow' }, h('div', { class: 'crumb' }, h('a', { href: '#/playlists' }, 'Playlists'), ' / Edit'), nameInput,
-        h('div', { class: 'row' }, totalEl, '·', status)),
-      h('div', { class: 'row' },
-        h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
+        h('div', { class: 'row ed-meta' }, totalEl, '·', status)),
+      h('div', { class: 'row ed-acts' },
+        h('button', { class: 'btn', onclick: previewAll, title: 'Preview' }, icon('play'), h('span', { class: 'lbl' }, 'Preview')),
         h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish'))),
     stepsEl,
     h('div', { class: 'editor steps-mode' }, previewCard, contentEl));
