@@ -1,10 +1,10 @@
 import { publishOrRequest } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
-import { SlidePlayer, LayoutPlayer, LAYOUTS, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
+import { SlidePlayer, LayoutPlayer, LAYOUTS, normLayout, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
 import { playlistLength } from './playlists.js';
 import { WIDGET_TYPES, widgetDefaults, isWidget } from '../widgets.js';
-import { widgetFields, layoutDialog } from './widget-editor.js';
+import { widgetFields, layoutDialog, layoutDiagram } from './widget-editor.js';
 import { showOnTvsDialog } from './show-on-tvs.js';
 
 export async function editorPage({ main, params: [id], go }) {
@@ -355,7 +355,7 @@ export async function editorPage({ main, params: [id], go }) {
     } }, l)));
 
   const layoutBtn = h('button', { class: 'btn', title: 'Full screen, side panel or ticker' });
-  const paintLayoutBtn = () => (layoutBtn.textContent = `Layout: ${LAYOUTS[pl.settings.layout || 'full']}`);
+  const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait'), `Layout: ${LAYOUTS[n.layout]}${n.ticker ? ' + ticker' : ''}`); };
   layoutBtn.onclick = () => layoutDialog(pl, allPlaylists, (st) => { Object.assign(pl.settings, st); schedule(); paintLayoutBtn(); toast('Layout saved. Use Preview to see it'); });
   paintLayoutBtn();
 

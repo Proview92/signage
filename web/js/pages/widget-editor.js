@@ -1,7 +1,7 @@
 // Inspector fields for widget slides, and the playlist layout dialog.
 import { h, field, select, toast, modal, errMsg } from '../core.js';
 import { WIDGET_TYPES, geocode, youtubeId } from '../widgets.js';
-import { LAYOUTS } from '../renderer.js';
+import { LAYOUTS, normLayout, layoutZones, zoneCount, zonePlaylistIds } from '../renderer.js';
 
 /** Fields for the selected widget slide. change(fn) mutates + saves; repaint() redraws the inspector. */
 export function widgetFields(s, change, repaint) {
@@ -70,19 +70,41 @@ export function widgetFields(s, change, repaint) {
 }
 
 /** Playlist layout: full screen, side panel, ticker. */
+/** Small picture of a layout (areas numbered). */
+export function layoutDiagram(layout, portrait = false, active = false) {
+  const W = portrait ? 54 : 96, H = portrait ? 96 : 54;
+  const box = h('div', { class: 'lay-diagram' + (active ? ' on' : ''), style: { width: W + 'px', height: H + 'px' } });
+  layoutZones(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080).forEach(([x, y, w, hh], i) => {
+    const k = W / (portrait ? 1080 : 1920);
+    box.append(h('div', { class: 'lay-zone' + (i === 0 ? ' main' : ''), style: { left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' } }, String(i + 1)));
+  });
+  return box;
+}
+
 export function layoutDialog(pl, playlists, onSave) {
-  const st = { layout: 'full', ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff' }, ...pl.settings };
-  st.ticker = { speed: 'normal', bg: '#3f6fd0', color: '#ffffff', ...(pl.settings.ticker || {}) };
+  const portrait = pl.settings.orientation === 'portrait';
+  const norm = normLayout(pl.settings);
+  const st = { layout: norm.layout, ticker_on: norm.ticker, zones: zonePlaylistIds(pl.settings), ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff', ...(pl.settings.ticker || {}) } };
   const others = playlists.filter((p) => p.id !== pl.id);
-  const sideWrap = h('div', { class: 'stack' });
+  const picker = h('div', { class: 'lay-grid' });
+  const zonesWrap = h('div', { class: 'stack', style: { gap: '10px' } });
   const tickWrap = h('div', { class: 'stack' });
   const text = h('textarea', { rows: 3, value: st.ticker.text || '', placeholder: 'One message per line, e.g.\nFree Wi-Fi: CAFE-GUEST\nOpen 7am–7pm every day' });
+  const tickOn = h('input', { type: 'checkbox', checked: st.ticker_on, onchange: (e) => { st.ticker_on = e.target.checked; paint(); } });
+
   const paint = () => {
-    sideWrap.classList.toggle('hidden', !st.layout.includes('side'));
-    tickWrap.classList.toggle('hidden', !st.layout.includes('ticker'));
+    picker.replaceChildren(...Object.entries(LAYOUTS).map(([k, label]) =>
+      h('button', { type: 'button', class: 'lay-card' + (st.layout === k ? ' on' : ''), onclick: () => { st.layout = k; paint(); } },
+        layoutDiagram(k, portrait, st.layout === k), h('span', {}, label))));
+    const n = zoneCount(st.layout);
+    while (st.zones.length < n - 1) st.zones.push(null);
+    zonesWrap.replaceChildren(...(n > 1 ? [
+      h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } }, layoutDiagram(st.layout, portrait),
+        h('div', { class: 'tiny' }, `Area 1 plays this playlist (“${pl.name}”). Choose what plays in the other area${n > 2 ? 's' : ''}. Tip: a playlist with just one picture or video works too.`)),
+      ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2} plays`, select([['', '— Choose a playlist —'], ...others.map((p) => [p.id, p.name])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))),
+    ] : []));
+    tickWrap.classList.toggle('hidden', !st.ticker_on);
   };
-  sideWrap.append(field('Side panel shows playlist', select([['', '— Choose a playlist —'], ...others.map((p) => [p.id, `${p.name}${p.settings?.orientation === 'portrait' ? '' : ' (landscape: will be letterboxed)'}`])], st.side_playlist_id || '', (v) => (st.side_playlist_id = v || null)),
-    'Tip: make a Portrait playlist for the side panel, e.g. offers, a clock or weather.'));
   tickWrap.append(field('Ticker text', text),
     h('div', { class: 'grid3' },
       field('Speed', select([['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], st.ticker.speed, (v) => (st.ticker.speed = v))),
@@ -91,16 +113,21 @@ export function layoutDialog(pl, playlists, onSave) {
   paint();
   modal({
     title: 'Screen layout',
+    wide: true,
     body: [
-      pl.settings.orientation === 'portrait' ? h('div', { class: 'notice info' }, 'Layouts are for landscape playlists. Switch this playlist to Landscape to use them.') : null,
-      field('Layout', select(LAYOUTS, st.layout, (v) => { st.layout = v; paint(); })),
-      sideWrap, tickWrap,
+      h('div', { class: 'tiny' }, 'Split the screen into areas. Each area plays its own playlist at the same time.'),
+      picker, zonesWrap,
+      h('label', { class: 'row small', style: { fontWeight: 600 } }, tickOn, 'Add a scrolling ticker along the bottom'),
+      tickWrap,
     ],
     actions: [{ label: 'Cancel' }, { label: 'Save layout', class: 'primary', onClick: () => {
       st.ticker.text = text.value;
-      if (st.layout.includes('side') && !st.side_playlist_id) throw new Error('Choose a playlist for the side panel');
-      if (st.layout.includes('ticker') && !text.value.trim()) throw new Error('Enter the ticker text');
-      onSave({ layout: st.layout, side_playlist_id: st.side_playlist_id || null, ticker: st.ticker });
+      const n = zoneCount(st.layout);
+      const zones = st.zones.slice(0, n - 1);
+      const missing = zones.findIndex((z) => !z);
+      if (missing >= 0) throw new Error(`Choose a playlist for area ${missing + 2}`);
+      if (st.ticker_on && !text.value.trim()) throw new Error('Enter the ticker text');
+      onSave({ layout: st.layout, zones, side_playlist_id: st.layout === 'side' ? zones[0] : null, ticker_on: st.ticker_on, ticker: st.ticker });
     } }],
   });
 }

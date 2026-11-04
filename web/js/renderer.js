@@ -570,18 +570,61 @@ export function renderStill(container, slide, url, orientation = 'landscape') {
 }
 
 // ---------------------------------------------------------------------
-//  Layouts: full screen, or zones (main + side panel and/or ticker).
-//  settings.layout: 'full' | 'side' | 'ticker' | 'side-ticker'
-//  settings.side_playlist_id: playlist shown in the side panel (portrait)
-//  settings.ticker: { text, speed: 'slow'|'normal'|'fast', bg, color }
+//  Layouts: the screen split into areas, each playing its own playlist.
+//  settings.layout: 'full' | 'split-v' | 'split-h' | 'main-two' | 'three' | 'quad' | 'side'
+//    (older values 'ticker' / 'side-ticker' still work)
+//  settings.zones: [playlistId for area 2, area 3, area 4]  (area 1 = this playlist)
+//  settings.ticker_on + settings.ticker: { text, speed: 'slow'|'normal'|'fast', bg, color }
 // ---------------------------------------------------------------------
 export const LAYOUTS = {
   full: 'Full screen',
-  side: 'Main + side panel',
-  ticker: 'Main + ticker',
-  'side-ticker': 'Main + side panel + ticker',
+  'split-v': 'Two halves, side by side',
+  'split-h': 'Two halves, top and bottom',
+  'main-two': 'Large area + two small',
+  three: 'Three columns',
+  quad: 'Four squares (2×2)',
+  side: 'Main + narrow side panel',
 };
 const TICKER_H = 96, SIDE_W = 480;
+
+/** Normalise old layout values. Returns { layout, ticker:boolean }. */
+export function normLayout(st = {}) {
+  let layout = st.layout || 'full', ticker = !!st.ticker_on;
+  if (layout === 'ticker') { layout = 'full'; ticker = true; }
+  if (layout === 'side-ticker') { layout = 'side'; ticker = true; }
+  if (!LAYOUTS[layout]) layout = 'full';
+  return { layout, ticker };
+}
+
+/** Areas as [x, y, w, h] for a stage of W×H. Area 0 plays the playlist itself. */
+export function layoutZones(layout, W, H) {
+  const portrait = H > W;
+  const half = (n) => Math.round(n / 2), third = (n) => Math.round(n / 3);
+  switch (layout) {
+    case 'split-v': return [[0, 0, half(W), H], [half(W), 0, W - half(W), H]];
+    case 'split-h': return [[0, 0, W, half(H)], [0, half(H), W, H - half(H)]];
+    case 'three': return portrait
+      ? [[0, 0, W, third(H)], [0, third(H), W, third(H)], [0, 2 * third(H), W, H - 2 * third(H)]]
+      : [[0, 0, third(W), H], [third(W), 0, third(W), H], [2 * third(W), 0, W - 2 * third(W), H]];
+    case 'quad': return [[0, 0, half(W), half(H)], [half(W), 0, W - half(W), half(H)], [0, half(H), half(W), H - half(H)], [half(W), half(H), W - half(W), H - half(H)]];
+    case 'main-two': {
+      if (portrait) { const mh = Math.round(H * 2 / 3); return [[0, 0, W, mh], [0, mh, half(W), H - mh], [half(W), mh, W - half(W), H - mh]]; }
+      const mw = Math.round(W * 2 / 3); return [[0, 0, mw, H], [mw, 0, W - mw, half(H)], [mw, half(H), W - mw, H - half(H)]];
+    }
+    case 'side': return portrait ? [[0, 0, W, H - SIDE_W], [0, H - SIDE_W, W, SIDE_W]] : [[0, 0, W - SIDE_W, H], [W - SIDE_W, 0, SIDE_W, H]];
+    default: return [[0, 0, W, H]];
+  }
+}
+export const zoneCount = (layout) => layoutZones(layout, 1920, 1080).length;
+
+/** Playlist ids for areas 2…n. */
+export function zonePlaylistIds(st = {}) {
+  const { layout } = normLayout(st);
+  const ids = [...(Array.isArray(st.zones) ? st.zones : [])].slice(0, zoneCount(layout) - 1);
+  if (layout === 'side' && !ids[0] && st.side_playlist_id) ids[0] = st.side_playlist_id;
+  while (ids.length < zoneCount(layout) - 1) ids.push(null);
+  return ids;
+}
 
 export class LayoutPlayer {
   /** opts: SlidePlayer opts + lookup(playlistId) → playlist ({slides, settings}) */
@@ -598,39 +641,42 @@ export class LayoutPlayer {
     this.players = [];
     this.host?.destroy();
     this.host = null;
+    this.tickerEl = null;
     this.container.replaceChildren();
   }
 
   load(pl) {
     this.pl = pl;
     const st = pl?.settings || {};
-    const layout = st.orientation === 'portrait' ? 'full' : (st.layout || 'full');
-    const side = layout.includes('side') && st.side_playlist_id ? this.opts.lookup?.(st.side_playlist_id) : null;
-    const ticker = layout.includes('ticker') && st.ticker?.text ? st.ticker : null;
-    const key = `${layout}|${!!side}|${!!ticker}`;
+    const portrait = st.orientation === 'portrait';
+    const { layout, ticker: tickerOn } = normLayout(st);
+    const ticker = tickerOn && st.ticker?.text ? st.ticker : null;
+    const extras = zonePlaylistIds(st).map((id) => (id ? this.opts.lookup?.(id) || null : null));
+    const key = `${portrait}|${layout}|${!!ticker}`;
     if (key !== this.key) {
       this._reset();
       this.key = key;
-      if (!side && !ticker) {
+      if (layout === 'full' && !ticker) {
         this.players = [new SlidePlayer(this.container, this.opts)];
       } else {
-        this.host = createStage(this.container, 'landscape');
-        const H = 1080 - (ticker ? TICKER_H : 0), W = 1920 - (side ? SIDE_W : 0);
+        this.host = createStage(this.container, portrait ? 'portrait' : 'landscape');
+        const SW = portrait ? 1080 : 1920, SH = (portrait ? 1920 : 1080) - (ticker ? TICKER_H : 0);
         const zone = (x, y, w, h) => { const z = document.createElement('div'); Object.assign(z.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', overflow: 'hidden', background: '#000' }); this.host.stage.appendChild(z); return z; };
-        this.players = [new SlidePlayer(zone(0, 0, W, H), { ...this.opts, size: { w: W, h: H } })];
-        if (side) this.players.push(new SlidePlayer(zone(W, 0, SIDE_W, H), { ...this.opts, onChange: null }));
-        if (ticker) this.tickerEl = zone(0, H, 1920, TICKER_H);
+        this.players = layoutZones(layout, SW, SH).map(([x, y, w, h], i) =>
+          // Lay each area out at "full-screen scale" (its short side = 1080) so text and pictures keep sensible proportions.
+          { const k = 1080 / Math.min(w, h); return new SlidePlayer(zone(x, y, w, h), { ...this.opts, size: { w: Math.round(w * k), h: Math.round(h * k) }, onChange: i === 0 ? this.opts.onChange : null }); });
+        if (ticker) this.tickerEl = zone(0, SH, SW, TICKER_H);
       }
     }
     this.players[0].load(pl);
-    if (this.players[1]) this.players[1].load(side);
+    this.players.slice(1).forEach((p, i) => p.load(extras[i] || { slides: [], settings: {} }));
     if (this.tickerEl && ticker) paintTicker(this.tickerEl, ticker);
     if (this.running) this.players.forEach((p) => p.start());
   }
 
   start() { this.running = true; this.players.forEach((p) => p.start()); }
   stop() { this.running = false; this.players.forEach((p) => p.stop()); }
-  clear() { this.stop(); this._reset(); this.key = null; this.tickerEl = null; }
+  clear() { this.stop(); this._reset(); this.key = null; }
   next() { this.players[0]?.next(); }
 }
 
@@ -644,7 +690,7 @@ function paintTicker(el, t) {
   for (let i = 0; i < 2; i++) { const s = document.createElement('span'); s.textContent = text + '     •     '; s.style.paddingRight = '0'; s.style.whiteSpace = 'pre'; track.appendChild(s); }
   el.appendChild(track);
   requestAnimationFrame(() => {
-    const w = track.firstChild.getBoundingClientRect().width / (el.getBoundingClientRect().width / 1920 || 1);
+    const w = track.firstChild.getBoundingClientRect().width / ((el.getBoundingClientRect().width / (el.offsetWidth || 1920)) || 1);
     const pxPerSec = { slow: 90, normal: 150, fast: 240 }[t.speed] || 150;
     track.animate([{ transform: 'translateX(0)' }, { transform: `translateX(-${w}px)` }], { duration: Math.max(4000, (w / pxPerSec) * 1000), iterations: Infinity });
   });

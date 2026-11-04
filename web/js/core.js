@@ -299,6 +299,6 @@ export function needsPublish(screen, rules, playlistsById) {
   if (!pub) return !!hasDraft;
   if (screen.schedule_updated_at && new Date(screen.schedule_updated_at) > pub) return true;
   const ids = [screen.default_playlist_id, ...(screen.also_playlist_ids || []), ...rules.map((r) => r.playlist_id)].filter(Boolean);
-  const side = ids.map((id) => playlistsById[id]?.settings?.side_playlist_id).filter(Boolean);
+  const side = ids.flatMap((id) => [playlistsById[id]?.settings?.side_playlist_id, ...(playlistsById[id]?.settings?.zones || [])]).filter(Boolean);
   return [...ids, ...side].some((id) => playlistsById[id] && new Date(playlistsById[id].updated_at) > pub);
 }

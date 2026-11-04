@@ -292,6 +292,15 @@ input[type=date]::-webkit-date-and-time-value { text-align: left; min-width: 0; 
 .date-clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: 0; border-radius: 50%; background: #efeee9; color: var(--ink-2); font-size: 16px; line-height: 1; cursor: pointer; }
 .date-clear:hover { background: #e2e1db; }
 input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !important; background: #fff8f7 !important; }
+.btn .lay-diagram { width: 26px !important; height: 15px !important; border-radius: 2px; }
+.btn .lay-diagram .lay-zone { font-size: 0; border-width: 1px; }
+.lay-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.lay-card { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; cursor: pointer; font: 600 12.5px var(--font); color: var(--ink-2); text-align: center; }
+.lay-card:hover { border-color: #c9d6f5; }
+.lay-card.on { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.lay-diagram { position: relative; flex: none; background: #1d2030; border-radius: 4px; overflow: hidden; }
+.lay-zone { position: absolute; box-sizing: border-box; border: 1.5px solid #1d2030; background: #4c5a7a; color: #fff; font: 700 11px var(--font); display: grid; place-items: center; }
+.lay-zone.main { background: linear-gradient(135deg, #2f84d4, #5a5fbb); }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 44px; }
 .pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 34px; border: 0; background: transparent; color: var(--ink-3); border-radius: 8px; cursor: pointer; display: grid; place-items: center; }
