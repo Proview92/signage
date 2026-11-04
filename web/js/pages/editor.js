@@ -55,15 +55,29 @@ export async function editorPage({ main, params: [id], go }) {
     pl.slides.splice(at, 0, s);
     sel = at; schedule(); paint();
   }
+  // A slide shows the text-overlay settings only once an overlay has been added (text slides always).
+  const hasOverlay = (x) => x.type === 'text' || !!(x.text && (x.text.on || x.text.title || x.text.subtitle));
   function addWidget() {
-    let type = 'clock';
+    const cur = pl.slides[sel];
+    const canOverlay = cur && cur.type !== 'text' && !hasOverlay(cur);
+    let type = canOverlay ? 'overlay' : 'clock';
     modal({ title: 'Add a widget', body: [
-      h('div', { class: 'stack', style: { gap: '8px' } }, Object.entries(WIDGET_TYPES).map(([k, l]) =>
+      h('div', { class: 'stack', style: { gap: '8px' } },
+        canOverlay ? h('label', { class: 'row', style: { fontWeight: 600, gap: '10px' } }, h('input', { type: 'radio', name: 'wt', value: 'overlay', checked: true, onchange: () => (type = 'overlay') }), 'Text overlay',
+          h('span', { class: 'tiny', style: { fontWeight: 400 } }, 'Headline & sub-text on top of the selected slide')) : null,
+        canOverlay ? h('div', { class: 'tiny', style: { margin: '2px 0 4px' } }, 'Or add a new widget slide:') : null,
+        Object.entries(WIDGET_TYPES).map(([k, l]) =>
         h('label', { class: 'row', style: { fontWeight: 600, gap: '10px' } }, h('input', { type: 'radio', name: 'wt', value: k, checked: k === type, onchange: () => (type = k) }), l,
           h('span', { class: 'tiny', style: { fontWeight: 400 } }, {
             clock: 'Large time and date', weather: 'Current weather + forecast (needs internet)', qr: 'Scan-to-open link',
             menu: 'Items with prices, in columns', web: 'Show a live web page', youtube: 'Play a YouTube video (needs internet)' }[k]))))],
     actions: [{ label: 'Cancel' }, { label: 'Add', class: 'primary', onClick: () => {
+      if (type === 'overlay') {
+        cur.text = { ...newSlide().text, ...(cur.text || {}), on: true, title: cur.text?.title || 'Your headline' };
+        schedule(); paint();
+        setTimeout(() => inspEl.querySelector('.overlay-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+        return;
+      }
       const d = widgetDefaults(type);
       const s = newSlide({ type, transition: 'fade', effect: 'none', duration: d.duration || 10, ...d,
         text: { ...newSlide().text, title: '', subtitle: '', ...(d.text || {}) } });
@@ -269,7 +283,9 @@ export async function editorPage({ main, params: [id], go }) {
         h('button', { class: 'btn sm', onclick: () => refreshPreview(true) }, icon('play'), 'Replay'),
         h('button', { class: 'btn sm ghost', onclick: () => { pl.slides.forEach((x) => { x.transition = s.transition; x.transition_ms = s.transition_ms; }); schedule(); paintList(); toast('Transition applied to all slides'); } }, 'Apply to all')),
 
-      h('div', { class: 'section-title' }, 'Text overlay'),
+      ...(!hasOverlay(s) ? [] : [
+      h('div', { class: 'section-title row between overlay-section' }, s.type === 'text' ? 'Text' : 'Text overlay',
+        s.type === 'text' ? null : h('button', { class: 'btn sm ghost danger', type: 'button', onclick: () => { change((x) => { x.text = { ...x.text, on: false, title: '', subtitle: '' }; }); paintInspector(); } }, icon('trash'), 'Remove')),
       h('div', { class: 'full' }, field('Headline', h('textarea', { rows: 2, value: t.title || '', placeholder: 'Optional', oninput: (e) => change((x) => (x.text.title = e.target.value)) }))),
       h('div', { class: 'full' }, field('Sub-text', h('textarea', { rows: 2, value: t.subtitle || '', placeholder: 'Optional', oninput: (e) => change((x) => (x.text.subtitle = e.target.value)) }))),
       field('Position', posGrid),
@@ -277,6 +293,7 @@ export async function editorPage({ main, params: [id], go }) {
       field('Colour', h('div', { class: 'row' }, h('input', { type: 'color', value: t.color || '#ffffff', oninput: (e) => change((x) => (x.text.color = e.target.value)) }),
         h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: !!t.box, onchange: (e) => change((x) => (x.text.box = e.target.checked)) }), 'Dark box behind text'))),
       field('Text animation', select(TEXT_ANIMS, t.anim || 'none', (v) => change((x) => (x.text.anim = v)))),
+      ]),
 
       h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
       field('Show from (date)', h('input', { type: 'date', value: s.valid_from || '', onchange: (e) => change((x) => (x.valid_from = e.target.value || null)) })),
