@@ -44,6 +44,8 @@ async function render() {
   if (qInvite && /^\w+$/.test(qInvite)) localStorage.setItem('signage.invite', qInvite);
 
   if (!state.session) return root.replaceChildren(await authPage(join?.[1]));
+  // Password was reset by an admin to a temporary one: choose a new password before anything else.
+  if (state.session.user?.app_metadata?.must_change_password) return root.replaceChildren(changePasswordPage());
 
   // Pending invite (from link or after email confirmation)
   const pending = localStorage.getItem('signage.invite');
@@ -304,6 +306,43 @@ async function authPage(inviteToken) {
       h('div', { class: 'tv' }),
       h('div', { class: 'muted', style: { color: '#9a9aa4' } }, 'Upload, build slides, schedule and publish to your TVs.')),
     h('div', { class: 'auth-form' }, form));
+}
+
+function changePasswordPage() {
+  const until = state.session.user.app_metadata.temp_password_until;
+  if (until && new Date(until) < new Date()) {
+    sb.auth.signOut();
+    toast('That temporary password has expired. Ask your administrator to reset it again.', true);
+    return h('div');
+  }
+  const pass = h('input', { type: 'password', required: true, minLength: 8, autocomplete: 'new-password', placeholder: 'At least 8 characters' });
+  const pass2 = h('input', { type: 'password', required: true, minLength: 8, autocomplete: 'new-password', placeholder: 'Type it again' });
+  const msg = h('div');
+  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Save new password');
+  const form = h('form', { class: 'stack', style: { maxWidth: '400px', width: '100%' }, onsubmit: async (e) => {
+    e.preventDefault();
+    msg.replaceChildren();
+    if (pass.value !== pass2.value) return msg.replaceChildren(h('div', { class: 'notice bad' }, 'The two passwords don’t match.'));
+    if (pass.value === '123456') return msg.replaceChildren(h('div', { class: 'notice bad' }, 'Choose a password of your own, not the temporary one.'));
+    submit.disabled = true;
+    try {
+      const { error } = await sb.auth.updateUser({ password: pass.value });
+      if (error) throw error;
+      const { data } = await sb.auth.refreshSession();   // fresh login token without the "must change" flag
+      if (data?.session) state.session = data.session;
+      if (state.session?.user?.app_metadata) delete state.session.user.app_metadata.must_change_password;
+      toast('Password saved. Welcome back!');
+      render();
+    } catch (err) { msg.replaceChildren(h('div', { class: 'notice bad' }, errMsg(err))); submit.disabled = false; }
+  } },
+    h('img', { src: 'logo.png', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
+    h('h1', { style: { textAlign: 'center', margin: '6px 0 0' } }, 'Choose a new password'),
+    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Your password was reset by an administrator. Set a new one for ${state.session.user.email} to continue.`),
+    field('New password', passwordToggle(pass)),
+    field('Confirm new password', passwordToggle(pass2)),
+    msg, submit,
+    h('button', { class: 'btn ghost', type: 'button', onclick: signOut }, 'Sign out'));
+  return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
 }
 
 function noAccess() {

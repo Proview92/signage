@@ -47,6 +47,19 @@ export function inviteDialog(clientId, clientName, onDone) {
 
 const roleLabel = { manager: 'Manager', editor: 'Editor' };
 
+// Admin: reset someone's password to the temporary password 123456 (they choose a new one when they sign in).
+async function resetPassword(m) {
+  if (!(await confirmBox('Reset password?', `${m.email}'s password will be set to the temporary password 123456. They will be signed out everywhere, and must choose a new password when they next sign in. The temporary password stops working after 24 hours.`, 'Reset password', false))) return;
+  try {
+    await rpc('admin_reset_password', { p_user: m.user_id });
+    modal({ title: 'Password reset', body: h('div', { class: 'stack' },
+      h('p', { style: { margin: 0 } }, `Tell ${m.email} to sign in with:`),
+      h('div', { class: 'notice info', style: { fontSize: '20px', fontWeight: 700, letterSpacing: '.12em', textAlign: 'center' } }, '123456'),
+      h('p', { class: 'tiny', style: { margin: 0 } }, 'They will be asked to choose a new password straight away. If they don’t sign in within 24 hours, reset it again.')),
+      actions: [{ label: 'Done', class: 'primary' }] });
+  } catch (e) { toast(errMsg(e), true); }
+}
+
 export async function teamPage({ main, rerender }) {
   const client = currentClient();
   const manage = canManage();
@@ -69,6 +82,7 @@ export async function teamPage({ main, rerender }) {
             manage && m.user_id !== state.me.user_id
               ? select([['editor', 'Editor'], ['manager', 'Manager']], m.role, async (v) => { await q(sb.from('client_members').update({ role: v }).eq('client_id', state.clientId).eq('user_id', m.user_id)); toast('Role updated'); })
               : h('span', { class: 'badge plain' }, roleLabel[m.role]),
+            state.me.is_admin && m.user_id !== state.me.user_id ? h('button', { class: 'btn sm', title: 'Reset to the temporary password 123456', onclick: () => resetPassword(m) }, 'Reset password') : null,
             manage && m.user_id !== state.me.user_id ? h('button', { class: 'btn sm danger', onclick: async () => {
               if (!(await confirmBox('Remove member?', `${m.email} will lose access to ${clientTitle(client)}.`, 'Remove'))) return;
               await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
