@@ -1,6 +1,6 @@
 import { clientLabel } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
-import { SlidePlayer, LayoutPlayer, onAirPlaylist, resolveSchedule, describeRule, DAY_NAMES, localDate } from '../renderer.js';
+import { SlidePlayer, LayoutPlayer, onAirPlaylist, resolveSchedule, describeRule, DAY_NAMES, localDate, zonePlaylistIds } from '../renderer.js';
 import { statusBadges } from './screens.js';
 import { publishOrRequest } from '../core.js';
 import { ruleForm } from './rule-form.js';
@@ -211,6 +211,25 @@ export async function screenPage({ main, params: [id], go, rerender }) {
             h('button', { class: 'btn sm', onclick: () => ruleDialog(r) }, 'Edit'))))
           : h('div', { class: 'list-row muted small' }, 'No rules yet — the default playlist plays all the time.')));
 
+    // Every playlist this TV can show: default, add-ons, schedule rules, and playlists shown inside a layout area.
+    function assignedCard() {
+      const roles = new Map(), add = (pid, role) => { if (!pid || !byId[pid]) return; if (!roles.has(pid)) roles.set(pid, []); if (!roles.get(pid).includes(role)) roles.get(pid).push(role); };
+      add(screen.default_playlist_id, 'Default');
+      (screen.also_playlist_ids || []).forEach((pid) => add(pid, 'Add-on'));
+      rules.forEach((r) => add(r.playlist_id, r.enabled ? `Scheduled · ${describeRule({ ...r, start_time: r.start_time?.slice(0, 5), end_time: r.end_time?.slice(0, 5) })}` : 'Scheduled (rule off)'));
+      [...roles.keys()].forEach((pid) => zonePlaylistIds(byId[pid].settings || {}).forEach((zid, i) => zid && add(zid, `Area ${i + 2} of “${byId[pid].name}”`)));
+      const liveId = Object.keys(screen.content?.playlists || {}).find((k) => screen.content.playlists[k]?.name === liveName);
+      return h('div', { class: 'card' },
+        h('div', { class: 'card-head' }, h('h2', {}, 'Playlists on this TV'), h('span', { class: 'tiny' }, roles.size ? `${roles.size} assigned` : '')),
+        h('div', { class: 'list' },
+          roles.size ? [...roles].map(([pid, rs]) => h('div', { class: 'list-row row between', style: { gap: '10px', flexWrap: 'nowrap' } },
+            h('div', { style: { minWidth: 0 } },
+              h('div', { style: { fontWeight: 650 } }, byId[pid].name, pid === liveId ? h('span', { class: 'badge ok', style: { marginLeft: '8px' } }, 'Playing now') : null),
+              h('div', { class: 'small muted', style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, `${(byId[pid].slides || []).length} slides · ${rs.join(' · ')}`)),
+            h('a', { class: 'btn sm', href: '#/playlist/' + pid, style: { flex: 'none' } }, icon('edit'), 'Edit')))
+            : h('div', { class: 'list-row muted small' }, 'No playlists assigned yet. Choose a default playlist below.')));
+    }
+
     const L = licenseState(screen);
     const lic = h('div', { class: 'card' },
       h('div', { class: 'card-head' }, h('h2', {}, 'Licence'), h('span', { class: 'badge ' + licenseSummary(screen).tone }, licenseSummary(screen).text)),
@@ -258,7 +277,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
     const banner = licenseBanner(screen);
     main.replaceChildren(head, banner ? h('div', { style: { marginBottom: '16px' } }, banner) : '', h('div', { class: 'split' },
-      h('div', { class: 'stack' }, onair, shot, lic, device),
+      h('div', { class: 'stack' }, onair, assignedCard(), shot, lic, device),
       h('div', { class: 'stack' }, sched)));
     startPreview(preview);
   }
