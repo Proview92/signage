@@ -242,6 +242,7 @@ async function authPage(inviteToken) {
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';
     pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
     pass.placeholder = mode === 'signup' ? 'At least 8 characters' : '••••••••';
+    pass.minLength = mode === 'signup' ? 8 : 1; // older accounts may have shorter passwords
     pass2Field.classList.toggle('hidden', mode !== 'signup');
     pass2.required = mode === 'signup';
     pass2.value = ''; checkMatch();
