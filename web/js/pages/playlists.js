@@ -25,7 +25,7 @@ export async function playlistsPage({ main, go }) {
     const slides = picked.map((m) => newSlide({
       type: m.kind, media_id: m.id, path: m.path, name: m.name,
       duration: m.kind === 'video' ? 0 : 8, video_duration: m.duration_s ? Number(m.duration_s) : undefined,
-      effect: m.kind === 'image' ? 'kenburns' : 'none', text: { ...newSlide().text, title: '', subtitle: '' },
+      effect: 'none', text: { ...newSlide().text, title: '', subtitle: '' },
     }));
     const name = h('input', { type: 'text', value: '', placeholder: 'e.g. Breakfast menu, Window promos', required: true, autocomplete: 'off', oninput: () => name.classList.remove('invalid') });
     modal({ title: 'Name your playlist', body: [field('Playlist name (required)', name), h('div', { class: 'tiny' }, `${slides.length} slide${slides.length === 1 ? '' : 's'}. You can add text, widgets and effects next.`)],

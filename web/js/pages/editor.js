@@ -50,7 +50,7 @@ export async function editorPage({ main, params: [id], go }) {
     const slides = picked.map((m) => newSlide({
       type: m.kind, media_id: m.id, path: m.path, name: m.name,
       duration: m.kind === 'video' ? 0 : 8, video_duration: m.duration_s ? Number(m.duration_s) : undefined,
-      effect: m.kind === 'image' ? 'kenburns' : 'none', text: { ...newSlide().text, title: '', subtitle: '' }, ...zoneProp(),
+      effect: 'none', text: { ...newSlide().text, title: '', subtitle: '' }, ...zoneProp(),
     }));
     const at = insertAt();
     pl.slides.splice(at, 0, ...slides);
@@ -86,7 +86,7 @@ export async function editorPage({ main, params: [id], go }) {
         return;
       }
       const d = widgetDefaults(type);
-      const s = newSlide({ type, transition: 'fade', effect: 'none', duration: d.duration || 10, ...d,
+      const s = newSlide({ type, transition: 'none', effect: 'none', duration: d.duration || 10, ...d,
         text: { ...newSlide().text, title: '', subtitle: '', ...(d.text || {}) }, ...zoneProp() });
       const at = insertAt();
       pl.slides.splice(at, 0, s); sel = at; schedule(); paint();

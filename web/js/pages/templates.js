@@ -3,9 +3,9 @@ import { sb, state, h, q, toast, modal, field, mediaUrl } from '../core.js';
 import { newSlide, renderStill } from '../renderer.js';
 import { widgetDefaults } from '../widgets.js';
 
-const T = (title, subtitle, extra = {}) => newSlide({ type: 'text', transition: 'fade', duration: 8, ...extra,
+const T = (title, subtitle, extra = {}) => newSlide({ type: 'text', transition: 'none', duration: 8, ...extra,
   text: { title, subtitle, position: 'center', color: '#ffffff', size: 'l', box: false, anim: 'fade-up', ...(extra.text || {}) } });
-const W = (type, over = {}) => { const d = widgetDefaults(type); return newSlide({ type, transition: 'fade', effect: 'none', duration: d.duration || 10, ...d, ...over,
+const W = (type, over = {}) => { const d = widgetDefaults(type); return newSlide({ type, transition: 'none', effect: 'none', duration: d.duration || 10, ...d, ...over,
   widget: { ...d.widget, ...(over.widget || {}) }, text: { ...newSlide().text, title: '', subtitle: '', ...(d.text || {}), ...(over.text || {}) } }); };
 
 const GRAD = {

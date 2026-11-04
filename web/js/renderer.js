@@ -66,7 +66,7 @@ export function newSlide(partial = {}) {
     media_id: null,
     path: null,
     duration: 8,             // seconds; for video 0 = play to the end
-    transition: 'fade',
+    transition: 'none',      // new slides: no transition, no motion (can be changed per slide)
     transition_ms: 900,
     effect: 'none',
     fit: 'cover',            // cover | contain
