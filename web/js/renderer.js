@@ -573,7 +573,8 @@ export function renderStill(container, slide, url, orientation = 'landscape') {
 //  Layouts: the screen split into areas, each playing its own playlist.
 //  settings.layout: 'full' | 'split-v' | 'split-h' | 'main-two' | 'three' | 'quad' | 'side'
 //    (older values 'ticker' / 'side-ticker' still work)
-//  settings.zones: [playlistId for area 2, area 3, area 4]  (area 1 = this playlist)
+//  Each slide has slide.zone = area index (0 = area 1). An area with no slides of its own can
+//  instead play another playlist: settings.zones = [playlistId for area 2, area 3, area 4].
 //  settings.ticker_on + settings.ticker: { text, speed: 'slow'|'normal'|'fast', bg, color }
 // ---------------------------------------------------------------------
 export const LAYOUTS = {
@@ -670,8 +671,14 @@ export class LayoutPlayer {
         if (ticker) this.tickerEl = zone(0, SH, SW, TICKER_H);
       }
     }
-    this.players[0].load(pl);
-    this.players.slice(1).forEach((p, i) => p.load(extras[i] || { slides: [], settings: {} }));
+    if (this.players.length > 1) {
+      const own = (i) => (pl?.slides || []).filter((s) => (s.zone || 0) === i);
+      this.players[0].load({ ...pl, slides: own(0) });
+      this.players.slice(1).forEach((p, i) => {
+        const mine = own(i + 1);
+        p.load(mine.length ? { name: pl?.name, settings: pl?.settings || {}, slides: mine } : (extras[i] || { slides: [], settings: {} }));
+      });
+    } else this.players[0].load(pl);
     if (this.tickerEl && ticker) paintTicker(this.tickerEl, ticker);
     if (this.running) this.players.forEach((p) => p.start());
   }

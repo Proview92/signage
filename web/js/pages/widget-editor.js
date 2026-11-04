@@ -71,12 +71,12 @@ export function widgetFields(s, change, repaint) {
 
 /** Playlist layout: full screen, side panel, ticker. */
 /** Small picture of a layout (areas numbered). */
-export function layoutDiagram(layout, portrait = false, active = false) {
-  const W = portrait ? 54 : 96, H = portrait ? 96 : 54;
+export function layoutDiagram(layout, portrait = false, active = false, hi = 0, size = 96) {
+  const W = portrait ? Math.round(size * 9 / 16) : size, H = portrait ? size : Math.round(size * 9 / 16);
   const box = h('div', { class: 'lay-diagram' + (active ? ' on' : ''), style: { width: W + 'px', height: H + 'px' } });
   layoutZones(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080).forEach(([x, y, w, hh], i) => {
     const k = W / (portrait ? 1080 : 1920);
-    box.append(h('div', { class: 'lay-zone' + (i === 0 ? ' first' : ''), style: { left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' } }, String(i + 1)));
+    box.append(h('div', { class: 'lay-zone' + (i === hi ? ' first' : ''), style: { left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' } }, String(i + 1)));
   });
   return box;
 }
@@ -100,8 +100,10 @@ export function layoutDialog(pl, playlists, onSave) {
     while (st.zones.length < n - 1) st.zones.push(null);
     zonesWrap.replaceChildren(...(n > 1 ? [
       h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } }, layoutDiagram(st.layout, portrait),
-        h('div', { class: 'tiny' }, `Area 1 plays this playlist (“${pl.name}”). Choose what plays in the other area${n > 2 ? 's' : ''}. Tip: a playlist with just one picture or video works too.`)),
-      ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2} plays`, select([['', '— Choose a playlist —'], ...others.map((p) => [p.id, p.name])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))),
+        h('div', { class: 'tiny' }, `After saving, choose an area above the slide list and add pictures, videos or text to it. Each area plays its own slides at the same time.`)),
+      h('details', { class: 'tiny' }, h('summary', { style: { cursor: 'pointer', fontWeight: 600 } }, 'Advanced: play another playlist in an area instead'),
+        h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
+          ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))))),
     ] : []));
     tickWrap.classList.toggle('hidden', !st.ticker_on);
   };
@@ -124,8 +126,6 @@ export function layoutDialog(pl, playlists, onSave) {
       st.ticker.text = text.value;
       const n = zoneCount(st.layout);
       const zones = st.zones.slice(0, n - 1);
-      const missing = zones.findIndex((z) => !z);
-      if (missing >= 0) throw new Error(`Choose a playlist for area ${missing + 2}`);
       if (st.ticker_on && !text.value.trim()) throw new Error('Enter the ticker text');
       onSave({ layout: st.layout, zones, side_playlist_id: st.layout === 'side' ? zones[0] : null, ticker_on: st.ticker_on, ticker: st.ticker });
     } }],
