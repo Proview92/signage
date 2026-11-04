@@ -173,11 +173,12 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .slides-list { display: flex; flex-direction: column; gap: 8px; padding: 12px; max-height: calc(100vh - 210px); overflow: auto; }
 .slide-row { display: grid; grid-template-columns: 22px 96px 1fr auto; gap: 10px; align-items: center; padding: 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; background: #faf9f6; }
 .slide-row:hover { border-color: var(--line); }
-.slide-row .acts { display: grid; grid-template-columns: 30px 30px; grid-template-rows: 26px 26px; gap: 4px 6px; align-items: stretch; }
+.slide-row .acts { display: grid; grid-template-columns: 30px 30px 30px; grid-template-rows: 26px 26px; gap: 4px 6px; align-items: stretch; }
 .slide-row .acts button { display: grid; place-items: center; border: 0; background: #efeee9; border-radius: 8px; cursor: pointer; color: var(--ink-2); padding: 0; transition: background .15s, color .15s; }
 .slide-row .acts button:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
 .slide-row .acts button:disabled { opacity: .3; cursor: default; }
-.slide-row .acts .del { grid-column: 2; grid-row: 1 / span 2; background: #fdeceb; color: var(--bad); }
+.slide-row .acts .del { grid-column: 3; grid-row: 1 / span 2; background: #fdeceb; color: var(--bad); }
+.slide-row .acts .view { grid-column: 2; grid-row: 1 / span 2; background: #eaf1fd; color: #3f6fd0; }
 .slide-row .acts .del:hover { background: #f9d6d3 !important; color: var(--bad) !important; }
 .slide-row .acts svg { width: 15px; height: 15px; }
 .slide-row.active { border-color: var(--accent); background: var(--accent-soft); }
@@ -494,3 +495,8 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .pv-dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); pointer-events: none; z-index: 2; }
 .pv-empty { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.45); font: 600 64px var(--font, sans-serif); border: 4px dashed rgba(255,255,255,.2); }
 .pv-outline { position: absolute; box-sizing: border-box; border: 8px solid #4f8ef7; pointer-events: none; z-index: 4; }
+
+/* View a slide on its own */
+.view-box { display: grid; place-items: center; background: #0b0b10; border-radius: 12px; padding: 10px; }
+.view-box img, .view-box video { max-width: 100%; max-height: 72vh; display: block; border-radius: 6px; }
+.view-box .preview-box { margin: 0 auto; }

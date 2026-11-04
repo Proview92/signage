@@ -234,6 +234,24 @@ export async function editorPage({ main, params: [id], go }) {
     'split-v': ['left', 'right'], 'split-h': ['top', 'bottom'], 'main-two': ['large', 'small 1', 'small 2'], three: ['1st', '2nd', '3rd'],
     quad: ['top left', 'top right', 'bottom left', 'bottom right'], side: ['main', 'side panel'],
   };
+  // Look at a slide on its own, full size: pictures as they are, videos with play controls, other slides as they play.
+  async function viewSlide(s) {
+    const body = h('div', { class: 'view-box' });
+    let p = null;
+    if ((s.type === 'image' || s.type === 'video') && s.path) {
+      const url = await mediaUrl(s.path).catch(() => null);
+      if (!url) return toast('This file could not be loaded', true);
+      body.append(s.type === 'image' ? h('img', { src: url, alt: slideTitle(s) }) : h('video', { src: url, controls: true, autoplay: true, playsInline: true }));
+    } else {
+      const shape = areaShape(s);
+      const box = h('div', { class: 'preview-box' + (!shape && pl.settings.orientation === 'portrait' ? ' portrait' : '') });
+      if (shape) Object.assign(box.style, { aspectRatio: `${shape.w} / ${shape.h}`, width: 'auto', height: 'min(70vh, 640px)', maxWidth: '100%' });
+      body.append(box);
+      p = new SlidePlayer(box, { resolveUrl: (x) => mediaUrl(x.path), mutedOverride: true, size: shape || null });
+      p.load({ slides: [{ ...s, schedule: null }], settings: pl.settings }); p.start();
+    }
+    modal({ title: slideTitle(s), wide: true, body, onClose: () => { p?.stop(); body.querySelector('video')?.pause(); } });
+  }
   function makeRow(s, i, idx) {
     const nextIn = (j, dir) => idx[idx.indexOf(j) + dir];
     const n = idx.indexOf(i) + 1;
@@ -261,6 +279,7 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'acts' },
         h('button', { type: 'button', title: 'Move earlier', 'aria-label': 'Move earlier', disabled: nextIn(i, -1) === undefined, onclick: (e) => { e.stopPropagation(); move(i, nextIn(i, -1)); } }, icon('up')),
         h('button', { type: 'button', title: 'Move later', 'aria-label': 'Move later', disabled: nextIn(i, 1) === undefined, onclick: (e) => { e.stopPropagation(); move(i, nextIn(i, 1)); } }, icon('down')),
+        h('button', { type: 'button', class: 'view', title: 'View', 'aria-label': 'View', onclick: (e) => { e.stopPropagation(); viewSlide(s); } }, icon('eye')),
         h('button', { type: 'button', class: 'del', title: 'Remove from playlist', 'aria-label': 'Remove slide', onclick: (e) => { e.stopPropagation(); deleteSlide(i); } }, icon('trash'))));
     return row;
   }
