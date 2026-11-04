@@ -100,6 +100,10 @@ input[type=text], input[type=email], input[type=password], input[type=number], i
   font: 15px var(--font); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; width: 100%; min-width: 0;
 }
 textarea { resize: vertical; min-height: 64px; }
+/* iPhone Safari zooms in on any box with text under 16px and stays zoomed: keep boxes at 16px on touch screens */
+@media (hover: none) and (pointer: coarse) {
+  input[type=text], input[type=email], input[type=password], input[type=number], input[type=time], input[type=date], input[type=url], input[type=search], select, textarea { font-size: 16px !important; }
+}
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
 input[type=color] { width: 44px; height: 38px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
 input[type=range] { width: 100%; accent-color: var(--accent); }

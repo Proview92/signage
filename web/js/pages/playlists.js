@@ -61,7 +61,8 @@ export async function playlistsPage({ main, go }) {
       h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none' } }, thumb),
       h('div', { class: 'screen-meta' },
         h('div', { class: 'row between' }, h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none' } }, h('h3', {}, p.name)),
-          h('div', { class: 'row', style: { gap: '2px' } },
+          h('div', { class: 'row', style: { gap: '4px' } },
+            h('a', { class: 'btn sm', href: '#/playlist/' + p.id, title: 'Edit slides, timings and layout' }, icon('edit'), 'Edit'),
             h('button', { class: 'btn sm', title: 'Choose which TVs show this playlist', onclick: () => showOnTvsDialog(p, { onDone: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }) }, 'Publish'),
             h('button', { class: 'btn ghost icon sm', title: 'Duplicate', onclick: async () => {
               const c = await q(sb.from('playlists').insert({ client_id: state.clientId, name: p.name + ' (copy)', slides: p.slides, settings: p.settings }).select().single());
