@@ -64,7 +64,7 @@ export async function clientsPage({ main, go, rerender }) {
           const e = sendInvite.checked ? emailV : '';
           if (e) {
             const inv = await q(sb.from('invites').insert({ client_id: nc.id, email: e, role: 'manager' }).select().single());
-            setTimeout(() => showInviteLink(inv, clientTitle(nc)), 80);
+            setTimeout(() => showInviteLink(inv, clientTitle(nc), { autoSend: true }), 80);
           }
           toast(`${clientTitle(nc)} created`);
         }

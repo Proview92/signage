@@ -251,6 +251,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .code-input { font: 700 30px ui-monospace, Menlo, monospace !important; letter-spacing: .35em; text-align: center; text-transform: uppercase; }
 .notice { background: var(--accent-soft); border: 1px solid #cbd8f6; color: #213f8a; padding: 10px 14px; border-radius: 10px; font-size: 14px; }
 .notice.info { background: #eef3ff; border-color: #cfdcff; color: #213a87; }
+.notice.ok { background: #ecfdf3; border-color: #b7ebc9; color: #0b6b34; }
+.notice.bad { background: #fef0ef; border-color: #f7c6c2; color: #a3231a; }
 .copy-box { display: flex; gap: 8px; }
 .copy-box input { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
 .spinner { width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
