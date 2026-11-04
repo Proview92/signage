@@ -9,6 +9,7 @@ import { teamPage } from './pages/team.js';
 import { clientsPage } from './pages/clients.js';
 import { activityPage } from './pages/activity.js';
 import { reportsPage } from './pages/reports.js';
+import { helpPage } from './pages/help.js';
 import { q, timeAgo, modal } from './core.js';
 
 const root = document.getElementById('root');
@@ -26,6 +27,7 @@ const routes = [
   [/^activity(\?.*)?$/, activityPage, 'activity'],
   [/^reports$/, reportsPage, 'reports'],
   [/^clients$/, clientsPage, 'clients'],
+  [/^help$/, helpPage, 'help'],
 ];
 
 let cleanup = null, renderSeq = 0;
@@ -126,6 +128,7 @@ function shell(section, main) {
     h('nav', { class: 'nav' },
       n.items.map(([k, l, i]) => link(k, l, i)),
       bell('row'),
+      link('help', 'Help', 'help'),
       n.admin ? [h('div', { class: 'nav-sep' }, 'Admin'), link('clients', 'Clients & TVs', 'clients')] : null),
     h('div', { class: 'side-foot' },
       h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, state.me.email),
@@ -133,6 +136,7 @@ function shell(section, main) {
       h('button', { class: 'btn sm', onclick: signOut }, icon('logout'), 'Sign out')));
 
   const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(), bell('icon'),
+    h('a', { class: 'btn ghost icon', href: '#/help', style: { color: '#fff' }, 'aria-label': 'Help', title: 'Help' }, icon('help')),
     h('button', { class: 'btn ghost icon', style: { color: '#fff' }, onclick: signOut, 'aria-label': 'Sign out' }, icon('logout')));
   const tabs = h('nav', { class: 'tabbar' },
     n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),

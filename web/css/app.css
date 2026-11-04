@@ -96,7 +96,7 @@ h3 { font-size: 15px; font-weight: 650; }
 .side .btn { background: #23232a; color: #ddd; border-color: #33333c; }
 
 label.field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-input[type=text], input[type=email], input[type=password], input[type=number], input[type=time], input[type=date], select, textarea {
+input[type=text], input[type=search], input[type=email], input[type=password], input[type=number], input[type=time], input[type=date], select, textarea {
   font: 15px var(--font); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; width: 100%; min-width: 0;
 }
 textarea { resize: vertical; min-height: 64px; }
@@ -528,3 +528,21 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 
 .thumb.shot-box img { object-fit: contain; cursor: zoom-in; }
 .thumb.shot-box.tall { max-height: 70vh; margin: 0 auto; }
+
+/* Help */
+.help-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.help-bar input[type=search] { flex: 1; min-width: 220px; max-width: 460px; }
+.help-tabs button { padding: 8px 16px; }
+.help-list { display: flex; flex-direction: column; gap: 10px; max-width: 900px; }
+.help-where { font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin: 4px 0 4px 4px; }
+.help-guide { background: #fff; border: 1px solid var(--line, #e7e5df); border-radius: 14px; padding: 0 18px; }
+.help-guide > summary { list-style: none; cursor: pointer; padding: 14px 0; display: flex; flex-direction: column; gap: 2px; position: relative; padding-right: 28px; }
+.help-guide > summary::-webkit-details-marker { display: none; }
+.help-guide > summary::after { content: '+'; position: absolute; right: 2px; top: 12px; font-size: 22px; color: var(--ink-3, #888); }
+.help-guide[open] > summary::after { content: '–'; }
+.help-title { font-weight: 700; font-size: 16px; }
+.help-intro { font-size: 13px; color: var(--ink-3, #777); }
+.help-steps { margin: 0 0 14px; padding-left: 22px; display: flex; flex-direction: column; gap: 7px; line-height: 1.5; }
+.help-steps li::marker { color: #3f6fd0; font-weight: 700; }
+.help-tips { background: #eef3fd; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
+.help-contact { max-width: 900px; margin-top: 16px; }
