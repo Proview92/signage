@@ -617,7 +617,7 @@ export async function editorPage({ main, params: [id], go }) {
       !pl.slides.length ? h('div', { class: 'notice' }, 'This playlist has no slides yet. Go back to “Add / edit content” first.') : '',
       h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview full screen'),
-        h('button', { class: 'btn primary', disabled: !pl.slides.length, onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Choose TVs & publish')),
+        h('button', { class: 'btn primary', disabled: !pl.slides.length, onclick: async () => { await save(); showOnTvsDialog(pl, { onDone: () => { sessionStorage.removeItem(STEP_KEY); location.hash = '#/playlists'; } }); } }, icon('send'), 'Choose TVs & publish')),
       h('div', { class: 'tiny' }, 'You can come back and change anything later. Press Publish again to update the TVs.'),
       nav());
   }
@@ -674,7 +674,7 @@ export async function editorPage({ main, params: [id], go }) {
         h('div', { class: 'row ed-meta' }, totalEl, '·', status)),
       h('div', { class: 'row ed-acts' },
         h('button', { class: 'btn', onclick: previewAll, title: 'Preview' }, icon('play'), h('span', { class: 'lbl' }, 'Preview')),
-        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish'))),
+        h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl, { onDone: () => { sessionStorage.removeItem(STEP_KEY); location.hash = '#/playlists'; } }); } }, icon('send'), 'Publish'))),
     stepsEl,
     h('div', { class: 'editor steps-mode' }, previewCard, contentEl));
   paint();
