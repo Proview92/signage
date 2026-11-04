@@ -254,6 +254,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .notice.ok { background: #ecfdf3; border-color: #b7ebc9; color: #0b6b34; }
 .notice.bad { background: #fef0ef; border-color: #f7c6c2; color: #a3231a; }
 .copy-box { display: flex; gap: 8px; }
+.day-times { display: grid; grid-template-columns: 44px 1fr auto 1fr; gap: 8px; align-items: center; }
+.day-times input { min-width: 0; }
 .pw-wrap { position: relative; }
 .pw-wrap input { padding-right: 44px; }
 .pw-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 36px; height: 34px; border: 0; background: transparent; color: var(--ink-3); border-radius: 8px; cursor: pointer; display: grid; place-items: center; }

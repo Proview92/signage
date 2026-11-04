@@ -218,9 +218,32 @@ export async function editorPage({ main, params: [id], go }) {
     const schedBody = sch ? h('div', { class: 'stack full' },
       h('div', { class: 'chips' }, [1, 2, 3, 4, 5, 6, 0].map((d) => h('button', { type: 'button', class: 'chip' + (sch.days?.includes(d) ? ' on' : ''), onclick: () => {
         change((x) => { const ds = x.schedule.days || []; x.schedule.days = ds.includes(d) ? ds.filter((y) => y !== d) : [...ds, d]; }); paintInspector(); } }, DAY_NAMES[d]))),
-      h('div', { class: 'grid2' },
-        field('From', h('input', { type: 'time', value: sch.from || '', onchange: (e) => change((x) => (x.schedule.from = e.target.value)) })),
-        field('Until', h('input', { type: 'time', value: sch.to || '', onchange: (e) => change((x) => (x.schedule.to = e.target.value)) })))) : null;
+      h('label', { class: 'row small', style: { fontWeight: 600 } },
+        h('input', { type: 'checkbox', checked: !!sch.per_day, onchange: (e) => {
+          change((x) => {
+            x.schedule.per_day = e.target.checked;
+            if (e.target.checked) {   // start every day from the current times
+              x.schedule.times = x.schedule.times || {};
+              for (const d of x.schedule.days || []) x.schedule.times[d] ||= { from: x.schedule.from || '09:00', to: x.schedule.to || '17:00' };
+            }
+          });
+          paintInspector();
+        } }), 'Different times on each day'),
+      sch.per_day
+        ? h('div', { class: 'stack', style: { gap: '8px' } },
+            [1, 2, 3, 4, 5, 6, 0].filter((d) => sch.days?.includes(d)).map((d) => {
+              const t = sch.times?.[d] || { from: sch.from || '09:00', to: sch.to || '17:00' };
+              const set = (k, v) => change((x) => { x.schedule.times ||= {}; x.schedule.times[d] = { ...(x.schedule.times[d] || t), [k]: v }; });
+              return h('div', { class: 'day-times' },
+                h('b', {}, DAY_NAMES[d]),
+                h('input', { type: 'time', value: t.from || '', 'aria-label': `${DAY_NAMES[d]} from`, onchange: (e) => set('from', e.target.value) }),
+                h('span', { class: 'tiny' }, 'to'),
+                h('input', { type: 'time', value: t.to || '', 'aria-label': `${DAY_NAMES[d]} until`, onchange: (e) => set('to', e.target.value) }));
+            }),
+            sch.days?.length ? h('div', { class: 'tiny' }, 'Tip: an end time earlier than the start (e.g. 22:00 to 02:00) runs past midnight.') : h('div', { class: 'tiny' }, 'Pick at least one day above.'))
+        : h('div', { class: 'grid2' },
+            field('From', h('input', { type: 'time', value: sch.from || '', onchange: (e) => change((x) => (x.schedule.from = e.target.value)) })),
+            field('Until', h('input', { type: 'time', value: sch.to || '', onchange: (e) => change((x) => (x.schedule.to = e.target.value)) })))) : null;
 
     inspEl.replaceChildren(h('div', { class: 'inspector' },
       ...(isWidget(s.type) ? widgetFields(s, change, paintInspector) : [h('div', { class: 'section-title' }, s.type === 'text' ? 'Text slide' : isVideo ? 'Video' : 'Picture')]),

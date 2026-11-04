@@ -90,9 +90,23 @@ export function isSlideActive(slide, now = new Date()) {
   }
   const s = slide.schedule;
   if (!s) return true;
-  if (Array.isArray(s.days) && s.days.length && !s.days.includes(now.getDay())) return false;
   const mins = now.getHours() * 60 + now.getMinutes();
   const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + (m || 0); };
+  // Different times on each day: { per_day: true, days: [...], times: { "1": {from,to}, ... } }
+  if (s.per_day && s.times) {
+    const day = now.getDay(), yday = (day + 6) % 7;
+    const on = (d) => !Array.isArray(s.days) || !s.days.length || s.days.includes(d);
+    // A ticked day without its own times uses the main From/Until (as the editor shows); none at all = all day.
+    const win = (d) => { const t = s.times[d] || { from: s.from, to: s.to }; return t.from && t.to ? [toMin(t.from), toMin(t.to)] : [0, 24 * 60]; };
+    const today = on(day) && win(day);
+    if (today) {
+      const [a, b] = today;
+      if (a <= b ? (mins >= a && mins < b) : mins >= a) return true;
+    }
+    const prev = on(yday) && win(yday);       // yesterday's window running past midnight
+    return !!(prev && prev[0] > prev[1] && mins < prev[1]);
+  }
+  if (Array.isArray(s.days) && s.days.length && !s.days.includes(now.getDay())) return false;
   if (s.from && s.to) {
     const a = toMin(s.from), b = toMin(s.to);
     return a <= b ? (mins >= a && mins < b) : (mins >= a || mins < b); // overnight ranges
