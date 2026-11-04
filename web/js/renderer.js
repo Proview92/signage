@@ -18,7 +18,13 @@ export const TRANSITIONS = {
   flip:          'Flip',
   blur:          'Blur',
   wipe:          'Wipe',
+  'wipe-down':   'Wipe down',
+  diagonal:      'Diagonal wipe',
   circle:        'Circle reveal',
+  box:           'Box reveal',
+  spin:          'Spin in',
+  drop:          'Drop in',
+  'flash-white': 'White flash',
 };
 
 export const EFFECTS = {
@@ -28,7 +34,18 @@ export const EFFECTS = {
   'zoom-out':  'Slow zoom out',
   'pan-left':  'Pan left',
   'pan-right': 'Pan right',
+  'pan-up':    'Pan up',
+  'pan-down':  'Pan down',
   pulse:       'Gentle pulse',
+  heartbeat:   'Heartbeat',
+  flash:       'Flashing',
+  'flash-fast':'Fast flashing',
+  glow:        'Glow',
+  bounce:      'Bounce',
+  float:       'Float',
+  shake:       'Shake',
+  swing:       'Swing',
+  rainbow:     'Colour cycle',
 };
 
 export const TEXT_ANIMS = {
@@ -37,6 +54,13 @@ export const TEXT_ANIMS = {
   'slide-in':'Slide in',
   pop:       'Pop',
   typewriter:'Typewriter',
+  'bounce-in': 'Bounce in',
+  'zoom-in': 'Zoom in',
+  drop:      'Drop in',
+  'blur-in': 'Blur in',
+  'slide-up':'Slide up',
+  flash:     'Flashing text',
+  'pulse-text': 'Pulsing text',
 };
 
 export const TEXT_POSITIONS = {
@@ -406,6 +430,12 @@ const T = {
   blur:          { in: [{ opacity: 0, filter: 'blur(16px)' }, { opacity: 1, filter: 'blur(0)' }], out: [{ opacity: 1, filter: 'blur(0)' }, { opacity: 0, filter: 'blur(16px)' }] },
   wipe:          { in: [{ clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0 0 0)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
   circle:        { in: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
+  'wipe-down':   { in: [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0 0)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
+  diagonal:      { in: [{ clipPath: 'polygon(0 0, 0 0, 0 0, 0 0)' }, { clipPath: 'polygon(0 0, 200% 0, 0 200%, 0 0)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
+  box:           { in: [{ clipPath: 'inset(50% 50% 50% 50%)' }, { clipPath: 'inset(0 0 0 0)' }], out: [{ opacity: 1 }, { opacity: 1 }] },
+  spin:          { in: [{ opacity: 0, transform: 'rotate(-180deg) scale(.3)' }, { opacity: 1, transform: 'none' }], out: [{ opacity: 1 }, { opacity: 0 }] },
+  drop:          { in: [{ transform: 'translateY(-100%)' }, { transform: 'translateY(4%)', offset: .7 }, { transform: 'translateY(-1.5%)', offset: .85 }, { transform: 'none' }], out: [{ opacity: 1 }, { opacity: 1 }] },
+  'flash-white': { in: [{ opacity: 0, filter: 'brightness(3)' }, { opacity: 1, filter: 'brightness(3)', offset: .35 }, { opacity: 1, filter: 'brightness(1)' }], out: [{ opacity: 1, filter: 'brightness(1)' }, { opacity: 1, filter: 'brightness(3)' }] },
 };
 
 const E = {
@@ -414,8 +444,22 @@ const E = {
   'zoom-out':  [{ transform: 'scale(1.15)' }, { transform: 'scale(1)' }],
   'pan-left':  [{ transform: 'scale(1.12) translateX(4%)' }, { transform: 'scale(1.12) translateX(-4%)' }],
   'pan-right': [{ transform: 'scale(1.12) translateX(-4%)' }, { transform: 'scale(1.12) translateX(4%)' }],
+  'pan-up':    [{ transform: 'scale(1.12) translateY(4%)' }, { transform: 'scale(1.12) translateY(-4%)' }],
+  'pan-down':  [{ transform: 'scale(1.12) translateY(-4%)' }, { transform: 'scale(1.12) translateY(4%)' }],
   pulse:       [{ transform: 'scale(1)' }, { transform: 'scale(1.04)' }, { transform: 'scale(1)' }],
+  heartbeat:   [{ transform: 'scale(1)' }, { transform: 'scale(1.07)', offset: .14 }, { transform: 'scale(1)', offset: .28 }, { transform: 'scale(1.05)', offset: .42 }, { transform: 'scale(1)', offset: .7 }, { transform: 'scale(1)' }],
+  flash:       [{ opacity: 1 }, { opacity: 1, offset: .45 }, { opacity: .12, offset: .5 }, { opacity: .12, offset: .95 }, { opacity: 1 }],
+  'flash-fast':[{ opacity: 1 }, { opacity: 1, offset: .45 }, { opacity: .12, offset: .5 }, { opacity: .12, offset: .95 }, { opacity: 1 }],
+  glow:        [{ filter: 'brightness(1) saturate(1)' }, { filter: 'brightness(1.35) saturate(1.3)' }, { filter: 'brightness(1) saturate(1)' }],
+  bounce:      [{ transform: 'translateY(0)' }, { transform: 'translateY(-4%)', offset: .3 }, { transform: 'translateY(0)', offset: .55 }, { transform: 'translateY(-1.5%)', offset: .75 }, { transform: 'translateY(0)' }],
+  float:       [{ transform: 'translateY(0)' }, { transform: 'translateY(-2.5%)' }, { transform: 'translateY(0)' }],
+  shake:       [{ transform: 'translateX(0)' }, { transform: 'translateX(-1.2%) rotate(-.6deg)', offset: .1 }, { transform: 'translateX(1.2%) rotate(.6deg)', offset: .2 }, { transform: 'translateX(-1%)', offset: .3 }, { transform: 'translateX(1%)', offset: .4 }, { transform: 'translateX(0)', offset: .5 }, { transform: 'translateX(0)' }],
+  swing:       [{ transform: 'rotate(0)' }, { transform: 'rotate(2deg)' }, { transform: 'rotate(0)' }, { transform: 'rotate(-2deg)' }, { transform: 'rotate(0)' }],
+  rainbow:     [{ filter: 'hue-rotate(0deg)' }, { filter: 'hue-rotate(360deg)' }],
 };
+// Effects that repeat for as long as the slide is on screen: [period ms, easing]
+const E_LOOP = { pulse: [3000, 'ease-in-out'], heartbeat: [1400, 'ease-in-out'], flash: [1000, 'linear'], 'flash-fast': [500, 'linear'],
+  glow: [1800, 'ease-in-out'], bounce: [1400, 'ease-out'], float: [4000, 'ease-in-out'], shake: [1600, 'linear'], swing: [3000, 'ease-in-out'], rainbow: [6000, 'linear'] };
 
 function animateText(el, anim) {
   const box = el.querySelector('.sg-text');
@@ -440,22 +484,30 @@ function animateText(el, anim) {
     'fade-up':  [{ opacity: 0, transform: 'translateY(40px)' }, { opacity: 1, transform: 'none' }],
     'slide-in': [{ opacity: 0, transform: 'translateX(-120px)' }, { opacity: 1, transform: 'none' }],
     pop:        [{ opacity: 0, transform: 'scale(.6)' }, { opacity: 1, transform: 'scale(1.05)', offset: .7 }, { opacity: 1, transform: 'none' }],
+    'bounce-in':[{ opacity: 0, transform: 'scale(.3)' }, { opacity: 1, transform: 'scale(1.12)', offset: .5 }, { transform: 'scale(.94)', offset: .72 }, { transform: 'scale(1.03)', offset: .88 }, { opacity: 1, transform: 'none' }],
+    'zoom-in':  [{ opacity: 0, transform: 'scale(1.6)' }, { opacity: 1, transform: 'none' }],
+    drop:       [{ opacity: 0, transform: 'translateY(-160px)' }, { opacity: 1, transform: 'translateY(12px)', offset: .7 }, { opacity: 1, transform: 'none' }],
+    'blur-in':  [{ opacity: 0, filter: 'blur(18px)' }, { opacity: 1, filter: 'blur(0)' }],
+    'slide-up': [{ opacity: 0, transform: 'translateY(120px)' }, { opacity: 1, transform: 'none' }],
   }[anim];
+  // Text that keeps moving while the slide is on screen.
+  const loops = { flash: [[{ opacity: 1 }, { opacity: 1, offset: .5 }, { opacity: .15, offset: .5 }, { opacity: .15 }], 1000, 'linear'],
+    'pulse-text': [[{ transform: 'scale(1)' }, { transform: 'scale(1.06)' }, { transform: 'scale(1)' }], 1600, 'ease-in-out'] }[anim];
+  if (loops) { kids.forEach((k) => { k.style.display = k.style.display || 'block'; k.animate(loops[0], { duration: loops[1], easing: loops[2], iterations: Infinity }); }); return; }
   if (!frames) return;
   kids.forEach((k, i) => k.animate(frames, { duration: 800, delay: 350 + i * 220, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
 }
 
 function startEffect(el, slide, seconds) {
   const frames = E[slide.effect];
-  const wrap = el.querySelector('.sg-media-wrap');
-  if (!frames || !wrap) return;
-  wrap.style.willChange = 'transform';
-  wrap.animate(frames, {
-    duration: Math.max(2, seconds) * 1000 + (slide.transition_ms || 0),
-    easing: slide.effect === 'pulse' ? 'ease-in-out' : 'linear',
-    fill: 'forwards',
-    iterations: slide.effect === 'pulse' ? Infinity : 1,
-  });
+  // Pictures/videos move as a whole; text and widget slides move their content.
+  const target = el.querySelector('.sg-media-wrap') || el.querySelector('.sg-text') || [...el.children].find((c) => !c.classList.contains('sg-item'));
+  if (!frames || !target) return;
+  target.style.willChange = /flash|glow|rainbow/.test(slide.effect) ? 'opacity, filter' : 'transform';
+  const loop = E_LOOP[slide.effect];
+  target.animate(frames, loop
+    ? { duration: loop[0], easing: loop[1], iterations: Infinity }
+    : { duration: Math.max(2, seconds) * 1000 + (slide.transition_ms || 0), easing: 'linear', fill: 'forwards', iterations: 1 });
 }
 
 // ---------------------------------------------------------------------

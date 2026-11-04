@@ -446,7 +446,7 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'section-title' }, 'Transition & effect'),
       field('Transition in', select(TRANSITIONS, s.transition || 'fade', (v) => change((x) => (x.transition = v), { transition: true }))),
       field('Speed', h('input', { type: 'range', min: 200, max: 2500, step: 100, value: s.transition_ms ?? 900, onchange: (e) => change((x) => (x.transition_ms = Number(e.target.value)), { transition: true, list: false }) })),
-      s.type !== 'text' ? field('Motion effect', select(EFFECTS, s.effect || 'none', (v) => change((x) => (x.effect = v)))) : h('div'),
+      field('Motion effect', select(EFFECTS, s.effect || 'none', (v) => change((x) => (x.effect = v)))),
       h('div', { class: 'row', style: { alignSelf: 'end' } },
         h('button', { class: 'btn sm', onclick: () => refreshPreview(true) }, icon('play'), 'Replay'),
         h('button', { class: 'btn sm ghost', onclick: () => { pl.slides.forEach((x) => { x.transition = s.transition; x.transition_ms = s.transition_ms; }); schedule(); paintList(); toast('Transition applied to all slides'); } }, 'Apply to all')),
