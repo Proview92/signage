@@ -21,7 +21,7 @@ export function createRemoteMenu({ getStatus, onReload }) {
   root.id = 'remote';
   root.innerHTML = `
     <div class="rm-card">
-      <div class="rm-head"><div class="wm"><b>PROVIEW</b> <span>SIGNAGE</span></div><div class="rm-title"></div></div>
+      <div class="rm-head"><div class="wm"><b>PROVIEW</b><span>SIGNAGE</span></div><div class="rm-title"></div></div>
       <div class="rm-body"></div>
       <div class="rm-foot">Use ▲ ▼ and OK · Back to close</div>
     </div>`;

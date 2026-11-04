@@ -13,8 +13,8 @@ android {
         applicationId = "com.signage.tv"
         minSdk = 22          // Fire TV Stick (2nd gen+) and Android TV 5.1+
         targetSdk = 34
-        versionCode = 15
-        versionName = "2.4"
+        versionCode = 16
+        versionName = "2.5"
         buildConfigField("String", "PLAYER_URL", "\"$playerUrl\"")
     }
 
