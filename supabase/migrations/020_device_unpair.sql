@@ -1,4 +1,4 @@
--- "Unlink this TV" from the TV app's own menu (protected by the menu PIN on the TV).
+-- "Unlink this TV" from the TV app's own menu (anyone with the TV remote can open that menu).
 -- A TV can only unlink itself: the row is found by the TV's own sign-in (device_user_id).
 -- Clears the same things as "Remove TV" on the dashboard, plus any video-wall position,
 -- and gives the TV a fresh pairing code so it shows the pairing screen again.
