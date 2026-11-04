@@ -168,7 +168,7 @@ export async function editorPage({ main, params: [id], go }) {
         const count = pl.slides.filter((s) => (s.zone || 0) === i).length;
         const other = i > 0 && !count && zones[i - 1] ? allPlaylists.find((p) => p.id === zones[i - 1]) : null;
         return h('button', { type: 'button', class: 'area-tab' + (i === area ? ' on' : ''), onclick: () => { area = i; const first = areaIdx()[0]; sel = first ?? -1; paint(); } },
-          layoutDiagram(layout, portrait, false, i, 40),
+          layoutDiagram(layout, portrait, false, i, 40, null, pl.settings.layout_split),
           h('span', {}, h('b', {}, `Area ${i + 1}`), h('small', {}, other ? `Plays “${other.name}”` : `${count} slide${count === 1 ? '' : 's'}`)));
       }));
   }
@@ -385,7 +385,7 @@ export async function editorPage({ main, params: [id], go }) {
     } }, l)));
 
   const layoutBtn = h('button', { class: 'btn', title: 'Full screen, side panel or ticker' });
-  const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait', false, 0, 30, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null), `Layout: ${layoutLabel(n.layout, pl.settings.orientation === 'portrait')}${n.ticker ? ' + ticker' : ''}`); };
+  const paintLayoutBtn = () => { const n = normLayout(pl.settings); layoutBtn.replaceChildren(layoutDiagram(n.layout, pl.settings.orientation === 'portrait', false, 0, 30, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split), `Layout: ${layoutLabel(n.layout, pl.settings.orientation === 'portrait')}${n.ticker ? ' + ticker' : ''}`); };
   layoutBtn.onclick = () => layoutDialog(pl, allPlaylists, (st) => {
     Object.assign(pl.settings, st);
     const n = areaCount();

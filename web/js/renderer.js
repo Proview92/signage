@@ -589,7 +589,7 @@ export const LAYOUTS = {
 };
 /** Layout name, worded for the screen's orientation. */
 export const layoutLabel = (k, portrait = false) => (portrait ? { three: 'Three rows', side: 'Main + narrow bottom panel' }[k] : null) || LAYOUTS[k] || LAYOUTS.full;
-const TICKER_H = 96, SIDE_W = 480;
+const TICKER_H = 96;
 
 /** Normalise old layout values. Returns { layout, ticker:boolean }. */
 export function normLayout(st = {}) {
@@ -600,22 +600,41 @@ export function normLayout(st = {}) {
   return { layout, ticker };
 }
 
-/** Areas as [x, y, w, h] for a stage of W×H. Area 0 plays the playlist itself. */
-export function layoutZones(layout, W, H) {
+/** Size sliders each layout offers: [key, label, default fraction]. settings.layout_split = { a, b }. */
+export function splitControls(layout, portrait = false) {
+  return ({
+    'split-v': [['a', 'Area 1 width', 0.5]],
+    'split-h': [['a', 'Area 1 height', 0.5]],
+    'main-two': portrait ? [['a', 'Area 1 height', 2 / 3], ['b', 'Area 2 width', 0.5]] : [['a', 'Area 1 width', 2 / 3], ['b', 'Area 2 height', 0.5]],
+    three: portrait ? [['a', 'Area 1 height', 1 / 3], ['b', 'Area 2 height', 1 / 3]] : [['a', 'Area 1 width', 1 / 3], ['b', 'Area 2 width', 1 / 3]],
+    quad: [['a', 'Left column width', 0.5], ['b', 'Top row height', 0.5]],
+    side: [['a', portrait ? 'Bottom panel height' : 'Side panel width', 0.25]],
+  })[layout] || [];
+}
+const clampF = (v, d, lo = 0.1, hi = 0.9) => { const n = Number(v); return Math.min(hi, Math.max(lo, isFinite(n) && n > 0 ? n : d)); };
+
+/** Areas as [x, y, w, h] for a stage of W×H. Area 0 plays the playlist itself. sp = optional sizes { a, b }. */
+export function layoutZones(layout, W, H, sp = null) {
   const portrait = H > W;
-  const half = (n) => Math.round(n / 2), third = (n) => Math.round(n / 3);
+  const f = (k) => { const c = splitControls(layout, portrait).find((x) => x[0] === k); return clampF(sp?.[k], c ? c[2] : 0.5); };
+  const R = Math.round;
   switch (layout) {
-    case 'split-v': return [[0, 0, half(W), H], [half(W), 0, W - half(W), H]];
-    case 'split-h': return [[0, 0, W, half(H)], [0, half(H), W, H - half(H)]];
-    case 'three': return portrait
-      ? [[0, 0, W, third(H)], [0, third(H), W, third(H)], [0, 2 * third(H), W, H - 2 * third(H)]]
-      : [[0, 0, third(W), H], [third(W), 0, third(W), H], [2 * third(W), 0, W - 2 * third(W), H]];
-    case 'quad': return [[0, 0, half(W), half(H)], [half(W), 0, W - half(W), half(H)], [0, half(H), half(W), H - half(H)], [half(W), half(H), W - half(W), H - half(H)]];
-    case 'main-two': {
-      if (portrait) { const mh = Math.round(H * 2 / 3); return [[0, 0, W, mh], [0, mh, half(W), H - mh], [half(W), mh, W - half(W), H - mh]]; }
-      const mw = Math.round(W * 2 / 3); return [[0, 0, mw, H], [mw, 0, W - mw, half(H)], [mw, half(H), W - mw, H - half(H)]];
+    case 'split-v': { const lw = R(W * f('a')); return [[0, 0, lw, H], [lw, 0, W - lw, H]]; }
+    case 'split-h': { const th = R(H * f('a')); return [[0, 0, W, th], [0, th, W, H - th]]; }
+    case 'three': {
+      const a = f('a'), b = Math.min(f('b'), 0.9 - a);
+      if (portrait) { const h1 = R(H * a), h2 = R(H * b); return [[0, 0, W, h1], [0, h1, W, h2], [0, h1 + h2, W, H - h1 - h2]]; }
+      const w1 = R(W * a), w2 = R(W * b); return [[0, 0, w1, H], [w1, 0, w2, H], [w1 + w2, 0, W - w1 - w2, H]];
     }
-    case 'side': return portrait ? [[0, 0, W, H - SIDE_W], [0, H - SIDE_W, W, SIDE_W]] : [[0, 0, W - SIDE_W, H], [W - SIDE_W, 0, SIDE_W, H]];
+    case 'quad': { const cw = R(W * f('a')), rh = R(H * f('b')); return [[0, 0, cw, rh], [cw, 0, W - cw, rh], [0, rh, cw, H - rh], [cw, rh, W - cw, H - rh]]; }
+    case 'main-two': {
+      if (portrait) { const mh = R(H * f('a')), sw = R(W * f('b')); return [[0, 0, W, mh], [0, mh, sw, H - mh], [sw, mh, W - sw, H - mh]]; }
+      const mw = R(W * f('a')), sh = R(H * f('b')); return [[0, 0, mw, H], [mw, 0, W - mw, sh], [mw, sh, W - mw, H - sh]];
+    }
+    case 'side': {
+      if (portrait) { const ph = R(H * f('a')); return [[0, 0, W, H - ph], [0, H - ph, W, ph]]; }
+      const pw = R(W * f('a')); return [[0, 0, W - pw, H], [W - pw, 0, pw, H]];
+    }
     default: return [[0, 0, W, H]];
   }
 }
@@ -631,8 +650,8 @@ export function tickerPlace(t = {}, layout = 'full') {
   return { area, edge: m[2] || 'bottom' };
 }
 /** Areas and ticker strips for a W×H stage: { zones: [[x,y,w,h]…], tickers: [{ rect: [x,y,w,h], edge }] }. */
-export function layoutWithTicker(layout, W, H, t = null) {
-  if (!t) return { zones: layoutZones(layout, W, H), tickers: [] };
+export function layoutWithTicker(layout, W, H, t = null, sp = null) {
+  if (!t) return { zones: layoutZones(layout, W, H, sp), tickers: [] };
   const TH = TICKER_SIZES[t.size] || TICKER_H;
   const { area, edge } = tickerPlace(t, layout);
   const top = edge !== 'bottom', bottom = edge !== 'top';
@@ -640,9 +659,9 @@ export function layoutWithTicker(layout, W, H, t = null) {
   const strips = ([x, y, w, h]) => [...(top ? [{ rect: [x, y, w, TH], edge: 'top' }] : []), ...(bottom ? [{ rect: [x, y + h - TH, w, TH], edge: 'bottom' }] : [])];
   if (area == null) {
     const [, cy, , ch] = cut([0, 0, W, H]);
-    return { zones: layoutZones(layout, W, ch).map(([x, y, w, h]) => [x, y + cy, w, h]), tickers: strips([0, 0, W, H]) };
+    return { zones: layoutZones(layout, W, ch, sp).map(([x, y, w, h]) => [x, y + cy, w, h]), tickers: strips([0, 0, W, H]) };
   }
-  const zones = layoutZones(layout, W, H);
+  const zones = layoutZones(layout, W, H, sp);
   const box = zones[area];
   zones[area] = cut(box);
   return { zones, tickers: strips(box) };
@@ -683,7 +702,7 @@ export class LayoutPlayer {
     const { layout, ticker: tickerOn } = normLayout(st);
     const ticker = tickerOn && st.ticker?.text ? st.ticker : null;
     const extras = zonePlaylistIds(st).map((id) => (id ? this.opts.lookup?.(id) || null : null));
-    const key = `${portrait}|${layout}|${ticker ? `${ticker.position || 'bottom'}|${ticker.size || 'normal'}` : ''}`;
+    const key = `${portrait}|${layout}|${ticker ? `${ticker.position || 'bottom'}|${ticker.size || 'normal'}` : ''}` + '|' + JSON.stringify(st.layout_split || {});
     if (key !== this.key) {
       this._reset();
       this.key = key;
@@ -692,7 +711,7 @@ export class LayoutPlayer {
       } else {
         this.host = createStage(this.container, portrait ? 'portrait' : 'landscape');
         const SW = portrait ? 1080 : 1920, SH = portrait ? 1920 : 1080;
-        const plan = layoutWithTicker(layout, SW, SH, ticker);
+        const plan = layoutWithTicker(layout, SW, SH, ticker, st.layout_split);
         const zone = (x, y, w, h) => { const z = document.createElement('div'); Object.assign(z.style, { position: 'absolute', left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', overflow: 'hidden', background: '#000' }); this.host.stage.appendChild(z); return z; };
         this.players = plan.zones.map(([x, y, w, h], i) =>
           // Lay each area out at "full-screen scale" (its short side = 1080) so text and pictures keep sensible proportions.

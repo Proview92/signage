@@ -1,7 +1,7 @@
 // Inspector fields for widget slides, and the playlist layout dialog.
 import { h, field, select, toast, modal, errMsg } from '../core.js';
 import { WIDGET_TYPES, geocode, youtubeId } from '../widgets.js';
-import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds, layoutWithTicker } from '../renderer.js';
+import { LAYOUTS, layoutLabel, normLayout, layoutZones, zoneCount, zonePlaylistIds, layoutWithTicker, splitControls } from '../renderer.js';
 
 /** Fields for the selected widget slide. change(fn) mutates + saves; repaint() redraws the inspector. */
 export function widgetFields(s, change, repaint) {
@@ -71,11 +71,11 @@ export function widgetFields(s, change, repaint) {
 
 /** Playlist layout: full screen, side panel, ticker. */
 /** Small picture of a layout (areas numbered). */
-export function layoutDiagram(layout, portrait = false, active = false, hi = 0, size = 96, ticker = null) {
+export function layoutDiagram(layout, portrait = false, active = false, hi = 0, size = 96, ticker = null, split = null) {
   const W = portrait ? Math.round(size * 9 / 16) : size, H = portrait ? size : Math.round(size * 9 / 16);
   const box = h('div', { class: 'lay-diagram' + (active ? ' on' : ''), style: { width: W + 'px', height: H + 'px' } });
   const k = W / (portrait ? 1080 : 1920);
-  const plan = layoutWithTicker(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080, ticker);
+  const plan = layoutWithTicker(layout, portrait ? 1080 : 1920, portrait ? 1920 : 1080, ticker, split);
   const pos = ([x, y, w, hh]) => ({ left: x * k + 'px', top: y * k + 'px', width: w * k + 'px', height: hh * k + 'px' });
   plan.zones.forEach((r, i) => box.append(h('div', { class: 'lay-zone' + (i === hi ? ' first' : ''), style: pos(r) }, String(i + 1))));
   plan.tickers.forEach((tk) => box.append(h('div', { class: 'lay-ticker', style: pos(tk.rect) })));
@@ -85,7 +85,7 @@ export function layoutDiagram(layout, portrait = false, active = false, hi = 0, 
 export function layoutDialog(pl, playlists, onSave) {
   const portrait = pl.settings.orientation === 'portrait';
   const norm = normLayout(pl.settings);
-  const st = { layout: norm.layout, ticker_on: norm.ticker, zones: zonePlaylistIds(pl.settings), ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff', position: 'bottom', size: 'normal', dir: 'rtl', ...(pl.settings.ticker || {}) } };
+  const st = { layout: norm.layout, ticker_on: norm.ticker, zones: zonePlaylistIds(pl.settings), split: { ...(pl.settings.layout_split || {}) }, ticker: { text: '', speed: 'normal', bg: '#3f6fd0', color: '#ffffff', position: 'bottom', size: 'normal', dir: 'rtl', ...(pl.settings.ticker || {}) } };
   const others = playlists.filter((p) => p.id !== pl.id);
   const picker = h('div', { class: 'lay-grid' });
   const zonesWrap = h('div', { class: 'stack', style: { gap: '10px' } });
@@ -96,27 +96,51 @@ export function layoutDialog(pl, playlists, onSave) {
   const text = h('textarea', { rows: 3, value: st.ticker.text || '', placeholder: 'One message per line, e.g.\nFree Wi-Fi: CAFE-GUEST\nOpen 7am–7pm every day' });
   const tickOn = h('input', { type: 'checkbox', checked: st.ticker_on, onchange: (e) => { st.ticker_on = e.target.checked; paint(); } });
 
+  // Area sizes: sliders redraw only the pictures, so dragging stays smooth.
+  const bigDiag = h('div');
+  const tickDiag = h('div');
+  const redraw = () => {
+    bigDiag.replaceChildren(layoutDiagram(st.layout, portrait, false, 0, 150, st.ticker_on ? st.ticker : null, st.split));
+    tickDiag.replaceChildren(layoutDiagram(st.layout, portrait, false, -1, 96, st.ticker, st.split));
+  };
+  const sliders = () => {
+    const ctl = splitControls(st.layout, portrait);
+    if (!ctl.length) return '';
+    return h('div', { class: 'stack', style: { gap: '6px' } },
+      ...ctl.map(([k, label, def]) => {
+        const val = h('b', { class: 'tiny' });
+        const pct = () => Math.round((st.split[k] ?? def) * 100);
+        const input = h('input', { type: 'range', min: 10, max: 90, step: 1, value: pct(), class: 'lay-range',
+          oninput: (e) => { st.split[k] = Number(e.target.value) / 100; val.textContent = pct() + '%'; redraw(); } });
+        val.textContent = pct() + '%';
+        return h('label', { class: 'lay-slider' }, h('span', { class: 'small' }, label), input, val);
+      }),
+      h('button', { type: 'button', class: 'btn sm ghost', style: { alignSelf: 'flex-start' }, onclick: () => { st.split = {}; paint(); } }, 'Reset sizes'));
+  };
+
   const paint = () => {
     picker.replaceChildren(...Object.keys(LAYOUTS).map((k) => [k, layoutLabel(k, portrait)]).map(([k, label]) =>
-      h('button', { type: 'button', class: 'lay-card' + (st.layout === k ? ' on' : ''), onclick: () => { st.layout = k; paint(); } },
+      h('button', { type: 'button', class: 'lay-card' + (st.layout === k ? ' on' : ''), onclick: () => { if (st.layout !== k) st.split = {}; st.layout = k; paint(); } },
         layoutDiagram(k, portrait, st.layout === k), h('span', {}, label))));
     const n = zoneCount(st.layout);
     while (st.zones.length < n - 1) st.zones.push(null);
     zonesWrap.replaceChildren(...(n > 1 ? [
-      h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } }, layoutDiagram(st.layout, portrait),
-        h('div', { class: 'tiny' }, `After saving, pick an area above the slide list (Area 1, Area 2…) and press “Add media” to fill it.`)),
+      h('div', { class: 'row', style: { gap: '16px', flexWrap: 'nowrap', alignItems: 'center' } }, bigDiag,
+        h('div', { class: 'stack grow', style: { gap: '10px' } }, sliders(),
+          h('div', { class: 'tiny' }, `After saving, pick an area above the slide list (Area 1, Area 2…) and press “Add media” to fill it.`))),
       !others.length ? '' : h('details', { class: 'tiny adv' }, h('summary', {}, 'Advanced: play another playlist in an area instead'),
         h('div', { class: 'stack', style: { gap: '8px', marginTop: '8px' } },
           ...Array.from({ length: n - 1 }, (_, i) => field(`Area ${i + 2}`, select([['', 'Its own slides (add them in the editor)'], ...others.map((p) => [p.id, `Play playlist: ${p.name}`])], st.zones[i] || '', (v) => (st.zones[i] = v || null)))))),
     ] : []));
     tickWrap.classList.toggle('hidden', !st.ticker_on);
+    redraw();
     // Ticker position: whole screen, or inside one area.
     const areaOpts = n > 1 ? Array.from({ length: n }, (_, i) => [[`${i}:top`, `Top of area ${i + 1}`], [`${i}:bottom`, `Bottom of area ${i + 1}`], [`${i}:both`, `Top and bottom of area ${i + 1}`]]).flat() : [];
     const valid = ['bottom', 'top', 'both', ...areaOpts.map((o) => o[0])];
     if (!valid.includes(st.ticker.position)) st.ticker.position = 'bottom';
     text2Wrap.classList.toggle('hidden', !/both$/.test(st.ticker.position));
     posWrap.replaceChildren(h('div', { class: 'row', style: { gap: '12px', flexWrap: 'nowrap', alignItems: 'center' } },
-      layoutDiagram(st.layout, portrait, false, -1, 96, st.ticker),
+      tickDiag,
       h('div', { class: 'grow' }, field('Position', select([['bottom', 'Bottom of screen'], ['top', 'Top of screen'], ['both', 'Top and bottom of screen'], ...areaOpts], st.ticker.position, (v) => { st.ticker.position = v; paint(); })))));
   };
   tickWrap.append(field('Ticker text', text), posWrap, text2Wrap,
@@ -143,7 +167,7 @@ export function layoutDialog(pl, playlists, onSave) {
       const n = zoneCount(st.layout);
       const zones = st.zones.slice(0, n - 1);
       if (st.ticker_on && !text.value.trim()) throw new Error('Enter the ticker text');
-      onSave({ layout: st.layout, zones, side_playlist_id: st.layout === 'side' ? zones[0] : null, ticker_on: st.ticker_on, ticker: st.ticker });
+      onSave({ layout: st.layout, zones, side_playlist_id: st.layout === 'side' ? zones[0] : null, ticker_on: st.ticker_on, ticker: st.ticker, layout_split: splitControls(st.layout, portrait).length ? st.split : {} });
     } }],
   });
 }

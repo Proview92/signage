@@ -344,3 +344,8 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .wall-cell { background: linear-gradient(135deg, #2f84d4, #5a5fbb); color: #fff; border-radius: 4px; font: 600 11px var(--font); display: grid; place-items: center; text-align: center; padding: 2px; overflow: hidden; }
 .wall-cell.empty { background: #c9cede; }
 .wall-card { display: flex; flex-direction: column; gap: 4px; }
+
+/* Layout area size sliders */
+.lay-slider { display: grid; grid-template-columns: 150px 1fr 44px; align-items: center; gap: 10px; }
+.lay-range { width: 100%; accent-color: #3f6fd0; }
+@media (max-width: 640px) { .lay-slider { grid-template-columns: 1fr 44px; } .lay-slider > span { grid-column: 1 / -1; } }
