@@ -45,12 +45,16 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     const name = h('input', { type: 'text', value: screen.name });
     const loc = h('input', { type: 'text', value: screen.location || '', placeholder: 'e.g. Counter, Window' });
     let site = screen.site_id || '';
+    let rotation = String(screen.rotation || 0);
+    const shown = screen.device_info?.display;
     modal({ title: 'Screen details', body: [field('Name', name),
       sites.length ? field('Site', siteSelect(sites, site, (v) => (site = v))) : h('div', { class: 'tiny' }, 'No sites yet: managers can add them on the Screens page.'),
-      field('Position at the site', loc)], actions: [
+      field('Position at the site', loc),
+      field('Screen rotation', select([['0', 'Automatic (use the TV’s own setting)'], ['90', 'Turn 90° clockwise'], ['270', 'Turn 90° anticlockwise'], ['180', 'Upside down (180°)']], rotation, (v) => (rotation = v)),
+        `Leave on Automatic unless the TV is mounted on its side and the picture comes out sideways.${shown ? ` The TV currently reports a ${shown} screen.` : ''}`)], actions: [
       { label: 'Cancel' },
       { label: 'Save', class: 'primary', onClick: async () => {
-        await q(sb.from('screens').update({ name: name.value.trim() || 'Screen', location: loc.value.trim() || null, site_id: site || null }).eq('id', id));
+        await q(sb.from('screens').update({ name: name.value.trim() || 'Screen', location: loc.value.trim() || null, site_id: site || null, rotation: Number(rotation) }).eq('id', id));
         await load(); paint();
       } }] });
   }

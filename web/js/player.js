@@ -186,6 +186,7 @@ function apply(row) {
 
   screen = row;
   localStorage.setItem(LS.screen, JSON.stringify(row));
+  applyRotation(row.rotation);
   if (row.claimed && row.screenshot_requested_at && Date.now() - new Date(row.screenshot_requested_at) < 5 * 60000) takeScreenshot();
   $('screen-name').textContent = row.name;
 
@@ -209,6 +210,12 @@ function apply(row) {
 }
 
 // ------------------------------------------------------------ backend
+// Turn the whole picture when the TV is mounted on its side and can't rotate by itself.
+function applyRotation(deg) {
+  const r = [90, 180, 270].includes(Number(deg)) ? Number(deg) : 0;
+  for (const d of [90, 180, 270]) document.body.classList.toggle('rot' + d, d === r);
+}
+
 function deviceInfo() {
   const dpr = window.devicePixelRatio || 1;
   return {
@@ -216,6 +223,7 @@ function deviceInfo() {
     resolution: `${Math.round(window.screen.width * dpr)}×${Math.round(window.screen.height * dpr)}`,
     ua: navigator.userAgent.slice(0, 160),
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    display: window.innerHeight > window.innerWidth ? 'portrait' : 'landscape',
   };
 }
 
