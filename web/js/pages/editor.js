@@ -464,9 +464,7 @@ export async function editorPage({ main, params: [id], go }) {
       h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
       schedBody,
 
-      h('div', { class: 'full row save-row' },
-        h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast('Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
-        h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Press “Publish” to send them to your TVs.'))));
+      h('div', { class: 'full tiny save-note' }, 'Changes save automatically as you edit. Press “Publish” to send them to your TVs.')));
       return;
     }
     inspEl.replaceChildren(h('div', { class: 'inspector' }, head,
@@ -510,9 +508,7 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'full row' },
         h('button', { class: 'btn sm', onclick: () => { const c = { ...structuredClone(s), id: newSlide().id }; pl.slides.splice(sel + 1, 0, c); sel++; schedule(); paint(); } }, icon('dup'), 'Duplicate'),
         h('button', { class: 'btn sm danger', onclick: () => deleteSlide(sel) }, icon('trash'), 'Delete')),
-      h('div', { class: 'full row save-row' },
-        h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast('Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
-        h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Press “Publish” to send them to your TVs.'))));
+      h('div', { class: 'full tiny save-note' }, 'Changes save automatically as you edit. Press “Publish” to send them to your TVs.')));
   }
 
   // ------------------------------------------------ page
