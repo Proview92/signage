@@ -546,3 +546,4 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .help-steps li::marker { color: #3f6fd0; font-weight: 700; }
 .help-tips { background: #eef3fd; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
 .help-contact { max-width: 900px; margin-top: 16px; }
+.help-downloads { display: flex; gap: 10px; flex-wrap: wrap; margin: -6px 0 14px; }

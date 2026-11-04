@@ -13,6 +13,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
   if (url.pathname.startsWith('/__media/')) return;              // handled by the player
+  if (url.pathname.startsWith('/docs/')) return;                 // PDF guides: no need to keep copies
   const sameOrigin = url.origin === self.location.origin;
   const cdn = url.hostname === 'cdn.jsdelivr.net';
   if (!sameOrigin && !cdn) return;                               // never touch Supabase API calls

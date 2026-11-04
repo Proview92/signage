@@ -2,7 +2,7 @@
 import { h, icon } from '../core.js';
 
 // Each guide: [title, intro, steps[], tips[]?]. Steps are plain text; **bold** marks buttons and menu names.
-const TV = [
+export const TV = [
   ['Set up a new TV', 'Get the PROVIEW SIGNAGE app running on an Android TV, Google TV or Fire TV stick.', [
     'Connect the TV or TV stick to the internet (Wi-Fi or cable).',
     'Install the PROVIEW SIGNAGE TV app. Proview installs it for you, or call support on 020 8935 5495 for the download.',
@@ -57,7 +57,7 @@ const TV = [
   ]],
 ];
 
-const DASH = [
+export const DASH = [
   ['Getting around', 'The dashboard works on a computer, tablet or phone.', [
     'The menu on the left (or the bar at the bottom on a phone) has **Screens**, **Playlists**, **Media**, **Reports**, **Activity**, **Team** and **Notifications**.',
     'If you manage more than one business, pick it in the drop-down at the top. Everything you see belongs to that client.',
@@ -226,6 +226,9 @@ export async function helpPage({ main }) {
 
   main.replaceChildren(
     h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Help'), h('p', { class: 'muted' }, 'Step-by-step guides for the TV app and the dashboard.'))),
+    h('div', { class: 'help-downloads' },
+      h('a', { class: 'btn', href: 'docs/PROVIEW-SIGNAGE-TV-App-Guide.pdf', download: '', target: '_blank', rel: 'noopener' }, icon('download'), 'TV app guide (PDF)'),
+      h('a', { class: 'btn', href: 'docs/PROVIEW-SIGNAGE-Dashboard-Guide.pdf', download: '', target: '_blank', rel: 'noopener' }, icon('download'), 'Dashboard guide (PDF)')),
     h('div', { class: 'help-bar' }, tabs, search),
     list,
     h('div', { class: 'card help-contact' }, h('div', { class: 'card-body' },
