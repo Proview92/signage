@@ -663,10 +663,11 @@ export class SlidePlayer {
     if (!anim || ms <= 0 || !prev || !el) { cleanup(); return; }
     const opt = { duration: ms, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' };
     el.style.willChange = prev.style.willChange = 'transform, opacity';
+    const end = () => { el.style.willChange = ''; cleanup(); };
+    if (typeof el.animate !== 'function') return end();
     const a = el.animate(anim.in, opt);
     prev.animate(anim.out, opt);
-    const end = () => { el.style.willChange = ''; cleanup(); };
-    a.finished.then(() => { a.cancel(); end(); }).catch(end);
+    whenDone(a, ms, end);
   }
 }
 
@@ -1066,10 +1067,21 @@ export class WallPlayer {
     };
     if (!anim || ms <= 0 || !prev || !el) return cleanup();
     const opt = { duration: ms, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' };
+    if (typeof el.animate !== 'function') return cleanup();
     const a = el.animate(anim.in, opt);
     prev.animate(anim.out, opt);
-    a.finished.then(() => { a.cancel(); cleanup(); }).catch(cleanup);
+    whenDone(a, ms, cleanup);
   }
+}
+
+// Run fn once an animation ends. Older TV browsers (Android/Fire TV WebView before Chrome 84) have no
+// animation.finished, so fall back to onfinish and a timer; it must never throw mid slide change.
+function whenDone(a, ms, fn) {
+  let done = false;
+  const go = () => { if (done) return; done = true; try { a.cancel(); } catch {} fn(); };
+  if (a && a.finished && typeof a.finished.then === 'function') a.finished.then(go, go);
+  else if (a) a.onfinish = go;
+  setTimeout(go, ms + 400);
 }
 
 export function paintTicker(el, t) {

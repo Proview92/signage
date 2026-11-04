@@ -242,9 +242,15 @@ export async function screenPage({ main, params: [id], go, rerender }) {
           state.me.is_admin ? h('button', { class: 'btn sm primary', onclick: () => licenseDialog(screen, async () => { await load(); paint(); }) }, 'Change or renew licence…') : null,
           canManage() && L.state !== 'lifetime' ? h('button', { class: 'btn sm', onclick: () => renewOnlineDialog(screen) }, 'Renew online') : null)));
 
-    const shotImg = h('div', { class: 'thumb', style: { borderRadius: '8px' } }, h('div', { class: 'blank' }, screen.screenshot_at ? 'Loading…' : 'No screenshot yet'));
+    const shotImg = h('div', { class: 'thumb shot-box', style: { borderRadius: '8px' } }, h('div', { class: 'blank' }, screen.screenshot_at ? 'Loading…' : 'No screenshot yet'));
     if (screen.screenshot_path) sb.storage.from('screenshots').createSignedUrl(screen.screenshot_path, 600).then(({ data }) => {
-      if (data?.signedUrl) shotImg.replaceChildren(h('img', { src: data.signedUrl + '&t=' + Date.parse(screen.screenshot_at || 0), alt: 'Screenshot' }));
+      if (data?.signedUrl) {
+        const src = data.signedUrl + '&t=' + Date.parse(screen.screenshot_at || 0);
+        // Show the whole picture at its real shape (portrait TVs too); tap to open it full size.
+        const img = h('img', { src, alt: 'Screenshot', title: 'Open full size', onclick: () => window.open(src, '_blank'),
+          onload: () => { if (img.naturalWidth) shotImg.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`; shotImg.classList.toggle('tall', img.naturalHeight > img.naturalWidth); } });
+        shotImg.replaceChildren(img);
+      }
     });
     const shotBtn = h('button', { class: 'btn sm', onclick: async () => {
       shotBtn.disabled = true; shotBtn.textContent = 'Asking the TV…';

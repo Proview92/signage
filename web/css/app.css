@@ -525,3 +525,6 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .area-box:not(.on) { cursor: pointer; }
 .area-box:not(.on):hover { border-color: #b9cdf5; }
 .pv-zone[title]:hover > .pv-dim { opacity: .55; }
+
+.thumb.shot-box img { object-fit: contain; cursor: zoom-in; }
+.thumb.shot-box.tall { max-height: 70vh; margin: 0 auto; }
