@@ -445,3 +445,7 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .area-size { font-size: 12.5px; background: rgba(63,111,208,.08); border: 1px solid rgba(63,111,208,.25); color: var(--ink, #222); padding: 4px 9px; border-radius: 8px; font-variant-numeric: tabular-nums; }
 .area-size small { color: var(--ink-3, #777); }
 .area-tab .area-px { display: block; color: #3f6fd0; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Template gallery */
+.tpl-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.tpl-grid .thumb.tall { aspect-ratio: 16/9; background: #111; }
