@@ -85,6 +85,13 @@ export async function editorPage({ main, params: [id], go }) {
       pl.slides.splice(at, 0, s); sel = at; schedule(); paint();
     } }] });
   }
+  async function deleteSlide(i) {
+    if (!(await confirmBox('Delete slide?', 'This removes the slide from the playlist (the file stays in your media library).'))) return;
+    pl.slides.splice(i, 1);
+    if (sel >= pl.slides.length) sel = pl.slides.length - 1;
+    else if (i < sel) sel--;
+    schedule(); paint();
+  }
   function move(from, to) {
     if (to < 0 || to >= pl.slides.length || from === to) return;
     const [s] = pl.slides.splice(from, 1);
@@ -172,7 +179,8 @@ export async function editorPage({ main, params: [id], go }) {
           h('div', { class: 's' }, `${s.type === 'video' && !(s.duration > 0) ? 'Full video' : (s.duration || 8) + 's'} · ${TRANSITIONS[s.transition] || 'Fade'}${s.schedule ? ' · ⏱' : ''}`)),
         h('div', { class: 'acts' },
           h('button', { type: 'button', title: 'Move earlier', 'aria-label': 'Move earlier', disabled: i === 0, onclick: (e) => { e.stopPropagation(); move(i, i - 1); } }, icon('up')),
-          h('button', { type: 'button', title: 'Move later', 'aria-label': 'Move later', disabled: i === pl.slides.length - 1, onclick: (e) => { e.stopPropagation(); move(i, i + 1); } }, icon('down'))));
+          h('button', { type: 'button', title: 'Move later', 'aria-label': 'Move later', disabled: i === pl.slides.length - 1, onclick: (e) => { e.stopPropagation(); move(i, i + 1); } }, icon('down')),
+          h('button', { type: 'button', class: 'del', title: 'Remove from playlist', 'aria-label': 'Remove slide', onclick: (e) => { e.stopPropagation(); deleteSlide(i); } }, icon('trash'))));
       return row;
     }),
     h('div', { class: 'row', style: { padding: '6px 2px', gap: '6px', flexWrap: 'wrap' } },
@@ -306,7 +314,7 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'section-title' }, 'Slide'),
       h('div', { class: 'full row' },
         h('button', { class: 'btn sm', onclick: () => { const c = { ...structuredClone(s), id: newSlide().id }; pl.slides.splice(sel + 1, 0, c); sel++; schedule(); paint(); } }, icon('dup'), 'Duplicate'),
-        h('button', { class: 'btn sm danger', onclick: async () => { if (!(await confirmBox('Delete slide?', 'This removes the slide from the playlist (the file stays in your media library).'))) return; pl.slides.splice(sel, 1); sel = Math.min(sel, pl.slides.length - 1); schedule(); paint(); } }, icon('trash'), 'Delete')),
+        h('button', { class: 'btn sm danger', onclick: () => deleteSlide(sel) }, icon('trash'), 'Delete')),
       h('div', { class: 'full row save-row' },
         h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast(pl.settings.auto_publish ? 'Changes saved · TVs updating' : 'Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
         h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Use “Update TVs” to send them to the screens.'))));

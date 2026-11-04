@@ -168,12 +168,14 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .bar > div { height: 100%; background: var(--accent-grad); width: 0; transition: width .3s; }
 
 /* playlist editor */
-.editor { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: start; }
+.editor { display: grid; grid-template-columns: 350px 1fr; gap: 18px; align-items: start; }
 .editor > * { min-width: 0; }
 .slides-list { display: flex; flex-direction: column; gap: 8px; padding: 12px; max-height: calc(100vh - 210px); overflow: auto; }
 .slide-row { display: grid; grid-template-columns: 22px 96px 1fr auto; gap: 10px; align-items: center; padding: 6px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; background: #faf9f6; }
 .slide-row:hover { border-color: var(--line); }
-.slide-row .acts { display: flex; flex-direction: column; gap: 4px; }
+.slide-row .acts { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; gap: 4px; align-items: center; }
+.slide-row .acts .del { grid-column: 2; grid-row: 1 / span 2; height: 52px; color: var(--bad); }
+.slide-row .acts .del:hover { border-color: var(--bad) !important; color: var(--bad) !important; background: #fef0ef; }
 .slide-row .acts button { width: 28px; height: 24px; display: grid; place-items: center; border: 1px solid var(--line); background: #fff; border-radius: 7px; cursor: pointer; color: var(--ink-2); padding: 0; }
 .slide-row .acts button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .slide-row .acts button:disabled { opacity: .35; cursor: default; }
@@ -207,8 +209,9 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
   .slides-list > .row { order: -1; flex: none; flex-direction: column; align-items: stretch; width: 120px; }
   .slide-row .num, .slide-row .t, .slide-row .s { display: none; }
   .slide-row { position: relative; }
-  .slide-row .acts { position: absolute; top: 10px; right: 10px; flex-direction: row; }
-  .slide-row .acts svg { transform: rotate(-90deg); }   /* strip scrolls sideways: ← → */
+  .slide-row .acts { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: row; }
+  .slide-row .acts button:not(.del) svg { transform: rotate(-90deg); }   /* strip scrolls sideways: ← → */
+  .slide-row .acts .del { height: 24px; }
 }
 @media (max-width: 560px) {
   .inspector, .grid2 { grid-template-columns: 1fr; }
