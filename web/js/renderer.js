@@ -301,8 +301,12 @@ export function createStage(container, orientation = 'landscape', size = null) {
     const w = container.clientWidth, h = container.clientHeight;
     const sw = parseFloat(stage.style.width), sh = parseFloat(stage.style.height);
     if (!w || !h) return;
-    const k = Math.min(w / sw, h / sh);
-    stage.style.transform = `translate(${(w - sw * k) / 2}px, ${(h - sh * k) / 2}px) scale(${k})`;
+    // On the TV (bleed > 1) the picture overshoots the screen very slightly and is snapped to whole pixels,
+    // so a rounding gap can never show as a thin line along an edge.
+    const bleed = window.__sgBleed || 1;
+    const k = Math.min(w / sw, h / sh) * bleed;
+    const tx = (w - sw * k) / 2, ty = (h - sh * k) / 2;
+    stage.style.transform = bleed > 1 ? `translate(${Math.floor(tx)}px, ${Math.floor(ty)}px) scale(${k})` : `translate(${tx}px, ${ty}px) scale(${k})`;
   };
   const ro = new ResizeObserver(fit);
   ro.observe(container);

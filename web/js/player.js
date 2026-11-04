@@ -15,6 +15,7 @@ const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
 const MODEL = qs.get('model') || '';
 const HW = /^[0-9a-f]{64}$/.test(qs.get('hw') || '') ? qs.get('hw') : '';
 const sb = makeClient('signage-tv');
+window.__sgBleed = 1.004;   // fill the screen edge to edge (no thin border lines)
 const LS = { screen: 'signage.tv.screen', reload: 'signage.tv.reload' };
 const MEDIA_CACHE = 'signage-media-v1';
 
