@@ -47,6 +47,8 @@ const P = {
   refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>',
   upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  'eye-off': '<path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M2 2l20 20"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -125,10 +127,24 @@ export function promptBox(title, label, { type = 'text', placeholder = '', okLab
     let done = false;
     const input = h('input', { type, placeholder, autocomplete: type === 'password' ? 'new-password' : 'off' });
     const ok = () => { const v = input.value.trim(); if (v.length < minLength) throw new Error(minLength > 1 ? `Use at least ${minLength} characters` : 'Please fill this in'); done = true; resolve(v); };
-    const m = modal({ title, body: field(label, input), onClose: () => { if (!done) resolve(null); },
+    const m = modal({ title, body: field(label, type === 'password' ? passwordToggle(input) : input), onClose: () => { if (!done) resolve(null); },
       actions: [{ label: 'Cancel' }, { label: okLabel, class: 'primary', onClick: ok }] });
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { try { ok(); m.close(); } catch (err) { toast(errMsg(err), true); } } });
   });
+}
+
+/** Wrap a password input with a show/hide (eye) button. Returns the wrapper. */
+export function passwordToggle(input) {
+  const btn = h('button', { class: 'pw-eye', type: 'button', tabIndex: -1, 'aria-label': 'Show password', title: 'Show password' }, icon('eye'));
+  btn.onclick = () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.replaceChildren(icon(show ? 'eye-off' : 'eye'));
+    btn.title = btn.ariaLabel = show ? 'Hide password' : 'Show password';
+    btn.setAttribute('aria-label', btn.title);
+    input.focus();
+  };
+  return h('div', { class: 'pw-wrap' }, input, btn);
 }
 
 export function confirmBox(title, text, okLabel = 'Delete', danger = true) {

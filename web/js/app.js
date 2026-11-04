@@ -1,5 +1,5 @@
 import { configured } from './sb.js';
-import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role , promptBox } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role, promptBox, passwordToggle } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { screenPage } from './pages/screen.js';
 import { playlistsPage } from './pages/playlists.js';
@@ -40,6 +40,8 @@ async function render() {
 
   const join = path.match(/^join\/(\w+)$/);
   if (join) localStorage.setItem('signage.invite', join[1]);
+  const qInvite = new URLSearchParams(location.search).get('invite');
+  if (qInvite && /^\w+$/.test(qInvite)) localStorage.setItem('signage.invite', qInvite);
 
   if (!state.session) return root.replaceChildren(await authPage(join?.[1]));
 
@@ -190,13 +192,36 @@ async function signOut() {
 }
 
 // ------------------------------------------------------------ auth
+// Where the "confirm your email" link sends people (keeps the invite, even on another device).
+function confirmUrl() {
+  const inv = localStorage.getItem('signage.invite');
+  return location.origin + location.pathname + (inv ? `?invite=${inv}` : '');
+}
+
 async function authPage(inviteToken) {
   let invite = null;
   if (inviteToken) { try { invite = (await sb.rpc('invite_info', { p_token: inviteToken })).data; } catch {} }
   let mode = invite && !invite.used ? 'signup' : 'signin';
+  // Coming back from the "confirm your email" link?
+  const qs = new URLSearchParams(location.search);
+  const cameBack = qs.has('code') || qs.has('invite') || qs.has('error_description');
+  const linkError = qs.get('error_description');
+  if (cameBack) { history.replaceState(null, '', location.pathname + location.hash); if (!linkError) mode = 'signin'; }
+  const rememberedEmail = localStorage.getItem('signage.signupEmail') || '';
 
-  const email = h('input', { type: 'email', required: true, autocomplete: 'email', value: invite?.email || '', placeholder: 'you@company.com' });
+  const email = h('input', { type: 'email', required: true, autocomplete: 'email', value: invite?.email || (cameBack ? rememberedEmail : '') || '', placeholder: 'you@company.com' });
   const pass = h('input', { type: 'password', required: true, minLength: 8, autocomplete: 'current-password', placeholder: '••••••••' });
+  const pass2 = h('input', { type: 'password', minLength: 8, autocomplete: 'new-password', placeholder: 'Type it again' });
+  const matchMsg = h('div', { class: 'pw-match' });
+  const checkMatch = () => {
+    if (!pass2.value) { matchMsg.textContent = ''; return; }
+    const ok = pass.value === pass2.value;
+    matchMsg.textContent = ok ? '✓ Passwords match' : 'Passwords don’t match yet';
+    matchMsg.className = 'pw-match ' + (ok ? 'ok' : 'bad');
+  };
+  pass.addEventListener('input', checkMatch); pass2.addEventListener('input', checkMatch);
+  const passField = field('Password', passwordToggle(pass), '');
+  const pass2Field = field('Confirm password', h('div', {}, passwordToggle(pass2), matchMsg));
   const msg = h('div');
   const submit = h('button', { class: 'btn primary', type: 'submit' });
   const title = h('h1');
@@ -216,11 +241,30 @@ async function authPage(inviteToken) {
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';
     pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+    pass.placeholder = mode === 'signup' ? 'At least 8 characters' : '••••••••';
+    pass2Field.classList.toggle('hidden', mode !== 'signup');
+    pass2.required = mode === 'signup';
+    pass2.value = ''; checkMatch();
     forgot.classList.toggle('hidden', mode === 'signup');
     msg.replaceChildren();
   };
+  // After sign-up: a clear "check your email" panel with the next steps.
+  const showCheckEmail = (addr) => {
+    const resend = h('button', { class: 'btn sm', type: 'button', onclick: async () => {
+      resend.disabled = true;
+      const { error } = await sb.auth.resend({ type: 'signup', email: addr, options: { emailRedirectTo: confirmUrl() } });
+      error ? toast(errMsg(error), true) : toast('Confirmation email sent again');
+      setTimeout(() => (resend.disabled = false), 30000);
+    } }, 'Send the email again');
+    msg.replaceChildren(h('div', { class: 'notice ok stack', style: { gap: '8px' } },
+      h('div', { style: { fontWeight: 700 } }, '✓ Account created — check your email'),
+      h('div', {}, `We've sent a confirmation link to ${addr}. Click it and you'll come straight back here, signed in. If you open it on another device, just sign in below with your password.`),
+      h('div', { class: 'row', style: { gap: '8px' } }, resend)));
+  };
   swap.onclick = () => { mode = mode === 'signup' ? 'signin' : 'signup'; paint(); };
   paint();
+  if (cameBack && linkError) msg.replaceChildren(h('div', { class: 'notice bad' }, `That link didn't work: ${linkError}. Sign in below, or use “Forgot password?”.`));
+  else if (cameBack) msg.replaceChildren(h('div', { class: 'notice ok' }, '✓ Email confirmed. Sign in with your password to continue.'));
 
   const form = h('form', {
     onsubmit: async (e) => {
@@ -229,11 +273,15 @@ async function authPage(inviteToken) {
       msg.replaceChildren();
       try {
         if (mode === 'signup') {
-          const { data, error } = await sb.auth.signUp({ email: email.value.trim(), password: pass.value, options: { emailRedirectTo: location.origin + location.pathname } });
+          if (pass.value.length < 8) throw new Error('Use at least 8 characters for your password.');
+          if (pass.value !== pass2.value) { pass2.focus(); throw new Error('The two passwords don’t match. Please type them again.'); }
+          const addr = email.value.trim();
+          const { data, error } = await sb.auth.signUp({ email: addr, password: pass.value, options: { emailRedirectTo: confirmUrl() } });
           if (error) throw error;
           if (!data.session) {
-            msg.replaceChildren(h('div', { class: 'notice info' }, 'Check your inbox to confirm your email, then come back and sign in.'));
-            mode = 'signin'; submit.disabled = false; return;
+            localStorage.setItem('signage.signupEmail', addr);
+            mode = 'signin'; paint(); showCheckEmail(addr);
+            submit.disabled = false; return;
           }
         } else {
           const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
@@ -245,7 +293,7 @@ async function authPage(inviteToken) {
       submit.disabled = false;
     },
   }, h('div', { class: 'brand', style: { color: 'var(--ink)', padding: 0, marginBottom: '10px' } }, brandMark(), wordmark(APP)),
-    title, sub, msg, field('Email', email), field('Password', pass), submit,
+    title, sub, msg, field('Email', email), passField, pass2Field, submit,
     h('div', { class: 'row between' }, swap, forgot));
 
   return h('div', { class: 'auth' },
