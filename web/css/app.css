@@ -211,13 +211,13 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
   .slide-row { grid-template-columns: 1fr; width: 150px; flex: none; }
   .slides-list > .row { order: -1; flex: none; flex-direction: column; align-items: stretch; width: 130px; }
   /* phone: picture, then the name, then a tidy button bar underneath */
-  .slide-row { width: 150px; gap: 6px; padding: 7px; align-items: start; }
+  .slide-row { width: 168px; gap: 6px; padding: 7px; align-items: start; }
   .slide-row .num, .slide-row .s { display: none; }
   .slide-row .t { font-size: 12.5px; padding: 0 2px; }
-  .slide-row .acts { display: flex; gap: 6px; }
-  .slide-row .acts button { flex: none; width: 34px; height: 30px; }
-  .slide-row .acts .del { margin-left: auto; }
-  .slide-row .acts button:not(.del) svg { transform: rotate(-90deg); }   /* strip scrolls sideways: ← → */
+  .slide-row .acts { display: flex; gap: 5px; min-width: 0; }
+  .slide-row .acts button { flex: 1 1 0; min-width: 0; width: auto; height: 30px; }
+  .slide-row .acts .del { margin-left: 0; }
+  .slide-row .acts button:not(.del):not(.view) svg { transform: rotate(-90deg); }   /* strip scrolls sideways: ← → */
 }
 @media (max-width: 560px) {
   .inspector, .grid2 { grid-template-columns: 1fr; }

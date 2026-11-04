@@ -1081,11 +1081,26 @@ export function paintTicker(el, t) {
   const text = String(t.text).split('\n').map((x) => x.trim()).filter(Boolean).join('     •     ');
   for (let i = 0; i < 2; i++) { const s = document.createElement('span'); s.textContent = text + '     •     '; s.style.paddingRight = '0'; s.style.whiteSpace = 'pre'; track.appendChild(s); }
   el.appendChild(track);
-  requestAnimationFrame(() => {
-    const w = track.firstChild.offsetWidth;   // layout width: unaffected by stage scaling or TV rotation
-    const pxPerSec = { slow: 90, normal: 150, fast: 240 }[t.speed] || 150;
-    const frames = [{ transform: 'translateX(0)' }, { transform: `translateX(-${w}px)` }];
-    if (t.dir === 'ltr') frames.reverse();
-    track.animate(frames, { duration: Math.max(4000, (w / pxPerSec) * 1000), iterations: Infinity });
-  });
+  // A plain CSS animation that moves the track by half its own width (it holds the text twice), so it
+  // scrolls even if the width can't be measured yet (screen still loading, app starting, TV rotated).
+  if (!document.getElementById('sg-tick-css')) {
+    const css = document.createElement('style'); css.id = 'sg-tick-css';
+    css.textContent = '@keyframes sg-tick{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}';
+    document.head.appendChild(css);
+  }
+  const pxPerSec = { slow: 90, normal: 150, fast: 240 }[t.speed] || 150;
+  const fs = parseFloat(el.style.fontSize) || 30;
+  const time = () => {
+    const w = track.firstChild?.offsetWidth || (text.length + 11) * fs * 0.55;   // estimate if not laid out yet
+    return Math.max(4, w / pxPerSec);
+  };
+  track.style.animation = `sg-tick ${time()}s linear infinite${t.dir === 'ltr' ? ' reverse' : ''}`;
+  // Fix the speed once the text is really laid out (fonts loaded); a change of duration keeps it running.
+  const settle = (n) => setTimeout(() => {
+    if (!track.isConnected) return;
+    if (track.firstChild.offsetWidth) track.style.animationDuration = time() + 's';
+    else if (n < 20) settle(n + 1);
+  }, n ? 500 : 50);
+  settle(0);
+  document.fonts?.ready?.then(() => track.isConnected && track.firstChild.offsetWidth && (track.style.animationDuration = time() + 's'));
 }
