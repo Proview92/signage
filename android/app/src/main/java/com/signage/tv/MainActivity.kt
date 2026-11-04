@@ -183,8 +183,7 @@ class MainActivity : Activity() {
             height:100vh;text-align:center;background:radial-gradient(ellipse at 30% 20%,#1f2638,#0b0c12 70%)">
             <div>
               <img src="logo.png" style="height:11vh;width:auto">
-              <div style="font-size:2.6vh;letter-spacing:.18em;margin:1.4vh 0 4vh"><b>PROVIEW</b>
-                <span style="background:linear-gradient(90deg,#62b0ec,#8b88dc);-webkit-background-clip:text;background-clip:text;color:transparent">SIGNAGE</span></div>
+              <div style="font-size:2.6vh;letter-spacing:.18em;margin:1.4vh 0 4vh"><span style="font-weight:500">PROVIEW</span><span style="background:linear-gradient(90deg,#62b0ec,#8b88dc);-webkit-background-clip:text;background-clip:text;color:transparent">SIGNAGE</span></div>
               <h1 style="font-size:5vh;margin:0 0 2vh">Waiting for network…</h1>
               <p style="font-size:2.6vh;color:#aab;margin:0 0 4vh">Retrying automatically.</p>
               <div style="display:inline-block;padding:1.8vh 4vh;border-radius:1.4vh;font-size:2.6vh;font-weight:700;

@@ -74,7 +74,7 @@ export const brandMark = () => h('div', { class: 'brand-mark', role: 'img', 'ari
 // "PROVIEW SIGNAGE" → bold first word + accent second word
 export function wordmark(name) {
   const [first, ...rest] = String(name).split(' ');
-  return h('span', { class: 'wordmark' }, h('b', {}, first), rest.length ? h('span', {}, ' ' + rest.join(' ')) : null);
+  return h('span', { class: 'wordmark' }, h('b', {}, first), rest.length ? h('span', {}, rest.join(' ')) : null);
 }
 
 // ---------------------------------------------------------------- UI
