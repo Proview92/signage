@@ -302,3 +302,18 @@ export function needsPublish(screen, rules, playlistsById) {
   const side = ids.flatMap((id) => [playlistsById[id]?.settings?.side_playlist_id, ...(playlistsById[id]?.settings?.zones || [])]).filter(Boolean);
   return [...ids, ...side].some((id) => playlistsById[id] && new Date(playlistsById[id].updated_at) > pub);
 }
+
+/** Small "Rename" pop-up: calls save(newName) when the user presses Save or Enter. */
+export function renameDialog(title, current, save) {
+  const input = h('input', { type: 'text', value: current || '', maxlength: 80 });
+  let saveBtn = null;
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); (saveBtn ||= [...document.querySelectorAll('.modal-back button.primary')].pop())?.click(); } });
+  modal({ title, body: [field('Name', input)], actions: [
+    { label: 'Cancel' },
+    { label: 'Save', class: 'primary', onClick: async () => {
+      const v = input.value.trim();
+      if (!v) { toast('Please enter a name', true); return false; }
+      if (v !== current) await save(v);
+    } }] });
+  setTimeout(() => { input.focus(); input.select(); }, 30);
+}

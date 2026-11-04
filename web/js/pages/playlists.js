@@ -5,7 +5,7 @@ import { templateGallery } from './templates.js';
 import { showOnTvsDialog } from './show-on-tvs.js';
 import { pickMedia } from './media.js';
 import { newSlide } from '../renderer.js';
-import { modal, field } from '../core.js';
+import { modal, field, renameDialog } from '../core.js';
 
 export function playlistLength(p) {
   return (p.slides || []).reduce((t, s) => t + (Number(s.duration) > 0 ? Number(s.duration) : (s.video_duration || 10)), 0);
@@ -49,7 +49,11 @@ export async function playlistsPage({ main, go }) {
     return h('div', { class: 'card screen-card' },
       h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none' } }, thumb),
       h('div', { class: 'screen-meta' },
-        h('div', { class: 'row between' }, h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none' } }, h('h3', {}, p.name)),
+        h('div', { class: 'row between' }, h('div', { class: 'row name-edit', style: { gap: '4px', flexWrap: 'nowrap', minWidth: 0 } },
+          h('a', { href: '#/playlist/' + p.id, style: { textDecoration: 'none', minWidth: 0 } }, h('h3', {}, p.name)),
+          h('button', { class: 'btn ghost icon sm', title: 'Rename', 'aria-label': 'Rename playlist', onclick: () => renameDialog('Rename playlist', p.name, async (v) => {
+            await q(sb.from('playlists').update({ name: v }).eq('id', p.id)); toast('Renamed'); window.dispatchEvent(new HashChangeEvent('hashchange'));
+          }) }, icon('edit'))),
           h('div', { class: 'row', style: { gap: '4px' } },
             h('a', { class: 'btn sm', href: '#/playlist/' + p.id, title: 'Edit slides, timings and layout' }, icon('edit'), 'Edit'),
             h('button', { class: 'btn sm', title: 'Choose which TVs show this playlist', onclick: () => showOnTvsDialog(p, { onDone: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }) }, 'Publish'),

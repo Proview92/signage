@@ -1,5 +1,5 @@
 import { clientLabel, clientTitle } from '../core.js';
-import { publishOrRequest } from '../core.js';
+import { publishOrRequest, renameDialog } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive } from '../renderer.js';
 import { licenseBadge } from './license-ui.js';
@@ -175,7 +175,10 @@ export async function screensPage({ main, go }) {
     return h('a', { class: 'card screen-card', href: '#/screen/' + s.id },
       screenThumb(s),
       h('div', { class: 'screen-meta' },
-        h('div', { class: 'row between' }, h('h3', {}, s.name), h('span', { class: 'tiny' }, s.location || '')),
+        h('div', { class: 'row between' }, h('div', { class: 'row name-edit', style: { gap: '4px', flexWrap: 'nowrap', minWidth: 0 } }, h('h3', {}, s.name),
+          canManage() ? h('button', { class: 'btn ghost icon sm', title: 'Rename', 'aria-label': 'Rename TV', onclick: (e) => { e.preventDefault(); e.stopPropagation(); renameDialog('Rename TV', s.name, async (v) => {
+            await q(sb.from('screens').update({ name: v }).eq('id', s.id)); toast('Renamed'); await refresh();
+          }); } }, icon('edit')) : null), h('span', { class: 'tiny' }, s.location || '')),
         quickPlaylist(s, now, rule),
         h('div', { class: 'row', style: { gap: '6px' } }, statusBadges(s, rules, byId))));
   };
