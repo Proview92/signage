@@ -15,6 +15,9 @@ export async function editorPage({ main, params: [id], go }) {
   const lookup = (pid) => (pid === pl.id ? pl : allPlaylists.find((x) => x.id === pid)) || null;
   let sel = pl.slides.length ? 0 : -1;
   let selItem = null;   // id of the widget box being edited on the current slide
+  // Step-by-step editor: 1 Screen & layout · 2 Add content · 3 Timing & schedule · 4 Choose TVs & publish
+  const STEP_KEY = 'signage.editorStep.' + id;
+  let step = Number(sessionStorage.getItem(STEP_KEY)) || 2;
   // Split-screen: which area of the layout we're editing (slides carry .zone = area index)
   let area = 0;
   const areaCount = () => zoneCount(normLayout(pl.settings).layout);
@@ -213,42 +216,68 @@ export async function editorPage({ main, params: [id], go }) {
             h('small', { class: 'area-px', title: 'Make pictures and videos for this area this size (double it for 4K)' }, `${px[i][0]} × ${px[i][1]} px`)));
       }));
   }
+  const AREA_NAMES = {
+    'split-v': ['left', 'right'], 'split-h': ['top', 'bottom'], 'main-two': ['large', 'small 1', 'small 2'], three: ['1st', '2nd', '3rd'],
+    quad: ['top left', 'top right', 'bottom left', 'bottom right'], side: ['main', 'side panel'],
+  };
+  function makeRow(s, i, idx) {
+    const nextIn = (j, dir) => idx[idx.indexOf(j) + dir];
+    const n = idx.indexOf(i) + 1;
+    const mini = h('div', { class: 'mini' });
+    rowThumbs[i] = mini;
+    paintThumb(i);
+    let dragFrom = null;
+    const row = h('div', {
+      class: 'slide-row' + (i === sel ? ' active' : ''), draggable: true,
+      onclick: () => { sel = i; area = areaCount() > 1 ? (s.zone || 0) : 0; selItem = null; paint(); },
+      ondragstart: (e) => { dragFrom = i; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); },
+      ondragend: () => row.classList.remove('dragging'),
+      ondragover: (e) => { e.preventDefault(); row.classList.add('drop-before'); },
+      ondragleave: () => row.classList.remove('drop-before'),
+      ondrop: (e) => {
+        e.preventDefault(); row.classList.remove('drop-before');
+        const from = dragFrom ?? Number(e.dataTransfer.getData('text/plain'));
+        if ((pl.slides[from]?.zone || 0) === (s.zone || 0)) move(from, from < i ? i - 1 : i);
+      },
+    },
+      h('div', { class: 'num', title: 'Drag to reorder' }, n),
+      mini,
+      h('div', { style: { minWidth: 0 } }, h('div', { class: 't' }, slideTitle(s)),
+        h('div', { class: 's' }, `${s.type === 'video' && !(s.duration > 0) ? 'Full video' : (s.duration || 8) + 's'} · ${TRANSITIONS[s.transition] || 'Fade'}${s.effect && s.effect !== 'none' ? ' · ' + (EFFECTS[s.effect] || '') : ''}${s.schedule ? ' · ⏱' : ''}`)),
+      h('div', { class: 'acts' },
+        h('button', { type: 'button', title: 'Move earlier', 'aria-label': 'Move earlier', disabled: nextIn(i, -1) === undefined, onclick: (e) => { e.stopPropagation(); move(i, nextIn(i, -1)); } }, icon('up')),
+        h('button', { type: 'button', title: 'Move later', 'aria-label': 'Move later', disabled: nextIn(i, 1) === undefined, onclick: (e) => { e.stopPropagation(); move(i, nextIn(i, 1)); } }, icon('down')),
+        h('button', { type: 'button', class: 'del', title: 'Remove from playlist', 'aria-label': 'Remove slide', onclick: (e) => { e.stopPropagation(); deleteSlide(i); } }, icon('trash'))));
+    return row;
+  }
+  // One box per area of the layout: its size, its slides, and big "add" buttons (step 2).
   function paintList() {
     rowThumbs.length = 0;
-    let dragFrom = null;
-    const idx = areaIdx();
-    const nextIn = (i, dir) => idx[idx.indexOf(i) + dir];
-    areaEl.replaceChildren(areaTabs() || '');
-    listEl.replaceChildren(...pl.slides.map((s, i) => {
-      if (!inArea(s)) return '';
-      const n = idx.indexOf(i) + 1;
-      const mini = h('div', { class: 'mini' });
-      rowThumbs[i] = mini;
-      paintThumb(i);
-      const row = h('div', {
-        class: 'slide-row' + (i === sel ? ' active' : ''), draggable: true,
-        onclick: () => { sel = i; paint(); },
-        ondragstart: (e) => { dragFrom = i; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); },
-        ondragend: () => row.classList.remove('dragging'),
-        ondragover: (e) => { e.preventDefault(); row.classList.add('drop-before'); },
-        ondragleave: () => row.classList.remove('drop-before'),
-        ondrop: (e) => { e.preventDefault(); row.classList.remove('drop-before'); const from = dragFrom ?? Number(e.dataTransfer.getData('text/plain')); move(from, from < i ? i - 1 : i); },
-      },
-        h('div', { class: 'num', title: 'Drag to reorder' }, n),
-        mini,
-        h('div', { style: { minWidth: 0 } }, h('div', { class: 't' }, slideTitle(s)),
-          h('div', { class: 's' }, `${s.type === 'video' && !(s.duration > 0) ? 'Full video' : (s.duration || 8) + 's'} · ${TRANSITIONS[s.transition] || 'Fade'}${s.schedule ? ' · ⏱' : ''}`)),
-        h('div', { class: 'acts' },
-          h('button', { type: 'button', title: 'Move earlier', 'aria-label': 'Move earlier', disabled: nextIn(i, -1) === undefined, onclick: (e) => { e.stopPropagation(); move(i, nextIn(i, -1)); } }, icon('up')),
-          h('button', { type: 'button', title: 'Move later', 'aria-label': 'Move later', disabled: nextIn(i, 1) === undefined, onclick: (e) => { e.stopPropagation(); move(i, nextIn(i, 1)); } }, icon('down')),
-          h('button', { type: 'button', class: 'del', title: 'Remove from playlist', 'aria-label': 'Remove slide', onclick: (e) => { e.stopPropagation(); deleteSlide(i); } }, icon('trash'))));
-      return row;
-    }),
-    !idx.length && areaCount() > 1 ? h('div', { class: 'tiny', style: { padding: '8px 4px' } }, `Area ${area + 1} is empty. Add pictures, videos or text below.`) : '',
-    h('div', { class: 'row', style: { padding: '6px 2px', gap: '6px', flexWrap: 'wrap' } },
-      h('button', { class: 'btn sm', onclick: addMedia }, icon('media'), 'Add media'),
-      h('button', { class: 'btn sm', onclick: addText }, icon('text'), 'Text slide'),
-      h('button', { class: 'btn sm', onclick: addWidget }, icon('plus'), 'Widget')));
+    areaEl.replaceChildren();
+    const n = areaCount();
+    const portrait = pl.settings.orientation === 'portrait';
+    const { layout, ticker } = normLayout(pl.settings);
+    const px = areaPixels(layout, portrait, ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split);
+    const zones = zonePlaylistIds(pl.settings);
+    const names = AREA_NAMES[layout] || [];
+    listEl.replaceChildren(...Array.from({ length: n }, (_, a) => {
+      const idx = pl.slides.map((x, i) => ((n < 2 || (x.zone || 0) === a) ? i : -1)).filter((i) => i >= 0);
+      const other = a > 0 && !idx.length && zones[a - 1] ? allPlaylists.find((p) => p.id === zones[a - 1]) : null;
+      const pick = (fn) => () => { area = a; sel = idx.includes(sel) ? sel : (idx.at(-1) ?? -1); fn(); };
+      return h('div', { class: 'area-box' + (n > 1 && a === area ? ' on' : '') },
+        h('div', { class: 'row between area-box-head' },
+          h('div', { class: 'row', style: { gap: '10px', flexWrap: 'nowrap' } },
+            n > 1 ? layoutDiagram(layout, portrait, false, a, 34, null, pl.settings.layout_split) : null,
+            h('b', {}, n > 1 ? `Area ${a + 1}${names[a] ? ' · ' + names[a] : ''}` : 'Your slides')),
+          h('span', { class: 'area-px', title: 'Make pictures and videos this size (double it for 4K)' }, `${px[a][0]} × ${px[a][1]} px`)),
+        other ? h('div', { class: 'tiny' }, `Plays the playlist “${other.name}”`) : '',
+        h('div', { class: 'area-rows' }, ...idx.map((i) => makeRow(pl.slides[i], i, idx))),
+        !idx.length && !other ? h('div', { class: 'tiny', style: { padding: '4px 2px' } }, n > 1 ? 'Empty: add pictures, videos or text to this area.' : 'No slides yet: add pictures, videos or text.') : '',
+        step === 2 ? h('div', { class: 'big-adds' },
+          h('button', { type: 'button', onclick: pick(addMedia) }, icon('media'), 'Pictures & videos'),
+          h('button', { type: 'button', onclick: pick(addText) }, icon('text'), 'Text'),
+          h('button', { type: 'button', onclick: pick(addWidget) }, icon('plus'), 'Widget')) : '');
+    }));
   }
   async function paintThumb(i) {
     const s = pl.slides[i], el = rowThumbs[i];
@@ -426,19 +455,10 @@ export async function editorPage({ main, params: [id], go }) {
             field('From', h('input', { type: 'time', value: sch.from || '', onchange: (e) => change((x) => (x.schedule.from = e.target.value)) })),
             field('Until', h('input', { type: 'time', value: sch.to || '', onchange: (e) => change((x) => (x.schedule.to = e.target.value)) })))) : null;
 
-    inspEl.replaceChildren(h('div', { class: 'inspector' },
-      ...(isWidget(s.type) ? widgetFields(s, change, paintInspector) : [h('div', { class: 'section-title' }, s.type === 'text' ? 'Text slide' : isVideo ? 'Video' : 'Picture')]),
-      (s.type === 'image' || s.type === 'video') ? h('div', { class: 'full row' },
-        h('button', { class: 'btn sm', onclick: async () => {
-          const [m] = (await pickMedia({ multiple: false })) || [];
-          if (m) { change((x) => Object.assign(x, { type: m.kind, media_id: m.id, path: m.path, name: m.name, video_duration: m.duration_s ? Number(m.duration_s) : undefined, duration: m.kind === 'video' ? 0 : (x.duration || 8) })); paintInspector(); }
-        } }, 'Replace…'),
-        h('div', { class: 'seg' }, [['stretch', areaCount() > 1 ? 'Stretch to area' : 'Stretch to screen'], ['cover', 'Fill (crop)'], ['contain', 'Fit whole'], ...(s.type === 'image' ? [['blur', 'Fit + blur']] : [])].map(([v, l]) =>
-          h('button', { type: 'button', class: (s.fit || 'cover') === v ? 'on' : '', onclick: () => { change((x) => { x.fit = v; x.fit_set = true; }); paintInspector(); } }, l))),
-        isVideo ? h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: s.muted === false, onchange: (e) => change((x) => (x.muted = !e.target.checked), { list: false }) }), 'Play sound on TV') : null) : null,
-      itemsSection(s),
-      h('div', { class: 'full' }, field('Background', sw)),
-
+    const head = h('div', { class: 'full insp-head' }, h('span', { class: 'tiny' }, areaCount() > 1 ? `Area ${(s.zone || 0) + 1} › ` : ''),
+      h('b', {}, (step === 3 ? 'Timing & schedule: ' : 'Editing: ') + slideTitle(s)));
+    if (step === 3) {
+      inspEl.replaceChildren(h('div', { class: 'inspector' }, head,
       h('div', { class: 'section-title' }, 'Timing'),
       field('Show for (seconds)', dur),
       isVideo ? h('label', { class: 'row small', style: { alignSelf: 'end', fontWeight: 600, paddingBottom: '10px' } }, fullVideo, 'Play the whole video') : h('div'),
@@ -450,6 +470,29 @@ export async function editorPage({ main, params: [id], go }) {
       h('div', { class: 'row', style: { alignSelf: 'end' } },
         h('button', { class: 'btn sm', onclick: () => refreshPreview(true) }, icon('play'), 'Replay'),
         h('button', { class: 'btn sm ghost', onclick: () => { pl.slides.forEach((x) => { x.transition = s.transition; x.transition_ms = s.transition_ms; }); schedule(); paintList(); toast('Transition applied to all slides'); } }, 'Apply to all')),
+
+      h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
+      dateRange(s),
+      h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
+      schedBody,
+
+      h('div', { class: 'full row save-row' },
+        h('button', { class: 'btn primary', onclick: async (e) => { const b = e.currentTarget; b.disabled = true; try { await save(); toast('Changes saved'); } finally { b.disabled = false; } } }, icon('check'), 'Save changes'),
+        h('span', { class: 'tiny' }, 'Changes also save automatically as you edit. Press “Publish” to send them to your TVs.'))));
+      return;
+    }
+    inspEl.replaceChildren(h('div', { class: 'inspector' }, head,
+      ...(isWidget(s.type) ? widgetFields(s, change, paintInspector) : [h('div', { class: 'section-title' }, s.type === 'text' ? 'Text slide' : isVideo ? 'Video' : 'Picture')]),
+      (s.type === 'image' || s.type === 'video') ? h('div', { class: 'full row' },
+        h('button', { class: 'btn sm', onclick: async () => {
+          const [m] = (await pickMedia({ multiple: false })) || [];
+          if (m) { change((x) => Object.assign(x, { type: m.kind, media_id: m.id, path: m.path, name: m.name, video_duration: m.duration_s ? Number(m.duration_s) : undefined, duration: m.kind === 'video' ? 0 : (x.duration || 8) })); paintInspector(); }
+        } }, 'Replace…'),
+        h('div', { class: 'seg' }, [['stretch', areaCount() > 1 ? 'Stretch to area' : 'Stretch to screen'], ['cover', 'Fill (crop)'], ['contain', 'Fit whole'], ...(s.type === 'image' ? [['blur', 'Fit + blur']] : [])].map(([v, l]) =>
+          h('button', { type: 'button', class: (s.fit || 'cover') === v ? 'on' : '', onclick: () => { change((x) => { x.fit = v; x.fit_set = true; }); paintInspector(); } }, l))),
+        isVideo ? h('label', { class: 'row small' }, h('input', { type: 'checkbox', checked: s.muted === false, onchange: (e) => change((x) => (x.muted = !e.target.checked), { list: false }) }), 'Play sound on TV') : null) : null,
+      itemsSection(s),
+      h('div', { class: 'full' }, field('Background', sw)),
 
       ...(!hasOverlay(s) ? [] : [
       h('div', { class: 'section-title row between overlay-section' }, s.type === 'text' ? 'Text' : 'Text overlay',
@@ -463,11 +506,6 @@ export async function editorPage({ main, params: [id], go }) {
       field('Text animation', select(TEXT_ANIMS, t.anim || 'none', (v) => change((x) => (x.text.anim = v)))),
       ]),
 
-      h('div', { class: 'section-title' }, 'Show this slide only at certain times'),
-      dateRange(s),
-      h('label', { class: 'row small full', style: { fontWeight: 600 } }, schedOn, 'Limit this slide to days / times (e.g. lunch specials)'),
-      schedBody,
-
       h('div', { class: 'section-title' }, 'Slide'),
       h('div', { class: 'full row' },
         h('button', { class: 'btn sm', onclick: () => { const c = { ...structuredClone(s), id: newSlide().id }; pl.slides.splice(sel + 1, 0, c); sel++; schedule(); paint(); } }, icon('dup'), 'Duplicate'),
@@ -479,8 +517,86 @@ export async function editorPage({ main, params: [id], go }) {
 
   // ------------------------------------------------ page
   const totalEl = h('span', { class: 'tiny' });
+  // ------------------------------------------------ steps
+  const STEPS = [[1, 'Screen & layout'], [2, 'Add content'], [3, 'Timing & schedule'], [4, 'Choose TVs & publish']];
+  const stepsEl = h('div', { class: 'ed-steps' });
+  const previewCard = h('div', { class: 'card pad ed-preview' });
+  const contentEl = h('div', { class: 'stack' });
+  const fullBox = h('div', { class: 'preview-box' });
+  let fullPlayer = null;
+  function goStep(n) { step = n; try { sessionStorage.setItem(STEP_KEY, String(n)); } catch {} save(); paint(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function paintSteps() {
+    stepsEl.replaceChildren(...STEPS.map(([n, l]) => h('button', { type: 'button', class: (n === step ? 'on' : n < step ? 'done' : ''), onclick: () => goStep(n) },
+      h('span', { class: 'n' }, n < step ? '✓' : String(n)), h('span', { class: 'l' }, l))));
+  }
+  // Whole-screen preview (all areas + ticker) for steps 1 and 4.
+  function showFull() {
+    player?.stop();
+    fullBox.className = 'preview-box' + (pl.settings.orientation === 'portrait' ? ' portrait' : '');
+    previewCard.replaceChildren(fullBox, h('div', { class: 'tiny', style: { textAlign: 'center', marginTop: '8px' } }, 'The whole screen, as it will look on the TV'));
+    if (!fullPlayer) fullPlayer = new LayoutPlayer(fullBox, { resolveUrl: (x) => mediaUrl(x.path), lookup, mutedOverride: true });
+    fullPlayer.stop(); fullPlayer.load(pl); fullPlayer.start();
+  }
+  function showSlide() {
+    fullPlayer?.stop();
+    previewCard.replaceChildren(previewBox, h('div', { class: 'tiny', style: { textAlign: 'center', marginTop: '8px' } },
+      areaCount() > 1 ? 'The selected slide, in the shape of its area' : 'The selected slide'));
+  }
+  const nav = () => h('div', { class: 'row ed-nav' },
+    step > 1 ? h('button', { class: 'btn', onclick: () => goStep(step - 1) }, '← Back') : h('span'),
+    step < 4 ? h('button', { class: 'btn primary', onclick: () => goStep(step + 1) }, `Next: ${STEPS[step][1]} →`) : '');
+  function setupCard() {
+    const portrait = pl.settings.orientation === 'portrait';
+    const n = normLayout(pl.settings);
+    const px = areaPixels(n.layout, portrait, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split);
+    return h('div', { class: 'card pad stack' },
+      h('h2', { style: { margin: 0 } }, 'Screen & layout'),
+      h('div', { class: 'small', style: { fontWeight: 600 } }, 'How is the TV mounted?'),
+      h('div', { class: 'orient-grid' }, ...[['landscape', 'Landscape', 'Wide (16:9)'], ['portrait', 'Portrait', 'Tall (9:16)']].map(([v, l, d]) =>
+        h('button', { type: 'button', class: 'orient-card' + ((pl.settings.orientation || 'landscape') === v ? ' on' : ''), onclick: () => { pl.settings.orientation = v; schedule(); paint(); } },
+          h('span', { class: 'orient-shape ' + v }), h('span', {}, h('b', {}, l), h('small', {}, d))))),
+      h('div', { class: 'small', style: { fontWeight: 600, marginTop: '6px' } }, 'Layout'),
+      h('div', { class: 'row', style: { gap: '16px', flexWrap: 'nowrap', alignItems: 'center' } },
+        layoutDiagram(n.layout, portrait, false, 0, 120, n.ticker && pl.settings.ticker?.text ? pl.settings.ticker : null, pl.settings.layout_split),
+        h('div', { class: 'stack', style: { gap: '6px' } },
+          h('b', {}, layoutLabel(n.layout, portrait) + (n.ticker ? ' + scrolling ticker' : '')),
+          h('div', { class: 'area-size-list' }, ...px.map(([w, hh], i) => h('span', { class: 'area-size' }, h('b', {}, px.length > 1 ? `Area ${i + 1}` : 'Full screen'), ` ${w} × ${hh} px`))),
+          h('div', {}, h('button', { class: 'btn', onclick: () => layoutBtn.onclick() }, 'Change layout, sizes & ticker…')))),
+      nav());
+  }
+  function publishCard() {
+    const portrait = pl.settings.orientation === 'portrait';
+    const n = normLayout(pl.settings);
+    const per = Array.from({ length: areaCount() }, (_, a) => pl.slides.filter((x) => areaCount() < 2 || (x.zone || 0) === a).length);
+    return h('div', { class: 'card pad stack' },
+      h('h2', { style: { margin: 0 } }, 'Choose TVs & publish'),
+      h('div', { class: 'pub-summary' },
+        h('div', {}, h('span', { class: 'tiny' }, 'Playlist'), h('b', {}, pl.name)),
+        h('div', {}, h('span', { class: 'tiny' }, 'Screen'), h('b', {}, `${portrait ? 'Portrait' : 'Landscape'} · ${layoutLabel(n.layout, portrait)}${n.ticker ? ' + ticker' : ''}`)),
+        h('div', {}, h('span', { class: 'tiny' }, 'Slides'), h('b', {}, per.length > 1 ? per.map((c, i) => `Area ${i + 1}: ${c}`).join(' · ') : String(per[0]))),
+        h('div', {}, h('span', { class: 'tiny' }, 'Loop length'), h('b', {}, fmtDuration(playlistLength(pl))))),
+      !pl.slides.length ? h('div', { class: 'notice' }, 'This playlist has no slides yet. Go back to “Add content” first.') : '',
+      h('div', { class: 'row' },
+        h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview full screen'),
+        h('button', { class: 'btn primary', disabled: !pl.slides.length, onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Choose TVs & publish')),
+      h('div', { class: 'tiny' }, 'You can come back and change anything later. Press Publish again to update the TVs.'),
+      nav());
+  }
   function paint() {
     totalEl.textContent = `${pl.slides.length} slides · ${fmtDuration(playlistLength(pl))} loop`;
+    paintSteps();
+    if (step === 1 || step === 4) {
+      contentEl.replaceChildren(step === 1 ? setupCard() : publishCard());
+      showFull();
+      return;
+    }
+    contentEl.replaceChildren(
+      h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, step === 2 ? 'Add content' : 'Timing & schedule'),
+        h('span', { class: 'tiny' }, step === 2 ? 'Add pictures, videos, text or widgets to each area. Click a slide to edit it.' : 'Click a slide to set how long it shows, its transition, effect and when it plays.')),
+        areaEl, listEl),
+      h('div', { class: 'card' }, inspEl),
+      nav());
+    showSlide();
     paintList();
     paintInspector();
     refreshPreview(false);
@@ -517,14 +633,12 @@ export async function editorPage({ main, params: [id], go }) {
     h('div', { class: 'page-head' },
       h('div', { class: 'grow' }, h('div', { class: 'crumb' }, h('a', { href: '#/playlists' }, 'Playlists'), ' / Edit'), nameInput,
         h('div', { class: 'row' }, totalEl, '·', status)),
-      h('div', { class: 'row' }, orient,
-        layoutBtn,
+      h('div', { class: 'row' },
         h('button', { class: 'btn', onclick: previewAll }, icon('play'), 'Preview'),
         h('button', { class: 'btn primary', onclick: async () => { await save(); showOnTvsDialog(pl); } }, icon('send'), 'Publish'))),
-    h('div', { class: 'editor' },
-      h('div', { class: 'card' }, areaEl, listEl),
-      h('div', { class: 'stack' }, h('div', { class: 'card pad' }, previewBox), h('div', { class: 'card' }, inspEl))));
+    stepsEl,
+    h('div', { class: 'editor steps-mode' }, previewCard, contentEl));
   paint();
 
-  return () => { save(); clearTimeout(previewTimer); player?.stop(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('resize', onResize); };
+  return () => { save(); clearTimeout(previewTimer); player?.stop(); fullPlayer?.stop(); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('resize', onResize); };
 }
