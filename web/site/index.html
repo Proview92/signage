@@ -28,7 +28,7 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--night); color: var(--text); font: 400 17px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
-img { max-width: 100%; display: block; }
+img { max-width: 100%; height: auto; display: block; }
 a { color: inherit; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -.01em; }
@@ -51,7 +51,8 @@ nav.top .wrap { display: flex; align-items: center; gap: 28px; height: 68px; }
 .brand img { height: 30px; width: auto; }
 .wm { font: 500 15px/1 var(--body); letter-spacing: .2em; }
 .wm span { background: linear-gradient(90deg, var(--blue), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-nav.top .links { display: flex; gap: 24px; margin-left: auto; font-size: 15px; }
+nav.top .links { display: flex; gap: 20px; margin-left: auto; font-size: 14.5px; white-space: nowrap; }
+@media (max-width: 1240px) { nav.top .links a.opt { display: none; } }
 nav.top .links a { text-decoration: none; color: var(--muted); }
 nav.top .links a:hover { color: var(--text); }
 nav.top .btn { padding: 10px 16px; font-size: 14px; white-space: nowrap; }
@@ -229,6 +230,126 @@ footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
 footer a { text-decoration: none; }
 footer a:hover { color: var(--text); }
 
+
+/* ===== Showcase screens (all drawn in the page, sized with container units) ===== */
+.dev { position: relative; }
+.dev .bz { background: #05060a; border-radius: 12px; padding: 8px; box-shadow: 0 0 0 1px #262c3d, 0 34px 70px -24px rgba(0,0,0,.75), 0 0 110px -40px rgba(91,159,224,.45); }
+.dev .scr { border-radius: 5px; overflow: hidden; position: relative; container-type: inline-size; background: #000; }
+.dev.land .scr { aspect-ratio: 16 / 9; }
+.dev.port .scr { aspect-ratio: 9 / 16; }
+.dev .ft { width: 22%; height: 10px; margin: 0 auto; background: linear-gradient(#1a1f2e, #0d1018); border-radius: 0 0 6px 6px; }
+.dev.port .ft { width: 40%; }
+.cap { margin-top: 12px; display: flex; justify-content: space-between; gap: 10px; font: 500 12px/1.3 var(--mono); color: var(--muted); }
+.cap b { color: var(--text); font-weight: 700; }
+
+/* hero composition: landscape TV with a portrait screen beside it */
+.duo { position: relative; padding-right: 29%; }
+.duo .dev.port { position: absolute; right: 0; bottom: -18px; width: 26%; }
+.duo .pair { left: -22px; bottom: -64px; }
+@media (max-width: 560px) { .duo { padding-right: 0; padding-bottom: 40px; } .duo .dev.port { width: 32%; bottom: -70px; right: -6px; } }
+
+.cyc { position: absolute; inset: 0; animation: cyc3 15s infinite; opacity: 0; }
+.cyc:nth-child(1) { animation-delay: 0s; } .cyc:nth-child(2) { animation-delay: 5s; } .cyc:nth-child(3) { animation-delay: 10s; }
+@keyframes cyc3 { 0% { opacity: 0; transform: translateX(4%); } 4%, 30% { opacity: 1; transform: none; } 34%, 100% { opacity: 0; transform: translateX(-4%); } }
+.tk { position: absolute; left: 0; right: 0; bottom: 0; overflow: hidden; white-space: nowrap; }
+.tk .tr { display: inline-block; animation: tick 20s linear infinite; }
+.tk span { padding: 0 2.6cqw; }
+
+/* --- takeaway menu board (landscape) --- */
+.tw { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 38%; background: #140807; }
+.tw .promo { position: relative; overflow: hidden; background: radial-gradient(circle at 75% 55%, #a3220f 0, #4a0b05 55%, #140807 100%); }
+.tw .promo .cyc { padding: 5cqw 0 9cqw 5cqw; display: flex; flex-direction: column; justify-content: center; color: #fff; }
+.tw .tag { font: 800 1.5cqw/1 var(--mono); letter-spacing: .16em; color: #ffcc29; text-transform: uppercase; }
+.tw .h { font: 900 5.6cqw/.9 var(--display); font-variation-settings: "wdth" 80; text-transform: uppercase; margin: 1.2cqw 0; max-width: 30cqw; }
+.tw .d { font: 600 1.6cqw/1.3 var(--body); opacity: .85; max-width: 26cqw; }
+.tw .art { position: absolute; right: 2cqw; top: 50%; width: 27cqw; transform: translateY(-58%); filter: drop-shadow(0 1.5cqw 2cqw rgba(0,0,0,.5)); }
+.burst { position: absolute; right: 22cqw; top: 6cqw; width: 11cqw; aspect-ratio: 1; border-radius: 50%; background: #ffcc29; color: #140807; display: grid; place-items: center; text-align: center; font: 900 3.1cqw/.95 var(--display); font-variation-settings: "wdth" 80; transform: rotate(-12deg); animation: pulse 1.6s ease-in-out infinite; box-shadow: 0 0 0 .6cqw rgba(255,204,41,.25); }
+.burst small { display: block; font: 800 1.1cqw/1 var(--mono); letter-spacing: .1em; }
+@keyframes pulse { 50% { transform: rotate(-12deg) scale(1.08); } }
+.tw .menu { background: #ffcc29; color: #140807; padding: 2.4cqw 2.4cqw 6cqw; display: flex; flex-direction: column; gap: .55cqw; position: relative; }
+.tw .menu h5 { margin: .8cqw 0 .2cqw; font: 900 2.3cqw/1 var(--display); font-variation-settings: "wdth" 75; text-transform: uppercase; border-bottom: .3cqw solid #140807; padding-bottom: .4cqw; display: flex; justify-content: space-between; align-items: baseline; }
+.tw .menu h5 em { font: 800 1cqw/1 var(--mono); font-style: normal; background: #140807; color: #ffcc29; padding: .4cqw .6cqw; border-radius: .4cqw; letter-spacing: .1em; }
+.tw .mi { display: flex; justify-content: space-between; font: 700 1.55cqw/1.35 var(--body); padding: .15cqw .6cqw; margin: 0 -.6cqw; border-radius: .4cqw; animation: hl 12s infinite; }
+.tw .mi b { font-variant-numeric: tabular-nums; }
+.tw .mi:nth-of-type(2) { animation-delay: 2s; } .tw .mi:nth-of-type(3) { animation-delay: 4s; } .tw .mi:nth-of-type(4) { animation-delay: 6s; }
+.tw .mi:nth-of-type(6) { animation-delay: 8s; } .tw .mi:nth-of-type(7) { animation-delay: 10s; }
+@keyframes hl { 0%, 15% { background: #140807; color: #ffcc29; } 17%, 100% { background: transparent; color: #140807; } }
+.tw .tk { background: #140807; color: #fff; font: 700 1.7cqw/1 var(--body); padding: 1.1cqw 0; border-top: .3cqw solid #ffcc29; }
+.tw .tk span::before { content: "★"; color: #ffcc29; margin-right: 2.6cqw; }
+
+/* --- barber (portrait) --- */
+.bb { position: absolute; inset: 0; background: #0f1417; color: #efe9df; padding: 7cqw 7cqw 0; display: flex; flex-direction: column; gap: 3cqw; }
+.bb .top { display: flex; align-items: center; gap: 4cqw; }
+.bb .pole { width: 9cqw; height: 26cqw; border-radius: 4.5cqw; overflow: hidden; position: relative; border: .9cqw solid #c9b38a; flex: none; background: #fff; }
+.bb .pole::before { content: ""; position: absolute; left: 0; right: 0; top: -40cqw; height: 80cqw; background: repeating-linear-gradient(-35deg, #d0202e 0 4cqw, #fff 4cqw 8cqw, #1d4fa3 8cqw 12cqw, #fff 12cqw 16cqw); animation: pole 2.2s linear infinite; }
+@keyframes pole { to { transform: translateY(18.4cqw); } }
+.bb .name { font: 900 10cqw/.9 var(--display); font-variation-settings: "wdth" 70; text-transform: uppercase; letter-spacing: .01em; }
+.bb .name small { display: block; font: 700 3.2cqw/1.2 var(--mono); letter-spacing: .2em; color: #c9b38a; margin-top: 2cqw; }
+.bb .clk { margin-left: auto; align-self: flex-start; font: 800 5cqw/1 var(--display); font-variant-numeric: tabular-nums; color: #c9b38a; }
+.bb .list { display: flex; flex-direction: column; gap: 4.4cqw; margin-top: 5cqw; }
+.bb .row { display: flex; align-items: baseline; gap: 2cqw; font: 700 5.4cqw/1.1 var(--body); }
+.bb .row i { flex: 1; border-bottom: .5cqw dotted #4b5560; transform: translateY(-1cqw); }
+.bb .row b { font: 900 6.4cqw/1 var(--display); font-variation-settings: "wdth" 80; color: #c9b38a; font-variant-numeric: tabular-nums; }
+.bb .row small { display: block; font: 500 3cqw/1.2 var(--body); color: #8a949e; }
+.bb .card { position: relative; margin: auto -7cqw 0; height: 34cqw; }
+.bb .card .cyc { display: flex; align-items: center; gap: 5cqw; padding: 0 7cqw; animation-name: cyc2; animation-duration: 10s; }
+.bb .card .cyc:nth-child(2) { animation-delay: 5s; }
+@keyframes cyc2 { 0% { opacity: 0; } 5%, 45% { opacity: 1; } 50%, 100% { opacity: 0; } }
+.bb .card .c1 { background: #c9b38a; color: #0f1417; }
+.bb .card .c2 { background: #d0202e; color: #fff; }
+.bb .card .big { font: 900 8.4cqw/.92 var(--display); font-variation-settings: "wdth" 72; text-transform: uppercase; }
+.bb .card .sm { font: 600 3.4cqw/1.3 var(--body); margin-top: 1.4cqw; }
+.qr { width: 22cqw; aspect-ratio: 1; flex: none; background: #fff; padding: 1.6cqw; display: grid; grid-template-columns: repeat(7, 1fr); gap: .5cqw; border-radius: 1.4cqw; }
+.qr i { background: #0f1417; border-radius: .3cqw; }
+.qr i.o { background: transparent; }
+
+/* --- clothing store (portrait) --- */
+.cl { position: absolute; inset: 0; }
+.cl .cyc { padding: 9cqw 8cqw 16cqw; display: flex; flex-direction: column; justify-content: space-between; animation-duration: 15s; }
+.cl .s1 { background: radial-gradient(circle at 70% 38%, #f4ebdd 0 26cqw, transparent 26.3cqw), #e3d3bd; color: #2b2118; }
+.cl .s2 { background: #c2410c; color: #fff4ea; }
+.cl .s3 { background: #111; color: #f5f0e8; }
+.cl .brand { font: 800 3.4cqw/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; }
+.cl .h { font: 900 15cqw/.86 var(--display); font-variation-settings: "wdth" 66; text-transform: uppercase; letter-spacing: -.01em; }
+.cl .s2 .h { font-size: 22cqw; }
+.cl .p { font: 600 4.4cqw/1.3 var(--body); }
+.cl .hanger { width: 62cqw; align-self: center; margin-top: 4cqw; }
+.cl .tagw { align-self: flex-end; transform-origin: 50% 0; animation: swing 2.4s ease-in-out infinite; }
+@keyframes swing { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+.cl .pricetag { background: #fff4ea; color: #c2410c; font: 900 9cqw/1 var(--display); font-variation-settings: "wdth" 75; padding: 5cqw 5cqw 4cqw; border-radius: 2cqw 2cqw 2cqw 2cqw; position: relative; }
+.cl .pricetag::before { content: ""; position: absolute; top: 1.6cqw; left: 50%; width: 2.6cqw; height: 2.6cqw; margin-left: -1.3cqw; border-radius: 50%; background: #c2410c; }
+.cl .tk { background: #2b2118; color: #f4ebdd; font: 600 3.6cqw/1 var(--body); padding: 3.4cqw 0; z-index: 2; }
+.cl .tk span::before { content: "—"; margin-right: 2.6cqw; color: #c2410c; }
+
+/* --- pizza & grill deals (landscape) --- */
+.pz { position: absolute; inset: 0; background: #0d2418; color: #fff; padding: 3.4cqw 3.4cqw 7cqw; display: flex; flex-direction: column; gap: 2cqw; }
+.pz .hd { display: flex; justify-content: space-between; align-items: baseline; }
+.pz .hd b { font: 900 4.6cqw/1 var(--display); font-variation-settings: "wdth" 72; text-transform: uppercase; letter-spacing: .01em; }
+.pz .hd span { font: 700 1.6cqw/1 var(--mono); color: #f4c430; letter-spacing: .14em; }
+.pz .cards { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6cqw; }
+.pz .cd { background: #f7efe2; color: #1a120c; border-radius: 1.4cqw; padding: 1.8cqw; display: flex; flex-direction: column; position: relative; }
+.pz .cd svg { width: 72%; margin: .4cqw auto 1cqw; }
+.pz .cd h6 { margin: 0; font: 900 2.2cqw/1 var(--display); font-variation-settings: "wdth" 78; text-transform: uppercase; }
+.pz .cd p { font: 600 1.45cqw/1.3 var(--body); color: #5d4c3e; margin-top: .5cqw; }
+.pz .cd .pr { margin-top: auto; font: 900 3.6cqw/1 var(--display); font-variation-settings: "wdth" 80; color: #c1272d; }
+.pz .cd.hot { outline: .45cqw solid #f4c430; animation: flash 1s steps(2, jump-none) infinite; }
+.pz .cd.hot::after { content: "BEST VALUE"; position: absolute; top: -1.4cqw; right: 1.4cqw; background: #c1272d; color: #fff; font: 800 1.1cqw/1 var(--mono); letter-spacing: .1em; padding: .7cqw 1cqw; border-radius: .5cqw; }
+@keyframes flash { 0% { outline-color: #f4c430; } 100% { outline-color: transparent; } }
+.pz .tk { background: #c1272d; font: 700 1.7cqw/1 var(--body); padding: 1.15cqw 0; }
+.pz .tk span::before { content: "●"; margin-right: 2.6cqw; color: #f4c430; font-size: 1.1cqw; vertical-align: middle; }
+
+/* showcase grid: rows where a portrait and a landscape screen share one height */
+.show { display: grid; gap: 34px 28px; }
+.show .r { display: grid; gap: 28px; align-items: end; }
+.show .r.a { grid-template-columns: 0.5625fr 1.7778fr; }
+.show .r.b { grid-template-columns: 1.7778fr 0.5625fr; }
+@media (max-width: 760px) { .show .r.a, .show .r.b { grid-template-columns: 1fr; } .show .dev.port { width: 62%; margin: 0 auto; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .cyc, .tk .tr, .burst, .tw .mi, .bb .pole::before, .cl .tagw, .pz .cd.hot { animation: none !important; }
+  .cyc { opacity: 0; } .cyc:first-child { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .slide, .zone-ticker .track { animation: none; }
   .slide.b { opacity: 0; }
@@ -242,8 +363,9 @@ footer a:hover { color: var(--text); }
   <div class="wrap">
     <a class="brand" href="#top" aria-label="PROVIEW SIGNAGE home"><img src="img/logo.png" alt=""><span class="wm">PROVIEW<span>SIGNAGE</span></span></a>
     <div class="links">
-      <a href="#how">How it works</a>
-      <a href="#tv-app">TV app</a>
+      <a href="#examples">Examples</a>
+      <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#tv-app">TV app</a>
       <a href="#dashboard">Dashboard</a>
       <a href="#pricing">Pricing</a>
       <a href="#download">Get the TV app</a>
@@ -268,30 +390,41 @@ footer a:hover { color: var(--text); }
       <p class="small">No contract. Every feature included. UK support on <span class="mono">020 8935 5495</span>.</p>
     </div>
 
-    <div class="tv" aria-label="Example: a TV showing a split-screen menu board with a scrolling ticker">
-      <div class="tv-label l1">Main + side panel layout · 1920 × 1080</div>
-      <div class="bezel">
-        <div class="screen">
-          <div class="zone-main">
-            <div class="slide a"><div class="tag">Today only</div><div class="big">Flat white £3.20</div><div class="sub">Oat milk at no extra cost</div></div>
-            <div class="slide b"><div class="tag">Happy hour · 4–6pm</div><div class="big">2-for-1 iced drinks</div><div class="sub">Every weekday at the counter</div></div>
-          </div>
-          <div class="zone-side">
-            <div class="clock" id="clock">09:41</div>
-            <div class="date" id="date">Thursday 5 November</div>
-            <h4>Breakfast</h4>
-            <div class="menu-row"><span>Full English</span><b>£9.50</b></div>
-            <div class="menu-row"><span>Avocado toast</span><b>£7.80</b></div>
-            <div class="menu-row"><span>Pastry of the day</span><b>£3.10</b></div>
-            <h4>Drinks</h4>
-            <div class="menu-row"><span>Latte</span><b>£3.40</b></div>
-            <div class="menu-row"><span>Fresh orange</span><b>£3.90</b></div>
-          </div>
-          <div class="zone-ticker"><div class="track"><span>Free Wi-Fi: GUEST</span><span>Open 7am – 7pm every day</span><span>Order at the counter</span><span>Ask about our loyalty card</span><span>Free Wi-Fi: GUEST</span><span>Open 7am – 7pm every day</span><span>Order at the counter</span><span>Ask about our loyalty card</span></div></div>
-        </div>
-      </div>
-      <div class="stand"></div>
-      <div class="tv-label l2">Clock widget · menu widget · scrolling ticker</div>
+    <div class="duo" aria-label="Examples: a takeaway menu board on a landscape TV and a barber's price list on a portrait screen">
+      <div class="tv-label l1">Takeaway · landscape · 1920 × 1080</div>
+      <div class="dev land"><div class="bz"><div class="scr"><div class="tw">
+  <div class="promo">
+    <div class="cyc"><div class="tag">Meal deal</div><div class="h">Smash burger, fries &amp; drink</div><div class="d">Double patty, cheese, house sauce</div><div class="burst"><div><small>ONLY</small>£6.99</div></div><svg class="art" viewBox="0 0 200 170" aria-hidden="true"><path d="M20 72c0-38 36-60 80-60s80 22 80 60z" fill="#e9a24a"/><g fill="#fff3d6"><ellipse cx="70" cy="38" rx="4" ry="2.4"/><ellipse cx="100" cy="28" rx="4" ry="2.4"/><ellipse cx="130" cy="40" rx="4" ry="2.4"/><ellipse cx="88" cy="50" rx="4" ry="2.4"/><ellipse cx="118" cy="56" rx="4" ry="2.4"/></g><path d="M14 80q14 14 28 0t28 0 28 0 28 0 28 0 28 0 28 0v8H14z" fill="#7cc142"/><path d="M28 86h144l-20 26-26-18-24 22-26-22-26 18z" fill="#ffc93c"/><rect x="16" y="90" width="168" height="26" rx="13" fill="#5a2e1b"/><path d="M22 124h156a0 0 0 0 1 0 0c0 18-22 30-78 30S22 142 22 124z" fill="#d98c3a"/></svg></div>
+    <div class="cyc"><div class="tag">Every Friday</div><div class="h">Loaded fries</div><div class="d">Cheese, jalapeños &amp; crispy onions</div><div class="burst"><div><small>NOW</small>£3.49</div></div><svg class="art" viewBox="0 0 200 170" aria-hidden="true"><g fill="#ffd34d"><rect x="58" y="20" width="12" height="80" rx="3" transform="rotate(-10 64 60)"/><rect x="76" y="10" width="12" height="90" rx="3" transform="rotate(-4 82 55)"/><rect x="94" y="6" width="12" height="94" rx="3"/><rect x="112" y="10" width="12" height="90" rx="3" transform="rotate(5 118 55)"/><rect x="130" y="20" width="12" height="80" rx="3" transform="rotate(11 136 60)"/></g><path d="M44 70h112l-14 92H58z" fill="#d7261e"/><path d="M44 70q56 26 112 0" fill="#b51c15"/><circle cx="100" cy="120" r="16" fill="#ffcc29"/></svg></div>
+    <div class="cyc"><div class="tag">New in</div><div class="h">Thick shakes</div><div class="d">Strawberry, Oreo-style cookie or vanilla</div><div class="burst"><div><small>FROM</small>£3.99</div></div><svg class="art" viewBox="0 0 200 170" aria-hidden="true"><rect x="110" y="0" width="9" height="60" rx="4" fill="#ff5a7a" transform="rotate(14 114 30)"/><path d="M62 40c0-20 76-20 76 0v8H62z" fill="#fff"/><circle cx="100" cy="24" r="9" fill="#d7261e"/><path d="M58 50h84l-12 112H70z" fill="#f6a5c0"/><path d="M58 50h84l-2 18H60z" fill="#fff" opacity=".6"/><rect x="66" y="98" width="68" height="16" fill="#fff" opacity=".85"/></svg></div>
+  </div>
+  <div class="menu">
+    <h5>Burgers <em>HALAL</em></h5>
+    <div class="mi"><span>Classic smash</span><b>£5.49</b></div>
+    <div class="mi"><span>Double cheese</span><b>£6.99</b></div>
+    <div class="mi"><span>Spicy chicken</span><b>£5.99</b></div>
+    <div class="mi"><span>Veggie stack</span><b>£5.49</b></div>
+    <h5>Sides</h5>
+    <div class="mi"><span>Fries · regular</span><b>£2.49</b></div>
+    <div class="mi"><span>6 hot wings</span><b>£3.99</b></div>
+  </div>
+  <div class="tk" style="grid-column:1/-1"><div class="tr"><span>Order at the counter</span><span>Open till 2am, Fri &amp; Sat</span><span>Delivery available</span><span>Student deals with valid ID</span><span>Order at the counter</span><span>Open till 2am, Fri &amp; Sat</span><span>Delivery available</span><span>Student deals with valid ID</span></div></div>
+</div></div></div><div class="ft"></div></div>
+      <div class="dev port"><div class="bz"><div class="scr"><div class="bb">
+  <div class="top"><div class="pole" aria-hidden="true"></div><div class="name">The Cut Club<small>Barbers · est. 2014</small></div><div class="clk js-clock">10:24</div></div>
+  <div class="list">
+    <div class="row"><span>Skin fade</span><i></i><b>£18</b></div>
+    <div class="row"><span>Classic cut</span><i></i><b>£15</b></div>
+    <div class="row"><span>Scissor cut</span><i></i><b>£20</b></div>
+    <div class="row"><span>Beard trim<small>Line-up &amp; shape</small></span><i></i><b>£8</b></div>
+    <div class="row"><span>Hot towel shave</span><i></i><b>£20</b></div>
+    <div class="row"><span>Kids · under 12</span><i></i><b>£12</b></div>
+  </div>
+  <div class="card">
+    <div class="cyc c1"><div><div class="big">Walk-ins welcome</div><div class="sm">Average wait today: 15 min</div></div></div>
+    <div class="cyc c2"><div class="qr" aria-hidden="true"><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i></div><div><div class="big">Book online</div><div class="sm">Scan to skip the queue</div></div></div>
+  </div>
+</div></div></div><div class="ft"></div></div>
       <div class="pair"><div class="t">New TV? Pair it with</div><div class="code">H4T9WE</div></div>
     </div>
   </div>
@@ -306,6 +439,70 @@ footer a:hover { color: var(--text); }
     <span><b>UK support</b> by phone</span>
   </div>
 </div>
+
+<section id="examples" style="padding-top:88px">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">On screens like yours</div>
+      <h2>Landscape or portrait, for any kind of shop.</h2>
+      <p class="lede">These screens are built from the same pieces you get in the dashboard: layouts, slides with transitions, a clock, a QR code, price lists and a scrolling ticker. Examples use made-up businesses.</p>
+    </div>
+    <div class="show">
+      <div class="r a">
+        <div class="dev port"><div class="bz"><div class="scr"><div class="cl">
+  <div class="cyc s1"><div class="brand">Northline</div><div><div class="h">Autumn edit</div><div class="p" style="margin-top:3cqw">New season, now in store</div></div><svg class="hanger" viewBox="0 0 200 120" aria-hidden="true" fill="none" stroke="#2b2118" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M100 44v-8c0-6 10-8 10-18a10 10 0 0 0-20 0"/><path d="M100 44 12 96h176z"/><path d="M38 96v20h124V96" stroke="#c2410c"/></svg><div class="p"><b>Knitwear from £29</b></div></div>
+  <div class="cyc s2"><div class="brand">Northline</div><div class="h">Up to 50% off</div><div class="tagw"><div class="pricetag">Denim</div></div><div class="p">Selected jeans &amp; jackets, this week only</div></div>
+  <div class="cyc s3"><div class="brand">Northline</div><div class="h">Members get 10% off</div><div class="p">Join free at the till and save today</div></div>
+  <div class="tk"><div class="tr"><span>Free alterations</span><span>Click &amp; collect</span><span>Returns within 28 days</span><span>Free alterations</span><span>Click &amp; collect</span><span>Returns within 28 days</span></div></div>
+</div></div></div><div class="ft"></div><div class="cap"><span><b>Clothing store</b> · portrait</span><span>1080 × 1920</span></div></div>
+        <div class="dev land"><div class="bz"><div class="scr"><div class="pz">
+  <div class="hd"><b>Tonight's deals</b><span>PIZZA · GRILL · WRAPS</span></div>
+  <div class="cards">
+    <div class="cd"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#e7a54a"/><circle cx="50" cy="50" r="38" fill="#d9472b"/><circle cx="50" cy="50" r="36" fill="#f6d36b" opacity=".85"/><g fill="#b3261e"><circle cx="36" cy="34" r="7"/><circle cx="64" cy="38" r="7"/><circle cx="46" cy="62" r="7"/><circle cx="68" cy="64" r="6"/><circle cx="30" cy="56" r="5"/></g><g stroke="#3b7d2f" stroke-width="3" stroke-linecap="round"><path d="M54 24l4 3M24 44l3 4M58 78l4-2"/></g></svg><h6>Any large pizza</h6><p>Plus 2 sides of your choice</p><div class="pr">£14.99</div></div>
+    <div class="cd hot"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M14 40h72v44H14z" fill="#c98a4b"/><path d="M14 40l12-16h48l12 16z" fill="#e0a466"/><rect x="34" y="52" width="32" height="16" rx="3" fill="#c1272d"/><path d="M14 40h72" stroke="#8a5a2c" stroke-width="2"/></svg><h6>Family box</h6><p>2 large pizzas, wings, fries &amp; 1.5L drink</p><div class="pr">£24.99</div></div>
+    <div class="cd"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M30 86 58 14l22 10-26 70z" fill="#f2d79b"/><path d="M58 14l22 10-6 14-22-10z" fill="#7cc142"/><path d="M52 28l22 10-4 9-22-10z" fill="#d9472b"/><path d="M30 86l24 8 6-16-24-8z" fill="#fff" opacity=".9"/></svg><h6>Wrap meal</h6><p>Chicken or falafel wrap, fries &amp; can</p><div class="pr">£7.49</div></div>
+  </div>
+  <div class="tk"><div class="tr"><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span></div></div>
+</div></div></div><div class="ft"></div><div class="cap"><span><b>Pizza &amp; grill</b> · landscape · flashing “best value”</span><span>1920 × 1080</span></div></div>
+      </div>
+      <div class="r b">
+        <div class="dev land"><div class="bz"><div class="scr"><div class="screen" style="position:absolute;inset:0;aspect-ratio:auto">
+          <div class="zone-main">
+            <div class="slide a"><div class="tag">Today only</div><div class="big">Flat white £3.20</div><div class="sub">Oat milk at no extra cost</div></div>
+            <div class="slide b"><div class="tag">Happy hour · 4–6pm</div><div class="big">2-for-1 iced drinks</div><div class="sub">Every weekday at the counter</div></div>
+          </div>
+          <div class="zone-side">
+            <div class="clock js-clock">09:41</div>
+            <div class="date js-date">Thursday 5 November</div>
+            <h4>Breakfast</h4>
+            <div class="menu-row"><span>Full English</span><b>£9.50</b></div>
+            <div class="menu-row"><span>Avocado toast</span><b>£7.80</b></div>
+            <div class="menu-row"><span>Pastry of the day</span><b>£3.10</b></div>
+            <h4>Drinks</h4>
+            <div class="menu-row"><span>Latte</span><b>£3.40</b></div>
+            <div class="menu-row"><span>Fresh orange</span><b>£3.90</b></div>
+          </div>
+          <div class="zone-ticker"><div class="track"><span>Free Wi-Fi: GUEST</span><span>Open 7am – 7pm every day</span><span>Order at the counter</span><span>Free Wi-Fi: GUEST</span><span>Open 7am – 7pm every day</span><span>Order at the counter</span></div></div>
+        </div></div></div><div class="ft"></div><div class="cap"><span><b>Café</b> · main area + side panel + ticker</span><span>1920 × 1080</span></div></div>
+        <div class="dev port"><div class="bz"><div class="scr"><div class="bb">
+  <div class="top"><div class="pole" aria-hidden="true"></div><div class="name">The Cut Club<small>Barbers · est. 2014</small></div><div class="clk js-clock">10:24</div></div>
+  <div class="list">
+    <div class="row"><span>Skin fade</span><i></i><b>£18</b></div>
+    <div class="row"><span>Classic cut</span><i></i><b>£15</b></div>
+    <div class="row"><span>Scissor cut</span><i></i><b>£20</b></div>
+    <div class="row"><span>Beard trim<small>Line-up &amp; shape</small></span><i></i><b>£8</b></div>
+    <div class="row"><span>Hot towel shave</span><i></i><b>£20</b></div>
+    <div class="row"><span>Kids · under 12</span><i></i><b>£12</b></div>
+  </div>
+  <div class="card">
+    <div class="cyc c1"><div><div class="big">Walk-ins welcome</div><div class="sm">Average wait today: 15 min</div></div></div>
+    <div class="cyc c2"><div class="qr" aria-hidden="true"><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i></div><div><div class="big">Book online</div><div class="sm">Scan to skip the queue</div></div></div>
+  </div>
+</div></div></div><div class="ft"></div><div class="cap"><span><b>Barber</b> · portrait</span><span>1080 × 1920</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <section id="how">
   <div class="wrap">
@@ -586,11 +783,10 @@ footer a:hover { color: var(--text); }
 <script>
 (() => {
   // Live clock on the TV mock-up, like the real clock widget
-  const clock = document.getElementById('clock'), date = document.getElementById('date');
   const tick = () => {
     const d = new Date();
-    clock.textContent = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    date.textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+    document.querySelectorAll('.js-clock').forEach((e) => (e.textContent = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })));
+    document.querySelectorAll('.js-date').forEach((e) => (e.textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })));
   };
   tick(); setInterval(tick, 10000);
 
