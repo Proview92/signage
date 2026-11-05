@@ -296,8 +296,8 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 /* phones: the pizza screen turning from landscape to portrait */
 .rotdemo { display: none; }
 @media (max-width: 760px) {
-  .show { display: none; }
-  .rotdemo { display: block; }
+  #examples .show { display: none; }
+  #examples .rotdemo { display: block; }
   .rot-stage { position: relative; aspect-ratio: 1 / .92; display: grid; place-items: center; }
   .rot-dev { width: 78%; background: #05060a; border-radius: 10px; padding: 6px; box-shadow: 0 0 0 1px #262c3d, 0 30px 60px -24px rgba(0,0,0,.75); animation: rot-turn 10s cubic-bezier(.65,0,.35,1) infinite; }
   .rot-scr { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: #0d2418; container-type: size; }
