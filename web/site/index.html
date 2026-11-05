@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROVIEW SIGNAGE</title>
+<meta name="description" content="Turn any Android TV or Fire TV stick into digital signage. Menu boards, offers and video walls, changed from your phone. 7-day free trial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* One visual world: the dark room a lit screen sits in. Brand blue leads, brand violet only in the wordmark.
+     Layout idea: a lit TV is the hero; every section below is "what's on the screen" vs "what's in your hand". */
+  --night: #0a0c13;
+  --panel: #121725;
+  --line: #232b40;
+  --text: #e9edf7;
+  --muted: #929db8;
+  --blue: #5b9fe0;
+  --violet: #8b88dc;
+  --warm: #ff7849;
+  --display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--night); color: var(--text); font: 400 17px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: clamp(32px, 4.4vw, 54px); font-weight: 800; font-variation-settings: "wdth" 112; line-height: 1.02; }
+h3 { font-size: 20px; font-weight: 700; font-variation-settings: "wdth" 105; }
+p { margin: 0; }
+.wrap { width: min(1180px, 100% - 40px); margin: 0 auto; }
+.lede { color: var(--muted); font-size: 19px; max-width: 62ch; }
+.kicker { font: 700 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--blue); }
+.mono { font-family: var(--mono); }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 12px; font: 600 16px/1 var(--body); text-decoration: none; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; transition: border-color .2s, background .2s, transform .2s; }
+.btn:hover { border-color: var(--blue); }
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #06101f; }
+.btn.primary:hover { background: #7ab3ea; transform: translateY(-1px); }
+
+/* nav */
+nav.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--night) 86%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+nav.top .wrap { display: flex; align-items: center; gap: 28px; height: 68px; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand img { height: 30px; width: auto; }
+.wm { font: 500 15px/1 var(--body); letter-spacing: .2em; }
+.wm span { background: linear-gradient(90deg, var(--blue), var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+nav.top .links { display: flex; gap: 24px; margin-left: auto; font-size: 15px; }
+nav.top .links a { text-decoration: none; color: var(--muted); }
+nav.top .links a:hover { color: var(--text); }
+nav.top .btn { padding: 10px 16px; font-size: 14px; white-space: nowrap; }
+@media (max-width: 420px) { .wm { font-size: 12px; letter-spacing: .14em; } nav.top .wrap { gap: 12px; } }
+@media (max-width: 860px) { nav.top .links { display: none; } nav.top .btn.ghost-sm { display: none; } nav.top .btn.primary { margin-left: auto; } }
+
+/* hero */
+.hero { padding: 72px 0 56px; position: relative; overflow: hidden; }
+.hero::before { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 900px; background: radial-gradient(closest-side, rgba(91,159,224,.20), transparent 70%); pointer-events: none; }
+.hero .wrap { display: grid; grid-template-columns: 1fr 1.08fr; gap: 56px; align-items: center; position: relative; }
+.hero h1 { font-size: clamp(44px, 6.2vw, 84px); font-weight: 900; line-height: .95; font-variation-settings: "wdth" 118; letter-spacing: -.025em; }
+.hero h1 em { font-style: normal; color: var(--blue); }
+.hero .lede { margin: 24px 0 32px; }
+.hero .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero .small { margin-top: 18px; color: var(--muted); font-size: 14px; }
+@media (max-width: 960px) { .hero .wrap { grid-template-columns: 1fr; } }
+
+/* the TV */
+.tv { position: relative; }
+.tv .bezel { background: #05060a; border-radius: 14px; padding: 10px; box-shadow: 0 0 0 1px #262c3d, 0 40px 80px -20px rgba(0,0,0,.7), 0 0 120px -30px rgba(91,159,224,.45); }
+.tv .stand { width: 26%; height: 14px; margin: 0 auto; background: linear-gradient(#1a1f2e, #0d1018); border-radius: 0 0 8px 8px; }
+.screen { aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; display: grid; grid-template-columns: 1fr 35%; grid-template-rows: 1fr auto; container-type: inline-size; background: #000; position: relative; }
+.zone-main { position: relative; overflow: hidden; }
+.slide { position: absolute; inset: 0; padding: 7cqw 6cqw; display: flex; flex-direction: column; justify-content: flex-end; color: #fff; animation: swap 12s infinite; }
+.slide.a { background: radial-gradient(circle at 80% 25%, #ffd27a 0 9cqw, transparent 9.2cqw), linear-gradient(135deg, #ff8a3d, #e5306d); }
+.slide.b { background: radial-gradient(circle at 78% 30%, rgba(255,255,255,.18) 0 12cqw, transparent 12.2cqw), linear-gradient(160deg, #1d6f68, #0f3b52); animation-delay: -6s; }
+.slide .tag { font: 700 1.5cqw/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+.slide .big { font: 900 7cqw/.92 var(--display); font-variation-settings: "wdth" 120; margin: 1.4cqw 0 1cqw; letter-spacing: -.02em; }
+.slide .sub { font: 600 2.2cqw/1.2 var(--body); opacity: .92; }
+@keyframes swap { 0%, 44% { opacity: 1; transform: scale(1); } 50%, 94% { opacity: 0; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+.zone-side { background: #f6f2ea; color: #1b1b1f; padding: 3.2cqw 2.8cqw; display: flex; flex-direction: column; gap: 1.2cqw; }
+.zone-side .clock { font: 800 4.4cqw/1 var(--display); font-variation-settings: "wdth" 110; font-variant-numeric: tabular-nums; }
+.zone-side .date { font: 600 1.4cqw/1 var(--body); color: #6d6a63; margin-top: -.4cqw; }
+.zone-side h4 { margin: 1.4cqw 0 .2cqw; font: 800 1.6cqw/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: #b4441c; }
+.menu-row { display: flex; justify-content: space-between; gap: 1cqw; font: 600 1.75cqw/1.25 var(--body); border-bottom: .12cqw dashed #d5cfc2; padding-bottom: .7cqw; }
+.menu-row b { font-variant-numeric: tabular-nums; }
+.zone-ticker { grid-column: 1 / -1; background: #111; color: #fff; overflow: hidden; white-space: nowrap; font: 600 1.9cqw/1 var(--body); padding: 1.15cqw 0; border-top: .25cqw solid var(--warm); }
+.zone-ticker .track { display: inline-block; animation: tick 22s linear infinite; }
+.zone-ticker span { padding: 0 2.4cqw; }
+.zone-ticker span::before { content: "●"; color: var(--warm); margin-right: 2.4cqw; font-size: 1.1cqw; vertical-align: middle; }
+@keyframes tick { to { transform: translateX(-50%); } }
+.tv-label { position: absolute; font: 500 12px/1.2 var(--mono); color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.tv-label::before { content: ""; width: 26px; height: 1px; background: var(--muted); }
+.tv-label.l1 { top: -22px; left: 6px; }
+.tv-label.l2 { bottom: -26px; right: 0; }
+.pair { position: absolute; left: -26px; bottom: -58px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: 0 20px 40px -10px rgba(0,0,0,.6); }
+.pair .t { font-size: 12px; color: var(--muted); }
+.pair .code { font: 700 24px/1.1 var(--mono); letter-spacing: .18em; margin-top: 4px; }
+@media (max-width: 560px) { .pair { left: 8px; bottom: -64px; } .tv-label { display: none; } .hero { padding-bottom: 96px; } }
+
+/* strip */
+.strip { border-block: 1px solid var(--line); padding: 20px 0; }
+.strip .wrap { display: flex; flex-wrap: wrap; gap: 14px 34px; justify-content: space-between; color: var(--muted); font-size: 15px; }
+.strip b { color: var(--text); font-weight: 600; }
+
+section { padding: 104px 0; }
+.head { display: grid; gap: 16px; margin-bottom: 48px; max-width: 760px; }
+
+/* steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: s; }
+.step { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: grid; gap: 12px; align-content: start; }
+.step .n { font: 800 64px/1 var(--display); font-variation-settings: "wdth" 120; color: transparent; -webkit-text-stroke: 1.5px var(--blue); }
+.step p { color: var(--muted); }
+@media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+
+/* TV features */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+.split.rev > :first-child { order: 2; }
+@media (max-width: 960px) { .split { grid-template-columns: 1fr; } .split.rev > :first-child { order: 0; } }
+.shot { border-radius: 14px; border: 1px solid var(--line); overflow: hidden; box-shadow: 0 30px 60px -24px rgba(0,0,0,.7); background: #fff; }
+.shot.dark { background: #000; }
+.feat-list { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 18px; }
+.feat-list li { display: grid; grid-template-columns: 34px 1fr; gap: 14px; }
+.feat-list .ic { width: 34px; height: 34px; border-radius: 10px; background: rgba(91,159,224,.12); color: var(--blue); display: grid; place-items: center; }
+.feat-list .ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.feat-list b { display: block; font-weight: 600; }
+.feat-list span { color: var(--muted); font-size: 15.5px; }
+
+/* dashboard tabs */
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.tabs button { font: 600 15px/1 var(--body); padding: 12px 16px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--text); color: var(--night); border-color: var(--text); }
+.tabpanel { display: grid; grid-template-columns: 1.35fr 1fr; gap: 40px; align-items: start; }
+.tabpanel[hidden] { display: none; }
+.tabpanel .copy { display: grid; gap: 14px; }
+.tabpanel .copy p { color: var(--muted); }
+.tabpanel ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+.tabpanel li::marker { color: var(--blue); }
+.px { display: inline-block; font: 700 13px/1 var(--mono); padding: 6px 9px; border-radius: 6px; background: rgba(91,159,224,.12); color: var(--blue); }
+@media (max-width: 960px) { .tabpanel { grid-template-columns: 1fr; } }
+
+/* all features grid */
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.cell { background: var(--night); padding: 24px; display: grid; gap: 8px; align-content: start; }
+.cell b { font-weight: 600; }
+.cell span { color: var(--muted); font-size: 15px; }
+@media (max-width: 960px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+
+/* who */
+.who { display: flex; flex-wrap: wrap; gap: 10px; }
+.who span { padding: 10px 16px; border-radius: 999px; border: 1px solid var(--line); color: var(--text); font-size: 15px; }
+
+/* pricing */
+#pricing { background: linear-gradient(180deg, var(--night), #0e1220 30%, var(--night)); }
+.plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+.plan { background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 30px; display: grid; gap: 18px; align-content: start; position: relative; }
+.plan.pop { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), 0 30px 70px -30px rgba(91,159,224,.6); }
+.plan .badge { position: absolute; top: -12px; left: 30px; background: var(--blue); color: #06101f; font: 700 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 7px 10px; border-radius: 6px; }
+.plan .name { font: 700 14px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.plan .price { display: flex; align-items: baseline; gap: 8px; }
+.plan .price b { font: 900 56px/1 var(--display); font-variation-settings: "wdth" 115; font-variant-numeric: tabular-nums; }
+.plan .price span { color: var(--muted); }
+.plan .bill { color: var(--muted); font-size: 15px; margin-top: -8px; }
+.plan .save { color: #6fd39b; font-weight: 600; font-size: 15px; }
+.plan ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; font-size: 15.5px; }
+.plan li { display: grid; grid-template-columns: 20px 1fr; gap: 10px; }
+.plan li::before { content: "✓"; color: var(--blue); font-weight: 700; }
+.plan .btn { justify-content: center; }
+@media (max-width: 960px) { .plans { grid-template-columns: 1fr; } }
+
+.calc { margin-top: 28px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 30px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 36px; align-items: center; }
+.calc label { display: block; font-weight: 600; margin-bottom: 10px; }
+.calc .row { display: flex; align-items: center; gap: 16px; }
+.calc input[type=range] { flex: 1; accent-color: var(--blue); height: 28px; }
+.calc output.n { font: 800 32px/1 var(--display); font-variant-numeric: tabular-nums; min-width: 2.2ch; text-align: right; }
+.terms { display: flex; flex-wrap: wrap; gap: 8px; }
+.terms button { font: 600 14px/1 var(--body); padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+.terms button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #06101f; }
+.total { border-left: 1px solid var(--line); padding-left: 36px; display: grid; gap: 6px; }
+.total .big { font: 900 52px/1 var(--display); font-variation-settings: "wdth" 112; font-variant-numeric: tabular-nums; }
+.total .muted { color: var(--muted); font-size: 15px; }
+.total .save { color: #6fd39b; font-weight: 600; }
+@media (max-width: 860px) { .calc { grid-template-columns: 1fr; } .total { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 24px; } }
+
+table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+.terms-table th, .terms-table td { text-align: left; padding: 14px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.terms-table th { font: 700 12px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.terms-table td.g { color: #6fd39b; }
+.note { color: var(--muted); font-size: 14.5px; margin-top: 18px; }
+
+/* faq */
+.faq { display: grid; gap: 10px; max-width: 860px; }
+.faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0 22px; }
+.faq summary { cursor: pointer; padding: 20px 28px 20px 0; font-weight: 600; list-style: none; position: relative; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; position: absolute; right: 0; top: 16px; font-size: 24px; color: var(--blue); }
+.faq details[open] summary::after { content: "–"; }
+.faq details p { color: var(--muted); padding-bottom: 20px; max-width: 70ch; }
+
+/* cta + footer */
+.cta { text-align: left; border-top: 1px solid var(--line); }
+.cta .box { background: radial-gradient(circle at 85% 20%, rgba(139,136,220,.25), transparent 50%), radial-gradient(circle at 10% 90%, rgba(91,159,224,.22), transparent 50%), var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 56px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: center; }
+.cta .phone { font: 800 34px/1 var(--display); font-variation-settings: "wdth" 110; text-decoration: none; }
+@media (max-width: 860px) { .cta .box { grid-template-columns: 1fr; padding: 32px; } }
+footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; justify-content: space-between; align-items: center; }
+footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
+footer a { text-decoration: none; }
+footer a:hover { color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide, .zone-ticker .track { animation: none; }
+  .slide.b { opacity: 0; }
+  html { scroll-behavior: auto; }
+}
+</style>
+</head>
+<body>
+
+<nav class="top" aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="PROVIEW SIGNAGE home"><img src="img/logo.png" alt=""><span class="wm">PROVIEW<span>SIGNAGE</span></span></a>
+    <div class="links">
+      <a href="#how">How it works</a>
+      <a href="#tv-app">TV app</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="btn ghost-sm" href="https://app.proviewsignage.co.uk">Sign in</a>
+    <a class="btn primary" href="#start">Start free trial</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <div class="kicker">Digital signage for UK businesses</div>
+      <h1 style="margin-top:18px">Every screen in your business, <em>changed from your phone.</em></h1>
+      <p class="lede">PROVIEW SIGNAGE turns any Android TV, Google TV or Fire TV stick into a professional display. Menu boards, offers, opening times and video walls, updated in seconds from one simple dashboard.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#pricing">Try it free for 7 days</a>
+        <a class="btn" href="#how">See how it works</a>
+      </div>
+      <p class="small">No contract. Every feature included. UK support on <span class="mono">020 8935 5495</span>.</p>
+    </div>
+
+    <div class="tv" aria-label="Example: a TV showing a split-screen menu board with a scrolling ticker">
+      <div class="tv-label l1">Main + side panel layout · 1920 × 1080</div>
+      <div class="bezel">
+        <div class="screen">
+          <div class="zone-main">
+            <div class="slide a"><div class="tag">Today only</div><div class="big">Flat white £3.20</div><div class="sub">Oat milk at no extra cost</div></div>
+            <div class="slide b"><div class="tag">Happy hour · 4–6pm</div><div class="big">2-for-1 iced drinks</div><div class="sub">Every weekday at the counter</div></div>
+          </div>
+          <div class="zone-side">
+            <div class="clock" id="clock">09:41</div>
+            <div class="date" id="date">Thursday 5 November</div>
+            <h4>Breakfast</h4>
+            <div class="menu-row"><span>Full English</span><b>£9.50</b></div>
+            <div class="menu-row"><span>Avocado toast</span><b>£7.80</b></div>
+            <div class="menu-row"><span>Pastry of the day</span><b>£3.10</b></div>
+            <h4>Drinks</h4>
+            <div class="menu-row"><span>Latte</span><b>£3.40</b></div>
+            <div class="menu-row"><span>Fresh orange</span><b>£3.90</b></div>
+          </div>
+          <div class="zone-ticker"><div class="track"><span>Free Wi-Fi: GUEST</span><span>Open 7am – 7pm every day</span><span>Order at the counter</span><span>Ask about our loyalty card</span><span>Free Wi-Fi: GUEST</span><span>Open 7am – 7pm every day</span><span>Order at the counter</span><span>Ask about our loyalty card</span></div></div>
+        </div>
+      </div>
+      <div class="stand"></div>
+      <div class="tv-label l2">Clock widget · menu widget · scrolling ticker</div>
+      <div class="pair"><div class="t">New TV? Pair it with</div><div class="code">H4T9WE</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap">
+    <span><b>Android TV</b> · Google TV · Fire TV</span>
+    <span><b>Landscape</b> or portrait</span>
+    <span><b>Plays offline</b> if the internet drops</span>
+    <span><b>Video walls</b> included</span>
+    <span><b>UK support</b> by phone</span>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">How it works</div>
+      <h2>On air in three steps.</h2>
+      <p class="lede">No set-top boxes to configure, no cables to the back office. If the TV can reach the internet, it can run PROVIEW.</p>
+    </div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Pair the TV</h3><p>Open the PROVIEW app on the TV. It shows a six-character code. Type it into the dashboard and the TV is yours.</p></div>
+      <div class="step"><div class="n">2</div><h3>Build a playlist</h3><p>Pick a layout, drop in pictures, videos, PDFs or text, add widgets like a clock or price list, and choose when each slide shows.</p></div>
+      <div class="step"><div class="n">3</div><h3>Press Publish</h3><p>Choose which TVs get it. They download everything first, then switch over within seconds, with no freezing or half-loaded videos.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="tv-app" style="padding-top:0">
+  <div class="wrap split">
+    <div>
+      <div class="kicker">The TV app</div>
+      <h2 style="margin-top:14px">Set it up once. It looks after itself.</h2>
+      <ul class="feat-list">
+        <li><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg></div><div><b>Downloads before it plays</b><span>Every picture and video is saved on the TV first, with a progress bar the first time. Nothing stutters.</span></div></li>
+        <li><div class="ic"><svg viewBox="0 0 24 24"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 20h.01"/></svg></div><div><b>Keeps playing offline</b><span>If the Wi-Fi drops, the screen carries on with what it already has and catches up when it's back.</span></div></li>
+        <li><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></div><div><b>Starts with the TV</b><span>Switch the TV on and the player opens by itself. Staff don't need to touch it.</span></div></li>
+        <li><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg></div><div><b>A menu on the remote</b><span>Reload, check status, change Wi-Fi, update the app or unlink the TV, all from the TV remote.</span></div></li>
+        <li><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg></div><div><b>Updates on request</b><span>New versions install from the dashboard with one press. No visit needed.</span></div></li>
+        <li><div class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/></svg></div><div><b>Portrait, too</b><span>Mount the TV on its side for a tall menu board. The app follows the TV's orientation, or you can rotate it from the dashboard.</span></div></li>
+      </ul>
+    </div>
+    <div class="shot dark"><img src="img/tv-menu.jpg" alt="The PROVIEW TV app's screen menu, opened with the remote" loading="lazy" width="1200" height="675"></div>
+  </div>
+</section>
+
+<section id="dashboard" style="padding-top:40px">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">The dashboard</div>
+      <h2>Everything on your screens, in one place.</h2>
+      <p class="lede">Works on a computer, tablet or phone at app.proviewsignage.co.uk. Changes save as you go, and Publish sends them to your TVs.</p>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Dashboard features">
+      <button role="tab" id="t-layout" aria-controls="p-layout" aria-selected="true">Layouts</button>
+      <button role="tab" id="t-content" aria-controls="p-content" aria-selected="false">Content &amp; widgets</button>
+      <button role="tab" id="t-screens" aria-controls="p-screens" aria-selected="false">Screens &amp; scheduling</button>
+      <button role="tab" id="t-reports" aria-controls="p-reports" aria-selected="false">Reports</button>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="p-layout" aria-labelledby="t-layout">
+      <div class="shot"><img src="img/d-step1.jpg" alt="Step 1 of the playlist editor: choosing orientation and layout" loading="lazy" width="1400" height="1046"></div>
+      <div class="copy">
+        <h3>Split the screen your way</h3>
+        <p>Choose landscape or portrait, then a layout: full screen, halves, a main area with a side panel, three columns, four squares and more.</p>
+        <ul>
+          <li>Drag sliders to resize each area. The exact size shows as you go, e.g. <span class="px">1080 × 1248 px</span>, so your designer can make artwork that fits perfectly.</li>
+          <li>Add a scrolling ticker at the top, bottom, both, or inside one area.</li>
+          <li>Start from a ready-made template, or from scratch.</li>
+          <li>The preview always shows the whole screen, exactly as it'll look on the TV.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="p-content" aria-labelledby="t-content" hidden>
+      <div class="shot"><img src="img/d-step2.jpg" alt="Step 2 of the editor: adding pictures, videos, text and widgets to each area" loading="lazy" width="1400" height="1046"></div>
+      <div class="copy">
+        <h3>Pictures, videos, PDFs and live widgets</h3>
+        <p>Upload from your phone's camera roll or your computer. Each page of a PDF menu becomes its own slide.</p>
+        <ul>
+          <li>Widgets you drag and resize: clock &amp; date, weather, QR code, menu / price list, text box.</li>
+          <li>Transitions (fade, slide, zoom, circle…) and motion effects (slow zoom, pan, flashing…).</li>
+          <li>Fit each picture: stretch, fill, fit whole, or fit with a blurred background.</li>
+          <li>Show slides only on certain dates, days or hours, like breakfast until 11am.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="p-screens" aria-labelledby="t-screens" hidden>
+      <div class="shot"><img src="img/d-screen.jpg" alt="A TV's page: live preview, playlists, schedule for the next seven days" loading="lazy" width="1400" height="1046"></div>
+      <div class="copy">
+        <h3>See and control every TV</h3>
+        <p>Each TV has its own page: what's on air now, whether it's online, a live screenshot of exactly what it shows, and its schedule for the week.</p>
+        <ul>
+          <li>Different playlists at different times, with priority rules for campaigns like Christmas.</li>
+          <li>Group TVs by site and give each site its own schedule.</li>
+          <li>Reload a TV, update its app or rename it from anywhere.</li>
+          <li>Emergency message: take over some or all screens instantly.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tabpanel" role="tabpanel" id="p-reports" aria-labelledby="t-reports" hidden>
+      <div class="shot"><img src="img/d-reports.jpg" alt="Reports: proof of play by playlist, TV, slide or day" loading="lazy" width="1400" height="690"></div>
+      <div class="copy">
+        <h3>Proof that it played</h3>
+        <p>TVs report what they showed and for how long. Group by playlist, TV, slide or day, and download a CSV for Excel.</p>
+        <ul>
+          <li>Activity log of who changed what, and when.</li>
+          <li>Alerts when a TV goes offline or a licence is ending, in the dashboard and by email.</li>
+          <li>Approvals: editors' changes can wait for a manager before they go live.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:24px">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">Included in every plan</div>
+      <h2>No add-ons. No feature tiers.</h2>
+    </div>
+    <div class="grid">
+      <div class="cell"><b>Video walls</b><span>Stretch one picture or video across several TVs, starting and finishing in sync.</span></div>
+      <div class="cell"><b>Split-screen layouts</b><span>Up to four areas plus a ticker, each playing its own content.</span></div>
+      <div class="cell"><b>Scheduling</b><span>By date, day and hour, with priorities for campaigns.</span></div>
+      <div class="cell"><b>Multiple sites</b><span>Every location under one login, with its own schedule.</span></div>
+      <div class="cell"><b>Team &amp; roles</b><span>Invite managers and editors. Optional approval before publishing.</span></div>
+      <div class="cell"><b>Emergency messages</b><span>Override chosen screens in one tap, for as long as you need.</span></div>
+      <div class="cell"><b>Live screenshot</b><span>See exactly what any TV is showing, from wherever you are.</span></div>
+      <div class="cell"><b>Proof of play</b><span>Reports by playlist, TV, slide or day, with CSV export.</span></div>
+      <div class="cell"><b>PDF menus</b><span>Upload a PDF and each page becomes a slide.</span></div>
+      <div class="cell"><b>Widgets</b><span>Clock, weather, QR code, price list and text boxes.</span></div>
+      <div class="cell"><b>Offline alerts</b><span>Know when a TV drops off, before your customers do.</span></div>
+      <div class="cell"><b>Help built in</b><span>Step-by-step guides in the dashboard, plus PDF manuals.</span></div>
+    </div>
+    <div style="margin-top:40px; display:grid; gap:14px">
+      <div class="kicker">Made for</div>
+      <div class="who"><span>Cafés &amp; restaurants</span><span>Takeaways</span><span>Retail &amp; shop windows</span><span>Salons &amp; barbers</span><span>Gyms</span><span>Hotels &amp; receptions</span><span>Offices</span><span>Estate agents</span><span>Pharmacies</span><span>Schools</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="head">
+      <div class="kicker">Pricing</div>
+      <h2>One licence per TV. Everything included.</h2>
+      <p class="lede">Pay for the length of time you want, per screen. The longer the term, the less each month costs. Every TV starts with a free 7-day trial.</p>
+    </div>
+
+    <div class="plans">
+      <div class="plan">
+        <div class="name">Monthly</div>
+        <div class="price"><b>£12</b><span>per screen / month</span></div>
+        <div class="bill">£12 per screen, renew each month</div>
+        <ul><li>Every feature</li><li>Stop whenever you like</li><li>Ideal for trying a new screen</li></ul>
+        <a class="btn" href="#start">Start free trial</a>
+      </div>
+      <div class="plan pop">
+        <div class="badge">Most popular</div>
+        <div class="name">12 months</div>
+        <div class="price"><b>£9</b><span>per screen / month</span></div>
+        <div class="bill">£108 per screen, paid yearly</div>
+        <div class="save">Save 25% vs monthly</div>
+        <ul><li>Every feature</li><li>One payment a year</li><li>Renew online in a minute</li></ul>
+        <a class="btn primary" href="#start">Start free trial</a>
+      </div>
+      <div class="plan">
+        <div class="name">36 months</div>
+        <div class="price"><b>£7</b><span>per screen / month</span></div>
+        <div class="bill">£252 per screen, paid every 3 years</div>
+        <div class="save">Save 42% vs monthly</div>
+        <ul><li>Every feature</li><li>Lowest price per month</li><li>Set and forget</li></ul>
+        <a class="btn" href="#start">Start free trial</a>
+      </div>
+    </div>
+
+    <div class="calc" aria-label="Price calculator">
+      <div style="display:grid; gap:26px">
+        <div>
+          <label for="n">How many screens?</label>
+          <div class="row"><input id="n" type="range" min="1" max="30" value="3"><output class="n" id="n-out" for="n">3</output></div>
+        </div>
+        <div>
+          <label id="term-label">Licence length</label>
+          <div class="terms" id="terms" role="group" aria-labelledby="term-label"></div>
+        </div>
+      </div>
+      <div class="total" aria-live="polite">
+        <div class="muted" id="t-line">3 screens · 12 months</div>
+        <div class="big" id="t-total">£324</div>
+        <div class="muted" id="t-month">£27 a month for all screens</div>
+        <div class="save" id="t-save">You save £108 vs paying monthly</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="terms-table">
+        <thead><tr><th>Licence length</th><th>Per screen</th><th>Works out at</th><th>Saving vs monthly</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="note">Prices per TV, in GBP. Licences don't renew automatically: you renew online from the dashboard when one is due. 10 or more screens, a lifetime licence, a ready-to-go TV stick or installation? Call us for a quote.</p>
+  </div>
+</section>
+
+<section id="faq" style="padding-top:40px">
+  <div class="wrap">
+    <div class="head"><div class="kicker">Questions</div><h2>Good to know.</h2></div>
+    <div class="faq">
+      <details open><summary>How do I start my free trial?</summary><p>Call us on 020 8935 5495. We'll create your account, send you a sign-in link and help you pair your first TV. Every new TV gets 7 days free.</p></details>
+      <details><summary>Which TVs does it work on?</summary><p>Any TV running Android TV or Google TV (Sony, Philips, TCL, Hisense and many more), and Amazon Fire TV sticks. Have a different TV? Plug a Fire TV stick into its HDMI port.</p></details>
+      <details><summary>What happens if the internet goes down?</summary><p>The screen keeps playing. Everything is saved on the TV before it plays, so it carries on with your latest content and picks up any changes once it's back online.</p></details>
+      <details><summary>Do I need a computer?</summary><p>No. The dashboard works on a phone or tablet too. You can take a photo, upload it and publish it to your screens from the shop floor.</p></details>
+      <details><summary>Can I show different things at different times?</summary><p>Yes. Schedule playlists or single slides by date, day and hour. For example, breakfast until 11am on weekdays, and a Christmas campaign that overrides everything in December.</p></details>
+      <details><summary>Can my staff update the screens?</summary><p>Yes. Invite them as Editors or Managers. If you'd like to check changes first, turn on approvals and a manager approves before anything goes live.</p></details>
+      <details><summary>Is there a contract?</summary><p>No. You buy a licence for each TV for the length of time you want, from one month to three years. Each new TV gets a free 7-day trial first.</p></details>
+      <details><summary>Can you set it all up for us?</summary><p>Yes. We can supply ready-to-go TV sticks, install the screens and build your first playlists. Call 020 8935 5495 for a quote.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="start" style="padding-top:64px">
+  <div class="wrap">
+    <div class="box">
+      <div style="display:grid; gap:16px">
+        <h2>Put your first screen on air today.</h2>
+        <p class="lede">Call us and we'll set up your account, then pair your first TV with you. It's free for 7 days, with every feature.</p>
+        <div class="ctas" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px">
+          <a class="btn primary" href="tel:02089355495">Call 020 8935 5495</a>
+          <a class="btn" href="https://app.proviewsignage.co.uk">Already a customer? Sign in</a>
+        </div>
+      </div>
+      <div style="display:grid; gap:8px">
+        <div class="kicker">Talk to a person</div>
+        <a class="phone" href="tel:02089355495">020 8935 5495</a>
+        <span style="color:var(--muted)">www.proviewsignage.co.uk</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Back to top"><img src="img/logo.png" alt="" style="height:24px"><span class="wm">PROVIEW<span>SIGNAGE</span></span></a>
+    <nav aria-label="Footer"><a href="#how">How it works</a><a href="#tv-app">TV app</a><a href="#dashboard">Dashboard</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="https://app.proviewsignage.co.uk">Sign in</a></nav>
+    <span>© 2026 PROVIEW SIGNAGE</span>
+  </div>
+</footer>
+
+<script>
+(() => {
+  // Live clock on the TV mock-up, like the real clock widget
+  const clock = document.getElementById('clock'), date = document.getElementById('date');
+  const tick = () => {
+    const d = new Date();
+    clock.textContent = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    date.textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  };
+  tick(); setInterval(tick, 10000);
+
+  // Dashboard tabs
+  const tabs = [...document.querySelectorAll('[role=tab]')];
+  const select = (t) => {
+    tabs.forEach((x) => { const on = x === t; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; document.getElementById(x.getAttribute('aria-controls')).hidden = !on; });
+  };
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => select(t));
+    t.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; select(n); n.focus(); }
+    });
+  });
+
+  // Pricing: price per screen for each licence length
+  const TERMS = [[1, '1 month', 12], [3, '3 months', 33], [6, '6 months', 60], [12, '12 months', 108], [24, '24 months', 192], [36, '36 months', 252]];
+  const gbp = (v) => '£' + (Math.round(v * 100) / 100).toLocaleString('en-GB', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  const save = (m, p) => Math.round((1 - p / (12 * m)) * 100);
+  document.getElementById('tbody').innerHTML = TERMS.map(([m, l, p]) =>
+    `<tr><td>${l}</td><td><b>${gbp(p)}</b></td><td>${gbp(p / m)} / month</td><td class="${m > 1 ? 'g' : ''}">${m > 1 ? save(m, p) + '%' : '–'}</td></tr>`).join('');
+
+  let term = 3;
+  const n = document.getElementById('n'), nOut = document.getElementById('n-out'), box = document.getElementById('terms');
+  box.innerHTML = TERMS.map(([m, l], i) => `<button type="button" data-i="${i}" aria-pressed="${i === term}">${l}</button>`).join('');
+  const paint = () => {
+    const k = +n.value, [m, l, p] = TERMS[term];
+    nOut.textContent = k;
+    document.getElementById('t-line').textContent = `${k} screen${k > 1 ? 's' : ''} · ${l}`;
+    document.getElementById('t-total').textContent = gbp(k * p);
+    document.getElementById('t-month').textContent = `${gbp(k * p / m)} a month for ${k > 1 ? 'all ' + k + ' screens' : 'your screen'}`;
+    const saved = k * (12 * m - p);
+    document.getElementById('t-save').textContent = saved > 0 ? `You save ${gbp(saved)} vs paying monthly` : 'Switch to a longer licence to save up to 42%';
+    box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.i === term));
+  };
+  n.addEventListener('input', paint);
+  box.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { term = +b.dataset.i; paint(); } });
+  paint();
+})();
+</script>
+</body>
+</html>
