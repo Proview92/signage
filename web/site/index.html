@@ -426,7 +426,7 @@ footer a:hover { color: var(--text); }
 .show { display: grid; gap: 34px 28px; }
 .show .r { container-type: inline-size; display: grid; grid-template-columns: auto auto; justify-content: space-between; gap: 28px; align-items: start; }
 .show .r .scr { height: calc((100cqw - 60px) / 2.3403); width: auto; }
-@media (max-width: 760px) { .show .r { grid-template-columns: 1fr; justify-content: stretch; } .show .r .scr { height: auto; width: 100%; } .show .dev.port { width: 62%; margin: 0 auto; } }
+@media (max-width: 760px) { .show .r.b { display: none; } .show .r { grid-template-columns: 1fr; justify-content: stretch; } .show .r .scr { height: auto; width: 100%; } .show .dev.port { width: 62%; margin: 0 auto; } }
 
 @media (prefers-reduced-motion: reduce) {
   .cyc, .tk .tr, .burst, .tw .mi, .bb .pole::before, .cl .tagw, .pz .cd.hot { animation: none !important; }
