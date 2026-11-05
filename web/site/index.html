@@ -64,7 +64,7 @@ nav.top .btn.login svg, .dl-btn svg { width: 17px; height: 17px; fill: none; str
 @media (max-width: 520px) { nav.top .btn.trial { display: none; } }
 
 /* hero */
-.hero { padding: 72px 0 56px; position: relative; overflow: hidden; }
+.hero { padding: 52px 0 40px; position: relative; overflow: hidden; }
 .hero::before { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 900px; background: radial-gradient(closest-side, rgba(91,159,224,.20), transparent 70%); pointer-events: none; }
 .hero .wrap { display: grid; grid-template-columns: 1fr 1.08fr; gap: 56px; align-items: center; position: relative; }
 .hero h1 { font-size: clamp(44px, 6.2vw, 84px); font-weight: 900; line-height: .95; font-variation-settings: "wdth" 118; letter-spacing: -.025em; }
@@ -108,12 +108,13 @@ nav.top .btn.login svg, .dl-btn svg { width: 17px; height: 17px; fill: none; str
 @media (max-width: 560px) { .tv-label { display: none; } }
 
 /* strip */
-.strip { border-block: 1px solid var(--line); padding: 20px 0; }
+.strip { border-block: 1px solid var(--line); padding: 16px 0; }
 .strip .wrap { display: flex; flex-wrap: wrap; gap: 14px 34px; justify-content: space-between; color: var(--muted); font-size: 15px; }
 .strip b { color: var(--text); font-weight: 600; }
 
-section { padding: 104px 0; }
-.head { display: grid; gap: 16px; margin-bottom: 48px; max-width: 760px; }
+section { padding: 40px 0; }
+@media (max-width: 600px) { section { padding: 28px 0; } .hero { padding: 32px 0 28px; } }
+.head { display: grid; gap: 12px; margin-bottom: 28px; max-width: 760px; }
 
 /* steps */
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; counter-reset: s; }
@@ -293,7 +294,7 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 .cta .box { background: radial-gradient(circle at 85% 20%, rgba(139,136,220,.25), transparent 50%), radial-gradient(circle at 10% 90%, rgba(91,159,224,.22), transparent 50%), var(--panel); border: 1px solid var(--line); border-radius: 26px; padding: 56px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: center; }
 .cta .phone { font: 800 34px/1 var(--display); font-variation-settings: "wdth" 110; text-decoration: none; }
 @media (max-width: 860px) { .cta .box { grid-template-columns: 1fr; padding: 32px; } }
-footer { padding: 40px 0 60px; color: var(--muted); font-size: 14px; }
+footer { padding: 32px 0 40px; color: var(--muted); font-size: 14px; }
 footer .wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; justify-content: space-between; align-items: center; }
 footer nav { display: flex; gap: 20px; flex-wrap: wrap; }
 footer a { text-decoration: none; }
@@ -512,7 +513,7 @@ footer a:hover { color: var(--text); }
   </div>
 </div>
 
-<section id="examples" style="padding-top:88px">
+<section id="examples">
   <div class="wrap">
     <div class="head">
       <div class="kicker">On screens like yours</div>
@@ -591,7 +592,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="tv-app" style="padding-top:0">
+<section id="tv-app">
   <div class="wrap split">
     <div>
       <div class="kicker">The TV app</div>
@@ -609,7 +610,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="dashboard" style="padding-top:40px">
+<section id="dashboard">
   <div class="wrap">
     <div class="head">
       <div class="kicker">The dashboard</div>
@@ -680,7 +681,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section style="padding-top:24px">
+<section>
   <div class="wrap">
     <div class="head">
       <div class="kicker">Included in every plan</div>
@@ -703,7 +704,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="solutions" style="padding-top:24px">
+<section id="solutions">
   <div class="wrap">
     <div class="head">
       <div class="kicker">Solutions</div>
@@ -723,7 +724,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="services" style="padding-top:40px">
+<section id="services">
   <div class="wrap">
     <div class="svc">
       <div style="display:grid; gap:16px; align-content:start">
@@ -809,7 +810,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="download" style="padding-top:40px">
+<section id="download">
   <div class="wrap">
     <div class="dl">
       <div style="display:grid; gap:18px; align-content:start">
@@ -846,7 +847,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="trust" style="padding-top:40px">
+<section id="trust">
   <div class="wrap trust">
     <div class="tcol">
       <div class="kicker">Secure by design</div>
@@ -868,7 +869,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section id="faq" style="padding-top:40px">
+<section id="faq">
   <div class="wrap">
     <div class="head"><div class="kicker">Questions</div><h2>Good to know.</h2></div>
     <div class="faq">
@@ -884,7 +885,7 @@ footer a:hover { color: var(--text); }
   </div>
 </section>
 
-<section class="cta" id="start" style="padding-top:64px">
+<section class="cta" id="start">
   <div class="wrap">
     <div class="box">
       <div style="display:grid; gap:16px">
