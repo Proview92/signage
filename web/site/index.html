@@ -66,8 +66,8 @@ nav.top .btn.login svg, .dl-btn svg { width: 17px; height: 17px; fill: none; str
 /* hero */
 .hero { padding: 52px 0 40px; position: relative; overflow: hidden; }
 .hero::before { content: ""; position: absolute; inset: -30% -10% auto 40%; height: 900px; background: radial-gradient(closest-side, rgba(91,159,224,.20), transparent 70%); pointer-events: none; }
-.hero .wrap { display: grid; grid-template-columns: 1fr 1.08fr; gap: 56px; align-items: center; position: relative; }
-.hero h1 { font-size: clamp(44px, 6.2vw, 84px); font-weight: 900; line-height: .95; font-variation-settings: "wdth" 118; letter-spacing: -.025em; }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: center; position: relative; }
+.hero h1 { font-size: clamp(38px, 4.3vw, 66px); font-weight: 900; line-height: .98; font-variation-settings: "wdth" 104; letter-spacing: -.02em; }
 .hero h1 em { font-style: normal; color: var(--blue); }
 .hero .lede { margin: 24px 0 32px; }
 .hero .ctas { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -340,13 +340,13 @@ footer a:hover { color: var(--text); }
 .burst { position: absolute; right: 22cqw; top: 6cqw; width: 11cqw; aspect-ratio: 1; border-radius: 50%; background: #ffcc29; color: #140807; display: grid; place-items: center; text-align: center; font: 900 3.1cqw/.95 var(--display); font-variation-settings: "wdth" 80; transform: rotate(-12deg); animation: pulse 1.6s ease-in-out infinite; box-shadow: 0 0 0 .6cqw rgba(255,204,41,.25); }
 .burst small { display: block; font: 800 1.1cqw/1 var(--mono); letter-spacing: .1em; }
 @keyframes pulse { 50% { transform: rotate(-12deg) scale(1.08); } }
-.tw .menu { background: #ffcc29; color: #140807; padding: 2.4cqw 2.4cqw 6cqw; display: flex; flex-direction: column; gap: .55cqw; position: relative; }
+.tw .menu { background: #ffcc29; color: #140807; padding: 2cqw 2.4cqw 5.6cqw; display: flex; flex-direction: column; gap: .45cqw; position: relative; }
 .tw .menu h5 { margin: .8cqw 0 .2cqw; font: 900 2.3cqw/1 var(--display); font-variation-settings: "wdth" 75; text-transform: uppercase; border-bottom: .3cqw solid #140807; padding-bottom: .4cqw; display: flex; justify-content: space-between; align-items: baseline; }
 .tw .menu h5 em { font: 800 1cqw/1 var(--mono); font-style: normal; background: #140807; color: #ffcc29; padding: .4cqw .6cqw; border-radius: .4cqw; letter-spacing: .1em; }
 .tw .mi { display: flex; justify-content: space-between; font: 700 1.55cqw/1.35 var(--body); padding: .15cqw .6cqw; margin: 0 -.6cqw; border-radius: .4cqw; animation: hl 12s infinite; }
 .tw .mi b { font-variant-numeric: tabular-nums; }
 .tw .mi:nth-of-type(2) { animation-delay: 2s; } .tw .mi:nth-of-type(3) { animation-delay: 4s; } .tw .mi:nth-of-type(4) { animation-delay: 6s; }
-.tw .mi:nth-of-type(6) { animation-delay: 8s; } .tw .mi:nth-of-type(7) { animation-delay: 10s; }
+.tw .mi:nth-of-type(5) { animation-delay: 8s; } .tw .mi:nth-of-type(6) { animation-delay: 10s; } .tw .mi:nth-of-type(7), .tw .mi:nth-of-type(8) { animation: none; }
 @keyframes hl { 0%, 15% { background: #140807; color: #ffcc29; } 17%, 100% { background: transparent; color: #140807; } }
 .tw .tk { background: #140807; color: #fff; font: 700 1.7cqw/1 var(--body); padding: 1.1cqw 0; border-top: .3cqw solid #ffcc29; }
 .tw .tk span::before { content: "★"; color: #ffcc29; margin-right: 2.6cqw; }
@@ -480,6 +480,9 @@ footer a:hover { color: var(--text); }
     <h5>Sides</h5>
     <div class="mi"><span>Fries · regular</span><b>£2.49</b></div>
     <div class="mi"><span>6 hot wings</span><b>£3.99</b></div>
+    <h5>Drinks</h5>
+    <div class="mi"><span>Cans · 330ml</span><b>£1.20</b></div>
+    <div class="mi"><span>Thick shake</span><b>£3.99</b></div>
   </div>
   <div class="tk" style="grid-column:1/-1"><div class="tr"><span>Order at the counter</span><span>Open till 2am, Fri &amp; Sat</span><span>Delivery available</span><span>Student deals with valid ID</span><span>Order at the counter</span><span>Open till 2am, Fri &amp; Sat</span><span>Delivery available</span><span>Student deals with valid ID</span></div></div>
 </div></div></div><div class="ft"></div></div>
