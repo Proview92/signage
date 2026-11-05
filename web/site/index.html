@@ -280,16 +280,16 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 .fcols .brand .wm span { display: inline; margin: 0; font-size: inherit; color: transparent; }
 @media (max-width: 860px) { .fcols { grid-template-columns: 1fr 1fr; } .fcols > :first-child { grid-column: 1 / -1; } }
 
-/* video guide */
-.vg { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.3fr); gap: 40px; align-items: center; }
-.vg-copy { display: grid; gap: 14px; }
-.vg-steps { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; }
-.vg-steps li { display: flex; gap: 14px; align-items: baseline; padding: 9px 12px; border-radius: 10px; cursor: pointer; color: var(--text); }
-.vg-steps li:hover { background: var(--panel); }
-.vg-steps .mono { color: var(--blue); font-size: 14px; min-width: 3.4ch; }
+/* video guide: heading, video, then the timeline */
+.vg-player { max-width: 1040px; }
 .vg-player video { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 14px; border: 1px solid var(--line); background: #000; box-shadow: 0 30px 60px -24px rgba(0,0,0,.7); }
+.vg-steps { list-style: none; padding: 0; margin: 16px 0 0; max-width: 1040px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.vg-steps li { display: grid; gap: 6px; align-content: start; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 15px; line-height: 1.35; transition: border-color .2s; }
+.vg-steps li:hover { border-color: var(--blue); }
+.vg-steps .mono { color: var(--blue); font-size: 14px; font-weight: 700; }
 .vg-note { margin-top: 10px; font: 500 12px/1.3 var(--mono); color: var(--muted); }
-@media (max-width: 900px) { .vg { grid-template-columns: minmax(0, 1fr); } .vg-player { order: -1; } }
+@media (max-width: 900px) { .vg-steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 420px) { .vg-steps { grid-template-columns: 1fr; } }
 
 /* faq */
 .faq { display: grid; gap: 10px; max-width: 860px; }
@@ -606,26 +606,24 @@ footer a:hover { color: var(--text); }
 
 <section id="video-guide">
   <div class="wrap">
-    <div class="vg">
-      <div class="vg-copy">
-        <div class="kicker">Video guide</div>
-        <h2>Watch it all in 2 minutes.</h2>
-        <p class="lede">Follow along from sign-up to a live screen: create your account, pair your TV, upload your pictures, build a playlist and publish it.</p>
-        <ol class="vg-steps">
+    <div class="head">
+      <div class="kicker">Video guide</div>
+      <h2>Watch it all in 2 minutes.</h2>
+      <p class="lede">Follow along from sign-up to a live screen: create your account, pair your TV, upload your pictures, build a playlist and publish it.</p>
+    </div>
+    <div class="vg-player">
+      <video id="guide-video" controls preload="metadata" playsinline poster="video/poster.jpg" aria-label="PROVIEW SIGNAGE getting started guide, 2 minutes, no sound">
+        <source src="video/getting-started.mp4" type="video/mp4">
+      </video>
+    </div>
+    <ol class="vg-steps">
           <li><span class="mono">0:06</span> Sign up and name your business</li>
           <li><span class="mono">0:31</span> Install the TV app and pair it</li>
           <li><span class="mono">0:50</span> Upload your pictures</li>
           <li><span class="mono">1:00</span> Build a playlist in 4 steps</li>
           <li><span class="mono">1:43</span> Publish, and your TV goes live</li>
         </ol>
-      </div>
-      <div class="vg-player">
-        <video id="guide-video" controls preload="metadata" playsinline poster="video/poster.jpg" aria-label="PROVIEW SIGNAGE getting started guide, 2 minutes, no sound">
-          <source src="video/getting-started.mp4" type="video/mp4">
-        </video>
-        <div class="vg-note">2:00 · no sound needed, captions are on screen</div>
-      </div>
-    </div>
+    <div class="vg-note">2:00 · no sound needed, captions are on screen · click a step to jump to it</div>
   </div>
 </section>
 
