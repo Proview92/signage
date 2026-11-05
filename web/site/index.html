@@ -222,6 +222,17 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 .ht li::marker { color: var(--blue); font-weight: 700; }
 @media (max-width: 960px) { .dl { grid-template-columns: minmax(0, 1fr); padding: 22px; } .dl > * { min-width: 0; } }
 
+/* 50% offer */
+.offer { justify-self: start; display: inline-flex; gap: 10px; align-items: center; padding: 10px 16px; border-radius: 999px; background: rgba(111,211,155,.12); border: 1px solid rgba(111,211,155,.4); color: var(--text); font-size: 15.5px; }
+.offer b { color: #6fd39b; font-weight: 800; }
+.plan .price { flex-wrap: wrap; }
+.plan .price span { flex-basis: 100%; }
+.plan .price .was, .plan .bill s, .was-s, .was-line s { color: var(--muted); text-decoration-thickness: 2px; font-weight: 600; }
+.plan .price .was { font: 700 24px/1 var(--display); align-self: center; }
+.was-s { font-size: 13px; }
+.was-line { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.offer-pill { background: #6fd39b; color: #06140c; font: 800 11px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; }
+
 /* faq */
 .faq { display: grid; gap: 10px; max-width: 860px; }
 .faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0 22px; }
@@ -654,31 +665,33 @@ footer a:hover { color: var(--text); }
     <div class="head">
       <div class="kicker">Pricing</div>
       <h2>One licence per TV. Everything included.</h2>
+      <div class="offer"><b>50% off</b> every licence. All prices below are already half price.</div>
       <p class="lede">Pay for the length of time you want, per screen. The longer the term, the less each month costs. Every TV starts with a free 7-day trial.</p>
     </div>
 
     <div class="plans">
       <div class="plan">
         <div class="name">Monthly</div>
-        <div class="price"><b>£12</b><span>per screen / month</span></div>
-        <div class="bill">£12 per screen, renew each month</div>
+        <div class="price"><s class="was">£12</s><b>£6</b><span>per screen / month</span></div>
+        <div class="bill">£6 per screen, renew each month</div>
+        <div class="save">50% off</div>
         <ul><li>Every feature</li><li>Stop whenever you like</li><li>Ideal for trying a new screen</li></ul>
         <a class="btn" href="#start">Start free trial</a>
       </div>
       <div class="plan pop">
         <div class="badge">Most popular</div>
         <div class="name">12 months</div>
-        <div class="price"><b>£9</b><span>per screen / month</span></div>
-        <div class="bill">£108 per screen, paid yearly</div>
-        <div class="save">Save 25% vs monthly</div>
+        <div class="price"><s class="was">£9</s><b>£4.50</b><span>per screen / month</span></div>
+        <div class="bill">£54 per screen, paid yearly <s>£108</s></div>
+        <div class="save">50% off · plus 25% less than monthly</div>
         <ul><li>Every feature</li><li>One payment a year</li><li>Renew online in a minute</li></ul>
         <a class="btn primary" href="#start">Start free trial</a>
       </div>
       <div class="plan">
         <div class="name">36 months</div>
-        <div class="price"><b>£7</b><span>per screen / month</span></div>
-        <div class="bill">£252 per screen, paid every 3 years</div>
-        <div class="save">Save 42% vs monthly</div>
+        <div class="price"><s class="was">£7</s><b>£3.50</b><span>per screen / month</span></div>
+        <div class="bill">£126 per screen, paid every 3 years <s>£252</s></div>
+        <div class="save">50% off · plus 42% less than monthly</div>
         <ul><li>Every feature</li><li>Lowest price per month</li><li>Set and forget</li></ul>
         <a class="btn" href="#start">Start free trial</a>
       </div>
@@ -697,7 +710,8 @@ footer a:hover { color: var(--text); }
       </div>
       <div class="total" aria-live="polite">
         <div class="muted" id="t-line">3 screens · 12 months</div>
-        <div class="big" id="t-total">£324</div>
+        <div class="was-line"><s id="t-was">£324</s> <span class="offer-pill">50% off</span></div>
+        <div class="big" id="t-total">£162</div>
         <div class="muted" id="t-month">£27 a month for all screens</div>
         <div class="save" id="t-save">You save £108 vs paying monthly</div>
       </div>
@@ -705,7 +719,7 @@ footer a:hover { color: var(--text); }
 
     <div class="table-wrap">
       <table class="terms-table">
-        <thead><tr><th>Licence length</th><th>Per screen</th><th>Works out at</th><th>Saving vs monthly</th></tr></thead>
+        <thead><tr><th>Licence length</th><th>Per screen (50% off)</th><th>Works out at</th><th>Saving vs monthly</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -823,23 +837,26 @@ footer a:hover { color: var(--text); }
   });
 
   // Pricing: price per screen for each licence length
-  const TERMS = [[1, '1 month', 12], [3, '3 months', 33], [6, '6 months', 60], [12, '12 months', 108], [24, '24 months', 192], [36, '36 months', 252]];
+  // Full price per screen for each licence length; the 50% offer is applied below
+  const OFF = 0.5;
+  const TERMS = [[1, '1 month', 12], [3, '3 months', 33], [6, '6 months', 60], [12, '12 months', 108], [24, '24 months', 192], [36, '36 months', 252]].map(([m, l, full]) => [m, l, full * (1 - OFF), full]);
   const gbp = (v) => '£' + (Math.round(v * 100) / 100).toLocaleString('en-GB', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const save = (m, p) => Math.round((1 - p / (12 * m)) * 100);
-  document.getElementById('tbody').innerHTML = TERMS.map(([m, l, p]) =>
-    `<tr><td>${l}</td><td><b>${gbp(p)}</b></td><td>${gbp(p / m)} / month</td><td class="${m > 1 ? 'g' : ''}">${m > 1 ? save(m, p) + '%' : '–'}</td></tr>`).join('');
+  document.getElementById('tbody').innerHTML = TERMS.map(([m, l, p, full]) =>
+    `<tr><td>${l}</td><td><b>${gbp(p)}</b> <s class="was-s">${gbp(full)}</s></td><td>${gbp(p / m)} / month</td><td class="${m > 1 ? 'g' : ''}">${m > 1 ? save(m, full) + '%' : '–'}</td></tr>`).join('');
 
   let term = 3;
   const n = document.getElementById('n'), nOut = document.getElementById('n-out'), box = document.getElementById('terms');
   box.innerHTML = TERMS.map(([m, l], i) => `<button type="button" data-i="${i}" aria-pressed="${i === term}">${l}</button>`).join('');
   const paint = () => {
-    const k = +n.value, [m, l, p] = TERMS[term];
+    const k = +n.value, [m, l, p, full] = TERMS[term];
     nOut.textContent = k;
     document.getElementById('t-line').textContent = `${k} screen${k > 1 ? 's' : ''} · ${l}`;
     document.getElementById('t-total').textContent = gbp(k * p);
+    document.getElementById('t-was').textContent = gbp(k * full);
     document.getElementById('t-month').textContent = `${gbp(k * p / m)} a month for ${k > 1 ? 'all ' + k + ' screens' : 'your screen'}`;
-    const saved = k * (12 * m - p);
-    document.getElementById('t-save').textContent = saved > 0 ? `You save ${gbp(saved)} vs paying monthly` : 'Switch to a longer licence to save up to 42%';
+    const saved = k * (full - p);
+    document.getElementById('t-save').textContent = `You save ${gbp(saved)} with 50% off`;
     box.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.i === term));
   };
   n.addEventListener('input', paint);
