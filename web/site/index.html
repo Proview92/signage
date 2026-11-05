@@ -103,7 +103,7 @@ nav.top .btn.login svg, .dl-btn svg { width: 17px; height: 17px; fill: none; str
 .pair { position: absolute; left: -26px; bottom: -58px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: 0 20px 40px -10px rgba(0,0,0,.6); }
 .pair .t { font-size: 12px; color: var(--muted); }
 .pair .code { font: 700 24px/1.1 var(--mono); letter-spacing: .18em; margin-top: 4px; }
-@media (max-width: 560px) { .pair { left: 8px; bottom: -64px; } .tv-label { display: none; } .hero { padding-bottom: 96px; } }
+@media (max-width: 560px) { .tv-label { display: none; } }
 
 /* strip */
 .strip { border-block: 1px solid var(--line); padding: 20px 0; }
@@ -197,6 +197,16 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 .terms-table td.g { color: #6fd39b; }
 .note { color: var(--muted); font-size: 14.5px; margin-top: 18px; }
 
+@media (max-width: 520px) {
+  .hide-s { display: none; }
+  .hero .ctas { display: grid; grid-template-columns: 1fr; }
+  .hero .ctas .btn { justify-content: center; }
+
+  .terms-table th, .terms-table td { padding: 12px 6px; font-size: 14px; }
+  .terms-table th { white-space: normal; }
+  .terms-table th { font-size: 10.5px; letter-spacing: .06em; }
+}
+
 /* download */
 .dl { display: grid; grid-template-columns: 1fr 1.15fr; gap: 48px; background: var(--panel); border: 1px solid var(--line); border-radius: 24px; padding: 44px; }
 .dl .muted-s { color: var(--muted); font-size: 14px; }
@@ -207,8 +217,10 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 .ht { background: var(--night); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; display: grid; gap: 10px; }
 .ht ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); font-size: 15.5px; }
 .ht ol b { color: var(--text); font-weight: 600; }
+.ht ol b.mono { overflow-wrap: anywhere; }
+.howto, .ht { min-width: 0; }
 .ht li::marker { color: var(--blue); font-weight: 700; }
-@media (max-width: 960px) { .dl { grid-template-columns: 1fr; padding: 26px; } }
+@media (max-width: 960px) { .dl { grid-template-columns: minmax(0, 1fr); padding: 22px; } .dl > * { min-width: 0; } }
 
 /* faq */
 .faq { display: grid; gap: 10px; max-width: 860px; }
@@ -245,8 +257,9 @@ footer a:hover { color: var(--text); }
 /* hero composition: landscape TV with a portrait screen beside it */
 .duo { position: relative; padding-right: 29%; }
 .duo .dev.port { position: absolute; right: 0; bottom: -18px; width: 26%; }
-.duo .pair { left: -22px; bottom: -64px; }
-@media (max-width: 560px) { .duo { padding-right: 0; padding-bottom: 40px; } .duo .dev.port { width: 32%; bottom: -70px; right: -6px; } }
+.duo .pair { position: static; display: inline-flex; align-items: center; gap: 14px; margin-top: 30px; }
+.duo .pair .code { margin-top: 0; }
+@media (max-width: 560px) { .duo { padding-right: 0; display: grid; grid-template-columns: 1fr 38%; gap: 16px; align-items: start; } .duo > .dev.land { grid-column: 1 / -1; } .duo .dev.port { position: static; width: auto; grid-column: 2; grid-row: 2; } .duo .pair { grid-column: 1; grid-row: 2; align-self: center; margin-top: 0; flex-direction: column; align-items: flex-start; gap: 4px; } .duo .tv-label { display: none; } }
 
 .cyc { position: absolute; inset: 0; animation: cyc3 15s infinite; opacity: 0; }
 .cyc:nth-child(1) { animation-delay: 0s; } .cyc:nth-child(2) { animation-delay: 5s; } .cyc:nth-child(3) { animation-delay: 10s; }
@@ -533,7 +546,7 @@ footer a:hover { color: var(--text); }
         <li><div class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/></svg></div><div><b>Portrait, too</b><span>Mount the TV on its side for a tall menu board. The app follows the TV's orientation, or you can rotate it from the dashboard.</span></div></li>
       </ul>
     </div>
-    <div class="shot dark"><img src="img/tv-menu.jpg" alt="The PROVIEW TV app's screen menu, opened with the remote" loading="lazy" width="1200" height="675"></div>
+    <div class="shot dark"><img src="img/tv-menu.jpg" alt="The PROVIEW TV app's screen menu, opened with the remote" width="1200" height="675"></div>
   </div>
 </section>
 
@@ -552,7 +565,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="tabpanel" role="tabpanel" id="p-layout" aria-labelledby="t-layout">
-      <div class="shot"><img src="img/d-step1.jpg" alt="Step 1 of the playlist editor: choosing orientation and layout" loading="lazy" width="1400" height="1046"></div>
+      <div class="shot"><img src="img/d-step1.jpg" alt="Step 1 of the playlist editor: choosing orientation and layout" width="1400" height="1046"></div>
       <div class="copy">
         <h3>Split the screen your way</h3>
         <p>Choose landscape or portrait, then a layout: full screen, halves, a main area with a side panel, three columns, four squares and more.</p>
@@ -566,7 +579,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="tabpanel" role="tabpanel" id="p-content" aria-labelledby="t-content" hidden>
-      <div class="shot"><img src="img/d-step2.jpg" alt="Step 2 of the editor: adding pictures, videos, text and widgets to each area" loading="lazy" width="1400" height="1046"></div>
+      <div class="shot"><img src="img/d-step2.jpg" alt="Step 2 of the editor: adding pictures, videos, text and widgets to each area" width="1400" height="1046"></div>
       <div class="copy">
         <h3>Pictures, videos, PDFs and live widgets</h3>
         <p>Upload from your phone's camera roll or your computer. Each page of a PDF menu becomes its own slide.</p>
@@ -580,7 +593,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="tabpanel" role="tabpanel" id="p-screens" aria-labelledby="t-screens" hidden>
-      <div class="shot"><img src="img/d-screen.jpg" alt="A TV's page: live preview, playlists, schedule for the next seven days" loading="lazy" width="1400" height="1046"></div>
+      <div class="shot"><img src="img/d-screen.jpg" alt="A TV's page: live preview, playlists, schedule for the next seven days" width="1400" height="1046"></div>
       <div class="copy">
         <h3>See and control every TV</h3>
         <p>Each TV has its own page: what's on air now, whether it's online, a live screenshot of exactly what it shows, and its schedule for the week.</p>
@@ -594,7 +607,7 @@ footer a:hover { color: var(--text); }
     </div>
 
     <div class="tabpanel" role="tabpanel" id="p-reports" aria-labelledby="t-reports" hidden>
-      <div class="shot"><img src="img/d-reports.jpg" alt="Reports: proof of play by playlist, TV, slide or day" loading="lazy" width="1400" height="690"></div>
+      <div class="shot"><img src="img/d-reports.jpg" alt="Reports: proof of play by playlist, TV, slide or day" width="1400" height="690"></div>
       <div class="copy">
         <h3>Proof that it played</h3>
         <p>TVs report what they showed and for how long. Group by playlist, TV, slide or day, and download a CSV for Excel.</p>
@@ -760,7 +773,7 @@ footer a:hover { color: var(--text); }
         <p class="lede">Call us and we'll set up your account, then pair your first TV with you. It's free for 7 days, with every feature.</p>
         <div class="ctas" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px">
           <a class="btn primary" href="tel:02089355495">Call 020 8935 5495</a>
-          <a class="btn" href="https://app.proviewsignage.co.uk">Already a customer? Log in to portal</a>
+          <a class="btn" href="https://app.proviewsignage.co.uk"><span class="hide-s">Already a customer?&nbsp;</span>Log in to portal</a>
         </div>
       </div>
       <div style="display:grid; gap:8px">
