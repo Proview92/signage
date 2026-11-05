@@ -747,7 +747,7 @@ footer a:hover { color: var(--text); }
       <div class="kicker">Pricing</div>
       <h2>One licence per TV. Everything included.</h2>
       <div class="offer"><b>50% off</b> every licence. All prices below are already half price.</div>
-      <p class="lede">Pay for the length of time you want, per screen. The longer the term, the less each month costs. Start with a free 7-day trial on 1 screen.</p>
+      <p class="lede">Choose 1 month, 12 months or 36 months per screen. The longer the term, the less each month costs. Start with a free 7-day trial on 1 screen.</p>
     </div>
 
     <div class="plans">
@@ -877,7 +877,7 @@ footer a:hover { color: var(--text); }
       <details><summary>Do I need a computer?</summary><p>No. The dashboard works on a phone or tablet too. You can take a photo, upload it and publish it to your screens from the shop floor.</p></details>
       <details><summary>Can I show different things at different times?</summary><p>Yes. Schedule playlists or single slides by date, day and hour. For example, breakfast until 11am on weekdays, and a Christmas campaign that overrides everything in December.</p></details>
       <details><summary>Can my staff update the screens?</summary><p>Yes. Invite them as Editors or Managers. If you'd like to check changes first, turn on approvals and a manager approves before anything goes live.</p></details>
-      <details><summary>Is there a contract?</summary><p>No. You buy a licence for each TV for the length of time you want, from one month to three years. Your free 7-day trial covers 1 screen.</p></details>
+      <details><summary>Is there a contract?</summary><p>No. You buy a licence for each TV for 1 month, 12 months or 36 months. Your free 7-day trial covers 1 screen.</p></details>
       <details><summary>Can you set it all up for us?</summary><p>Yes. We can supply ready-to-go TV sticks, install the screens and build your first playlists. Call 020 8935 5495 for a quote.</p></details>
     </div>
   </div>
@@ -947,13 +947,13 @@ footer a:hover { color: var(--text); }
   // Pricing: price per screen for each licence length
   // Full price per screen for each licence length; the 50% offer is applied below
   const OFF = 0.5;
-  const TERMS = [[1, '1 month', 12], [3, '3 months', 33], [6, '6 months', 60], [12, '12 months', 108], [24, '24 months', 192], [36, '36 months', 252]].map(([m, l, full]) => [m, l, full * (1 - OFF), full]);
+  const TERMS = [[1, '1 month', 12], [12, '12 months', 108], [36, '36 months', 252]].map(([m, l, full]) => [m, l, full * (1 - OFF), full]);
   const gbp = (v) => '£' + (Math.round(v * 100) / 100).toLocaleString('en-GB', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const save = (m, p) => Math.round((1 - p / (12 * m)) * 100);
   document.getElementById('tbody').innerHTML = TERMS.map(([m, l, p, full]) =>
     `<tr><td>${l}</td><td><b>${gbp(p)}</b> <s class="was-s">${gbp(full)}</s></td><td>${gbp(p / m)} / month</td><td class="${m > 1 ? 'g' : ''}">${m > 1 ? save(m, full) + '%' : '–'}</td></tr>`).join('');
 
-  let term = 3;
+  let term = 1;   // 12 months
   const n = document.getElementById('n'), nOut = document.getElementById('n-out'), box = document.getElementById('terms');
   box.innerHTML = TERMS.map(([m, l], i) => `<button type="button" data-i="${i}" aria-pressed="${i === term}">${l}</button>`).join('');
   const paint = () => {
