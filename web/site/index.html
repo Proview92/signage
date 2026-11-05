@@ -324,6 +324,19 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 @keyframes rot-port { 0%, 41% { opacity: 0; } 45%, 78% { opacity: 1; } 81%, 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .rot-dev, .rot-land, .rot-port { animation: none !important; } .rot-port { opacity: 0; } }
 
+
+/* scrolling section menu under the top bar (all screen sizes) */
+nav.top .nav-sp { margin-left: auto; }
+.subnav { border-top: 1px solid var(--line); }
+nav.top .sn-row { height: auto; gap: 6px; }
+.sn-row { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 8px 0; scroll-behavior: smooth; -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 28px), transparent); }
+.sn-row::-webkit-scrollbar { display: none; }
+.sn-row a { flex: none; padding: 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 500; color: var(--muted); text-decoration: none; white-space: nowrap; border: 1px solid transparent; transition: background .2s, color .2s; }
+.sn-row a:first-child { margin-left: 4px; }
+.sn-row a:hover { color: var(--text); background: var(--panel); }
+.sn-row a.on { color: var(--text); background: var(--panel); border-color: var(--line); }
+section[id], header[id] { scroll-margin-top: 124px; }
+
 /* faq */
 .faq { display: grid; gap: 10px; max-width: 860px; }
 .faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0 22px; }
@@ -477,20 +490,11 @@ footer a:hover { color: var(--text); }
 <nav class="top" aria-label="Main">
   <div class="wrap">
     <a class="brand" href="#top" aria-label="PROVIEW SIGNAGE home"><img src="img/logo.png" alt=""><span class="wm">PROVIEW<span>SIGNAGE</span></span></a>
-    <div class="links">
-      <a href="#examples">Examples</a>
-      <a class="opt" href="#solutions">Solutions</a>
-      <a class="opt wide" href="#how">How it works</a>
-      <a class="opt" href="#video-guide">Video guide</a>
-      <a class="opt wide" href="#tv-app">TV app</a>
-      <a href="#dashboard">Dashboard</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#download">Get the TV app</a>
-      <a href="#faq">FAQ</a>
-    </div>
+    <span class="nav-sp"></span>
     <a class="btn login" href="https://app.proviewsignage.co.uk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Log in to portal</a>
     <a class="btn primary trial" href="https://app.proviewsignage.co.uk/#/signup">Start free trial</a>
   </div>
+  <div class="subnav"><div class="wrap sn-row" id="subnav"><a href="#examples" data-sec="examples">Examples</a><a href="#how" data-sec="how">How it works</a><a href="#video-guide" data-sec="video-guide">Video guide</a><a href="#tv-app" data-sec="tv-app">TV app</a><a href="#dashboard" data-sec="dashboard">Dashboard</a><a href="#solutions" data-sec="solutions">Solutions</a><a href="#services" data-sec="services">Installation</a><a href="#pricing" data-sec="pricing">Pricing</a><a href="#download" data-sec="download">Get the TV app</a><a href="#trust" data-sec="trust">Security</a><a href="#faq" data-sec="faq">FAQ</a></div></div>
 </nav>
 
 <header class="hero" id="top">
@@ -1022,6 +1026,21 @@ footer a:hover { color: var(--text); }
     const [m, sec] = li.querySelector('.mono').textContent.split(':').map(Number);
     gv.currentTime = m * 60 + sec; gv.play().catch(() => {});
   }));
+
+  // Section menu: highlight the section on screen and keep its link in view
+  const snLinks = [...document.querySelectorAll('#subnav a')];
+  const secs = snLinks.map((a) => document.getElementById(a.dataset.sec)).filter(Boolean);
+  let cur = '';
+  const spy = () => {
+    const y = 140; let id = '';
+    for (const el of secs) if (el.getBoundingClientRect().top <= y && el.offsetParent !== null) id = el.id;
+    if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) id = secs[secs.length - 1].id;   // reached the bottom
+    if (id === cur) return; cur = id;
+    snLinks.forEach((a) => a.classList.toggle('on', a.dataset.sec === id));
+    const on = snLinks.find((a) => a.dataset.sec === id), row = document.getElementById('subnav');
+    if (on) row.scrollTo({ left: on.offsetLeft - row.clientWidth / 2 + on.clientWidth / 2, behavior: 'smooth' });
+  };
+  addEventListener('scroll', spy, { passive: true }); spy();
 
   // Dashboard tabs
   const tabs = [...document.querySelectorAll('[role=tab]')];
