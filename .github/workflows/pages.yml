@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths: ['web/**', '.github/workflows/pages.yml']
   workflow_dispatch:
+  # A new TV app was built: redeploy so app.proviewsignage.co.uk/tv.apk is the newest one
+  workflow_run:
+    workflows: ['Build TV app']
+    types: [completed]
 
 permissions:
   contents: read
@@ -15,6 +19,7 @@ concurrency: { group: pages, cancel-in-progress: true }
 
 jobs:
   deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
     steps:
@@ -26,6 +31,11 @@ jobs:
           find web -name '*.js' -not -path 'web/sw.js' -exec sed -i -E "s#(from ['\"])(\.{1,2}/[^'\"?]+\.js)(['\"])#\1\2?v=$V\3#g" {} +
           sed -i -E "s#(src|href)=\"((js|css)/[^\"?]+\.(js|css))\"#\1=\"\2?v=$V\"#g; s#src=\"config\.js\"#src=\"config.js?v=$V\"#" web/index.html web/player.html
           grep -o 'app.js?v=[a-z0-9]*' web/index.html
+      - name: Newest TV app at /tv.apk (short address to type on a TV)
+        run: |
+          curl -fsSL -o web/tv.apk https://github.com/${{ github.repository }}/releases/latest/download/signage-tv.apk
+          curl -fsSL -o web/tv-version.json https://github.com/${{ github.repository }}/releases/latest/download/version.json
+          ls -la web/tv.apk && cat web/tv-version.json
       - uses: actions/upload-pages-artifact@v3
         with: { path: web }
       - id: d

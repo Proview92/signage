@@ -5,7 +5,9 @@ import { h, icon } from '../core.js';
 export const TV = [
   ['Set up a new TV', 'Get the PROVIEW SIGNAGE app running on an Android TV, Google TV or Fire TV stick.', [
     'Connect the TV or TV stick to the internet (Wi-Fi or cable).',
-    'Install the PROVIEW SIGNAGE TV app. Proview installs it for you, or call support on 020 8935 5495 for the download.',
+    'Install the PROVIEW SIGNAGE TV app. On the TV, install the free **Downloader** app (Fire TV: search for it on the home screen; Android TV: Google Play Store).',
+    'Fire TV only: go to **Settings → My Fire TV → Developer options → Install unknown apps** and turn on Downloader.',
+    'Open Downloader, type **app.proviewsignage.co.uk/tv.apk**, press **Go**, then **Install** and **Open**.',
     'Open the app. It goes full screen and shows **Pair this screen** with a 6-character code.',
     'On your phone or computer, sign in to the dashboard and go to **Screens → Add a TV**.',
     'Type the code from the TV, give the TV a name (e.g. “Counter TV”), pick the site, then press **Pair TV**.',

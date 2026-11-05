@@ -4,3 +4,5 @@ android/app/build/
 android/local.properties
 *.jks
 .DS_Store
+web/tv.apk
+web/tv-version.json
