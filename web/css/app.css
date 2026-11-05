@@ -96,7 +96,7 @@ h3 { font-size: 15px; font-weight: 650; }
 .side .btn { background: #23232a; color: #ddd; border-color: #33333c; }
 
 label.field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
-input[type=text], input[type=search], input[type=email], input[type=password], input[type=number], input[type=time], input[type=date], select, textarea {
+input[type=text], input[type=search], input[type=tel], input[type=email], input[type=password], input[type=number], input[type=time], input[type=date], select, textarea {
   font: 15px var(--font); color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; width: 100%; min-width: 0;
 }
 textarea { resize: vertical; min-height: 64px; }

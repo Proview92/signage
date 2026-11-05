@@ -186,7 +186,17 @@ export async function screensPage({ main, go }) {
   const paint = () => {
     const { screens, rules, byId, sites } = data;
     if (filter !== 'all' && filter !== 'none' && !sites.some((x) => x.id === filter)) filter = 'all';
-    const addTv = (siteId = '') => pairDialog({ fixedClient: state.clientId, siteId, onDone: (s) => go('screen/' + s.id) });
+    const trial = !!currentClient()?.trial_only && !state.me.is_admin;
+    const addTv = (siteId = '') => {
+      // Free trial: 1 screen. Explain instead of letting the pairing fail.
+      if (trial && screens.length >= 1) return modal({ title: 'Your free trial includes 1 screen', body: [
+        h('p', {}, 'To add more TVs, buy a licence for your first TV: open it and press “Renew online” under Licence.'),
+        h('p', { class: 'muted' }, 'Want a price for several screens? Call us on 020 8935 5495.')],
+        actions: [{ label: 'Close' }, { label: 'Open my TV', class: 'primary', onClick: () => go('screen/' + screens[0].id) }] });
+      return pairDialog({ fixedClient: state.clientId, siteId, onDone: (s) => go('screen/' + s.id) });
+    };
+    const trialNote = trial ? h('div', { class: 'notice info', style: { marginBottom: '14px' } }, h('b', {}, 'Free trial · 1 screen for 7 days. '),
+      screens.length ? 'Buy a licence for your TV (open it and press “Renew online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.') : null;
 
     const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); paint(); } },
       h('option', { value: 'all', selected: filter === 'all' }, `All sites · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),
@@ -203,7 +213,7 @@ export async function screensPage({ main, go }) {
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
 
     if (!screens.length) {
-      return main.replaceChildren(head, h('div', { class: 'card empty' },
+      return main.replaceChildren(head, trialNote || '', h('div', { class: 'card empty' },
         h('h2', {}, 'No TVs yet'),
         h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Add your sites first so you can put each TV in the right place.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
         canManage() ? h('div', { class: 'row', style: { justifyContent: 'center' } },
@@ -230,7 +240,7 @@ export async function screensPage({ main, go }) {
           h('span', { class: 'small muted' }, 'Plays: ' + (data.byId[w.tvs[0]?.default_playlist_id]?.name || 'nothing')),
           canManage() ? h('button', { class: 'btn sm', onclick: () => wallDialog({ wall: w, screens, playlists: data.playlists, onDone: refresh }) }, 'Edit wall') : null))))) : null;
 
-    main.replaceChildren(head, bannerBox, wallSection || '', ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
+    main.replaceChildren(head, trialNote || '', bannerBox, wallSection || '', ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },

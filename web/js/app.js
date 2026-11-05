@@ -45,7 +45,7 @@ async function render() {
   const qInvite = new URLSearchParams(location.search).get('invite');
   if (qInvite && /^\w+$/.test(qInvite)) localStorage.setItem('signage.invite', qInvite);
 
-  if (!state.session) return root.replaceChildren(await authPage(join?.[1]));
+  if (!state.session) return root.replaceChildren(await authPage(join?.[1], path === 'signup'));
   // Password was reset by an admin to a temporary one: choose a new password before anything else.
   if (state.session.user?.app_metadata?.must_change_password) return root.replaceChildren(changePasswordPage());
 
@@ -71,7 +71,7 @@ async function render() {
   }
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
-  if (!state.me.is_admin && !state.me.clients.length) return root.replaceChildren(noAccess());
+  if (!state.me.is_admin && !state.me.clients.length) return root.replaceChildren(setupBusiness());
   // Always have a valid business selected (never "none" for someone who belongs to one).
   if (!state.me.is_admin && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
 
@@ -209,10 +209,10 @@ function confirmUrl() {
 }
 
 const AUTH_LOOK = 'classic';   // original design; 'glow' | 'wall' | 'hero' also available
-async function authPage(inviteToken) {
+async function authPage(inviteToken, startSignup = false) {
   let invite = null;
   if (inviteToken) { try { invite = (await sb.rpc('invite_info', { p_token: inviteToken })).data; } catch {} }
-  let mode = invite && !invite.used ? 'signup' : 'signin';
+  let mode = (invite && !invite.used) || startSignup ? 'signup' : 'signin';
   // Coming back from the "confirm your email" link?
   const qs = new URLSearchParams(location.search);
   const cameBack = qs.has('code') || qs.has('invite') || qs.has('error_description');
@@ -248,7 +248,7 @@ async function authPage(inviteToken) {
     title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in';
     sub.textContent = invite && !invite.used
       ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'manager' ? 'a manager' : 'an editor'}.`
-      : mode === 'signup' ? 'Sign up with the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
+      : mode === 'signup' ? 'Start your free 7-day trial on 1 screen. No card needed. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';
     pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
@@ -355,6 +355,31 @@ function changePasswordPage() {
     field('Confirm new password', passwordToggle(pass2)),
     msg, submit,
     h('button', { class: 'btn ghost', type: 'button', onclick: signOut }, 'Sign out'));
+  return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
+}
+
+// New sign-up with no business yet: create one and start the free trial.
+function setupBusiness() {
+  const name = h('input', { type: 'text', required: true, maxLength: 80, autocomplete: 'organization', placeholder: 'e.g. Station Road Café' });
+  const phone = h('input', { type: 'tel', maxLength: 30, autocomplete: 'tel', placeholder: 'Optional, so we can help you get set up' });
+  const msg = h('div');
+  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Start my free trial');
+  const form = h('form', { class: 'stack', style: { maxWidth: '440px', width: '100%' }, onsubmit: async (e) => {
+    e.preventDefault(); msg.replaceChildren(); submit.disabled = true;
+    try {
+      await rpc('create_my_business', { p_name: name.value, p_phone: phone.value || null });
+      await refreshMe();
+      toast('Welcome! Now pair your TV to start your 7-day trial.');
+      location.hash = '#/screens'; render();
+    } catch (err) { msg.replaceChildren(h('div', { class: 'notice bad' }, errMsg(err))); submit.disabled = false; }
+  } },
+    h('img', { src: 'logo.png', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
+    h('h1', { style: { textAlign: 'center', margin: '6px 0 0' } }, 'Set up your business'),
+    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Signed in as ${state.me.email}. Your free trial includes 1 screen for 7 days, with every feature.`),
+    msg, field('Business name', name), field('Phone number', phone), submit,
+    h('p', { class: 'tiny', style: { textAlign: 'center', margin: 0 } }, 'Were you invited to someone else’s account? Open the invite link from your email instead.'),
+    h('div', { style: { textAlign: 'center' } }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out')));
+  setTimeout(() => name.focus(), 50);
   return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
 }
 
