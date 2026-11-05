@@ -292,6 +292,38 @@ table.terms-table { width: 100%; border-collapse: collapse; margin-top: 28px; fo
 @media (max-width: 900px) { .vg-steps { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 420px) { .vg-steps { grid-template-columns: 1fr; } }
 
+
+/* phones: the pizza screen turning from landscape to portrait */
+.rotdemo { display: none; }
+@media (max-width: 760px) {
+  .show { display: none; }
+  .rotdemo { display: block; }
+  .rot-stage { position: relative; aspect-ratio: 1 / .92; display: grid; place-items: center; }
+  .rot-dev { width: 78%; background: #05060a; border-radius: 10px; padding: 6px; box-shadow: 0 0 0 1px #262c3d, 0 30px 60px -24px rgba(0,0,0,.75); animation: rot-turn 10s cubic-bezier(.65,0,.35,1) infinite; }
+  .rot-scr { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 4px; background: #0d2418; container-type: size; }
+  .rot-land, .rot-port { position: absolute; }
+  .rot-land { inset: 0; animation: rot-land 10s linear infinite; }
+  .rot-port { width: 100cqh; height: 100cqw; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); container-type: inline-size; animation: rot-port 10s linear infinite; }
+  .pzp { position: absolute; inset: 0; background: #0d2418; color: #fff; padding: 7cqw 6cqw 14cqw; display: flex; flex-direction: column; gap: 4cqw; }
+  .pzp .hd { display: grid; gap: 2cqw; }
+  .pzp .hd b { font: 900 11cqw/1 var(--display); font-variation-settings: "wdth" 72; text-transform: uppercase; }
+  .pzp .hd span { font: 700 3.4cqw/1 var(--mono); color: #f4c430; letter-spacing: .14em; }
+  .pcards { flex: 1; display: grid; gap: 3.4cqw; }
+  .pcd { background: #f7efe2; color: #1a120c; border-radius: 3cqw; padding: 3.4cqw; display: grid; grid-template-columns: 30% 1fr; gap: 3.4cqw; align-items: center; position: relative; }
+  .pcd svg { width: 100%; }
+  .pcd h6 { margin: 0; font: 900 5.4cqw/1 var(--display); font-variation-settings: "wdth" 78; text-transform: uppercase; }
+  .pcd p { font: 600 3cqw/1.3 var(--tvbody); color: #5d4c3e; margin: 1cqw 0 0; }
+  .pcd .pr { margin-top: 1.6cqw; font: 900 7.4cqw/1 var(--display); font-variation-settings: "wdth" 80; color: #c1272d; }
+  .pcd.hot { outline: 1cqw solid #f4c430; animation: flash 1s steps(2, jump-none) infinite; }
+  .pzp .tk { background: #c1272d; font: 700 3.8cqw/1 var(--tvbody); padding: 2.8cqw 0; }
+  .pzp .tk span::before { content: "●"; margin-right: 2.6cqw; color: #f4c430; font-size: 2.4cqw; vertical-align: middle; }
+  .rotdemo .cap { justify-content: center; text-align: center; }
+}
+@keyframes rot-turn { 0%, 28% { transform: rotate(0); } 40%, 78% { transform: rotate(90deg); } 90%, 100% { transform: rotate(0); } }
+@keyframes rot-land { 0%, 41% { opacity: 1; } 44%, 79% { opacity: 0; } 82%, 100% { opacity: 1; } }
+@keyframes rot-port { 0%, 41% { opacity: 0; } 45%, 78% { opacity: 1; } 81%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .rot-dev, .rot-land, .rot-port { animation: none !important; } .rot-port { opacity: 0; } }
+
 /* faq */
 .faq { display: grid; gap: 10px; max-width: 860px; }
 .faq details { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0 22px; }
@@ -532,6 +564,21 @@ footer a:hover { color: var(--text); }
       <div class="kicker">On screens like yours</div>
       <h2>Landscape or portrait, for any kind of shop.</h2>
       <p class="lede">These screens are built from the same pieces you get in the dashboard: layouts, slides with transitions, a clock, a QR code, price lists and a scrolling ticker. Examples use made-up businesses.</p>
+    </div>
+    <div class="rotdemo" aria-label="Example: the pizza screen as the TV is turned to portrait">
+      <div class="rot-stage"><div class="rot-dev"><div class="rot-scr">
+        <div class="rot-land"><div class="pz">
+  <div class="hd"><b>Tonight's deals</b><span>PIZZA · GRILL · WRAPS</span></div>
+  <div class="cards">
+    <div class="cd"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#e7a54a"/><circle cx="50" cy="50" r="38" fill="#d9472b"/><circle cx="50" cy="50" r="36" fill="#f6d36b" opacity=".85"/><g fill="#b3261e"><circle cx="36" cy="34" r="7"/><circle cx="64" cy="38" r="7"/><circle cx="46" cy="62" r="7"/><circle cx="68" cy="64" r="6"/><circle cx="30" cy="56" r="5"/></g><g stroke="#3b7d2f" stroke-width="3" stroke-linecap="round"><path d="M54 24l4 3M24 44l3 4M58 78l4-2"/></g></svg><h6>Any large pizza</h6><p>Plus 2 sides of your choice</p><div class="pr">£14.99</div></div>
+    <div class="cd hot"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M14 40h72v44H14z" fill="#c98a4b"/><path d="M14 40l12-16h48l12 16z" fill="#e0a466"/><rect x="34" y="52" width="32" height="16" rx="3" fill="#c1272d"/><path d="M14 40h72" stroke="#8a5a2c" stroke-width="2"/></svg><h6>Family box</h6><p>2 large pizzas, wings, fries &amp; 1.5L drink</p><div class="pr">£24.99</div></div>
+    <div class="cd"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M30 86 58 14l22 10-26 70z" fill="#f2d79b"/><path d="M58 14l22 10-6 14-22-10z" fill="#7cc142"/><path d="M52 28l22 10-4 9-22-10z" fill="#d9472b"/><path d="M30 86l24 8 6-16-24-8z" fill="#fff" opacity=".9"/></svg><h6>Wrap meal</h6><p>Chicken or falafel wrap, fries &amp; can</p><div class="pr">£7.49</div></div>
+  </div>
+  <div class="tk"><div class="tr"><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span></div></div>
+</div></div>
+        <div class="rot-port"><div class="pzp"><div class="hd"><b>Tonight's deals</b><span>PIZZA · GRILL · WRAPS</span></div><div class="pcards"><div class="pcd"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#e7a54a"/><circle cx="50" cy="50" r="38" fill="#d9472b"/><circle cx="50" cy="50" r="36" fill="#f6d36b" opacity=".85"/><g fill="#b3261e"><circle cx="36" cy="34" r="7"/><circle cx="64" cy="38" r="7"/><circle cx="46" cy="62" r="7"/><circle cx="68" cy="64" r="6"/><circle cx="30" cy="56" r="5"/></g><g stroke="#3b7d2f" stroke-width="3" stroke-linecap="round"><path d="M54 24l4 3M24 44l3 4M58 78l4-2"/></g></svg><div><h6>Any large pizza</h6><p>Plus 2 sides of your choice</p><div class="pr">£14.99</div></div></div><div class="pcd hot"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M14 40h72v44H14z" fill="#c98a4b"/><path d="M14 40l12-16h48l12 16z" fill="#e0a466"/><rect x="34" y="52" width="32" height="16" rx="3" fill="#c1272d"/><path d="M14 40h72" stroke="#8a5a2c" stroke-width="2"/></svg><div><h6>Family box</h6><p>2 large pizzas, wings, fries &amp; 1.5L drink</p><div class="pr">£24.99</div></div></div><div class="pcd"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M30 86 58 14l22 10-26 70z" fill="#f2d79b"/><path d="M58 14l22 10-6 14-22-10z" fill="#7cc142"/><path d="M52 28l22 10-4 9-22-10z" fill="#d9472b"/><path d="M30 86l24 8 6-16-24-8z" fill="#fff" opacity=".9"/></svg><div><h6>Wrap meal</h6><p>Chicken or falafel wrap, fries &amp; can</p><div class="pr">£7.49</div></div></div></div><div class="tk"><div class="tr"><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span></div></div></div></div>
+      </div></div></div>
+      <div class="cap"><span><b>Pizza &amp; grill</b> · turn the TV on its side and it switches to portrait</span></div>
     </div>
     <div class="show">
       <div class="r a">
