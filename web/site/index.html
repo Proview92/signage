@@ -313,14 +313,12 @@ footer a:hover { color: var(--text); }
 .cap b { color: var(--text); font-weight: 700; }
 
 /* hero composition: landscape TV with a portrait screen beside it */
-.duo { position: relative; padding-right: 29%; }
-.duo .dev.port { position: absolute; right: 0; bottom: -18px; width: 26%; }
-.duo .pair { position: static; display: inline-grid; grid-template-columns: auto auto; align-items: center; gap: 4px 14px; margin-top: 30px; max-width: 100%; }
-.duo .pair .ex { grid-column: 1 / -1; font: 700 10.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--blue); }
-.duo .pair .code { margin-top: 0; grid-row: 2; grid-column: 2; }
-.duo .pair .t:nth-of-type(2) { grid-row: 2; grid-column: 1; }
-.duo .pair .t:last-child { grid-column: 1 / -1; }
-@media (max-width: 560px) { .duo { padding-right: 0; display: grid; grid-template-columns: 1fr 38%; gap: 16px; align-items: start; } .duo > .dev.land { grid-column: 1 / -1; } .duo .dev.port { position: static; width: 46%; grid-column: 1 / -1; grid-row: 2; justify-self: center; } .duo .pair { grid-column: 1; grid-row: 2; align-self: center; margin-top: 0; display: grid; grid-template-columns: 1fr; gap: 4px; } .duo .pair .code, .duo .pair .t { grid-column: 1 !important; grid-row: auto !important; } .duo .tv-label { display: none; } }
+/* hero: landscape + portrait side by side, the same height.
+   Both screens are (16/9 + 9/16) = 2.3403 heights wide in total, plus bezels (4 × 8px) and a 20px gap. */
+.duo { container-type: inline-size; display: grid; grid-template-columns: auto auto; justify-content: start; align-items: start; gap: 14px 20px; }
+.duo .tv-label { position: static; grid-column: 1 / -1; }
+.duo .dev .scr { height: calc((100cqw - 52px) / 2.3403); width: auto; }
+@media (max-width: 560px) { .duo { grid-template-columns: 1fr; } .duo .tv-label { display: none; } .duo .dev .scr { height: auto; width: 100%; } .duo .dev.port { width: 46%; justify-self: center; } }
 
 .cyc { position: absolute; inset: 0; animation: cyc3 15s infinite; opacity: 0; }
 .cyc:nth-child(1) { animation-delay: 0s; } .cyc:nth-child(2) { animation-delay: 5s; } .cyc:nth-child(3) { animation-delay: 10s; }
@@ -414,10 +412,9 @@ footer a:hover { color: var(--text); }
 
 /* showcase grid: rows where a portrait and a landscape screen share one height */
 .show { display: grid; gap: 34px 28px; }
-.show .r { display: grid; gap: 28px; align-items: end; }
-.show .r.a { grid-template-columns: 0.5625fr 1.7778fr; }
-.show .r.b { grid-template-columns: 1.7778fr 0.5625fr; }
-@media (max-width: 760px) { .show .r.a, .show .r.b { grid-template-columns: 1fr; } .show .dev.port { width: 62%; margin: 0 auto; } }
+.show .r { container-type: inline-size; display: grid; grid-template-columns: auto auto; justify-content: space-between; gap: 28px; align-items: start; }
+.show .r .scr { height: calc((100cqw - 60px) / 2.3403); width: auto; }
+@media (max-width: 760px) { .show .r { grid-template-columns: 1fr; justify-content: stretch; } .show .r .scr { height: auto; width: 100%; } .show .dev.port { width: 62%; margin: 0 auto; } }
 
 @media (prefers-reduced-motion: reduce) {
   .cyc, .tk .tr, .burst, .tw .mi, .bb .pole::before, .cl .tagw, .pz .cd.hot { animation: none !important; }
