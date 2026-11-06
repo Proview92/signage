@@ -53,7 +53,7 @@ export const TV = [
   ]],
 
   ['Updating the TV app', 'Keep TVs on the newest version.', [
-    'When a new version is available, the TV’s page in the dashboard shows **Update app to …**.',
+    'When a new version is available, the TV’s page in the dashboard shows **Update app to …** (and **App x.x ✓** when it is up to date).',
     'Press it and the TV downloads and installs the update. Some TVs ask for a one-time OK on screen.',
     'You can also choose **Check for app update** in the TV menu.',
   ]],

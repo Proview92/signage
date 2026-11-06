@@ -9,8 +9,14 @@ import { licenseBanner, licenseDialog } from './license-ui.js';
 import { renewOnlineDialog } from './integrations.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 
+// Newest TV app published with the dashboard (written by the deploy workflow). Fetched once per visit.
+let latestAppPromise = null;
+const latestApp = () => (latestAppPromise ||= fetch('tv-version.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then((j) => j?.versionName || null).catch(() => null));
+const verNum = (v) => String(v || '').split('.').map((n) => parseInt(n, 10) || 0);
+const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+
 export async function screenPage({ main, params: [id], go, rerender }) {
-  let sites = [], screen, playlists, rules, byId, player = null, tick = null;
+  let sites = [], screen, playlists, rules, byId, player = null, tick = null, latest = null;
 
   const load = async () => {
     [screen, playlists, rules, sites] = await Promise.all([
@@ -18,6 +24,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
       q(sb.from('playlists').select('id,name,updated_at,slides,settings').eq('client_id', state.clientId).order('name')),
       q(sb.from('schedule_items').select('*').eq('screen_id', id).order('priority', { ascending: false }).order('created_at', { ascending: false })),
       loadSites(state.clientId).catch(() => []),
+      latestApp().then((v) => { latest = v; }),
     ]);
     byId = Object.fromEntries(playlists.map((p) => [p.id, p]));
   };
@@ -161,7 +168,15 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         h('div', { class: 'row' }, h('h1', {}, screen.name), h('button', { class: 'btn ghost icon sm', onclick: editDetails, 'aria-label': 'Edit details' }, icon('edit'))),
         h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), (() => { const t = [sites.find((x) => x.id === screen.site_id)?.name, screen.location].filter(Boolean).join(' · '); return t ? h('span', { class: 'tiny' }, t) : null; })())),
       h('div', { class: 'row' },
-        /Android/.test(dinfo.app || '') ? h('button', { class: 'btn' + (dinfo.app_update ? ' primary' : ''), onclick: updateApp, title: `Installed: ${dinfo.app}` }, dinfo.app_update ? `Update app to ${dinfo.app_update}` : 'Update app') : null,
+        (() => {
+          if (!/Android/.test(dinfo.app || '')) return null;
+          // Compare with the newest version ourselves: the TV's own "update available" note can be hours old.
+          const installed = dinfo.app.replace(/^Android\s*/, '');
+          const best = [latest, dinfo.app_update].filter(Boolean).reduce((m, v) => (newer(v, m) ? v : m), installed);
+          const behind = newer(best, installed);
+          return h('button', { class: 'btn' + (behind ? ' primary' : ''), onclick: updateApp, title: behind ? `Installed: ${installed}` : `Installed: ${installed} (up to date)` },
+            behind ? `Update app to ${best}` : `App ${installed} ✓`);
+        })(),
         h('button', { class: 'btn', onclick: reloadTv, title: 'Force the TV app to reload' }, icon('refresh'), 'Reload TV'),
         h('button', { class: 'btn primary', onclick: publish, disabled: licenseState(screen).state === 'expired', title: licenseState(screen).state === 'expired' ? 'Licence expired' : '' }, icon('send'), 'Re-send to TV')));
 
