@@ -531,6 +531,17 @@ export class SlidePlayer {
     this.timer = null;
     this.running = false;
     this.token = 0;
+    this.held = false;        // "Skip to next content" from the TV menu: stay on this slide
+  }
+
+  /** Hold on the current slide (no auto-advance), or let the playlist carry on again. */
+  hold(on) {
+    this.held = !!on;
+    const v = this.current?.querySelector('video');
+    clearTimeout(this.timer);
+    if (on) { if (v) v.loop = true; return; }
+    if (v) v.loop = false;
+    if (this.running) this.timer = setTimeout(() => this.running && this.next(), Math.max(this.curSeconds || 8, 4) * 1000);
   }
 
   load(content) {
@@ -625,13 +636,15 @@ export class SlidePlayer {
         video.loop = activeCount === 1;
         const fallback = (isFinite(video.duration) && video.duration > 0 ? video.duration : 60) + 2;
         seconds = fallback;
-        video.addEventListener('ended', () => { if (my === this.token && activeCount > 1) this.next(); }, { once: true });
+        video.addEventListener('ended', () => { if (my === this.token && activeCount > 1 && !this.held) this.next(); }, { once: true });
       }
     }
     if (seconds <= 0) seconds = 8;
     startEffect(el, slide, seconds);
     animateText(el, slide.text?.anim);
     this.opts.onChange?.({ index: idx, total: this.slides.length, slide });
+    this.curSeconds = seconds;
+    if (this.held) { if (video) video.loop = true; return; }   // held from the TV menu: stay here
 
     if (this.running && (activeCount > 1 || slide.schedule)) {
       this.timer = setTimeout(() => this.next(), seconds * 1000);
@@ -852,6 +865,7 @@ export class LayoutPlayer {
   stop() { this.running = false; this.players.forEach((p) => p.stop()); }
   clear() { this.stop(); this._reset(); this.key = null; }
   next() { this.players.forEach((p) => p.next()); }   // every area moves on to its next slide
+  hold(on) { this.players.forEach((p) => p.hold(on)); }
 }
 
 // ---------------------------------------------------------------------
@@ -968,7 +982,15 @@ export class WallPlayer {
   }
 
   clear() { this.stop(); this._teardown(); }
-  next() {}                                        // the wall follows the clock; no skipping
+  next() {}                                        // the wall follows the clock (skips move the shared clock)
+
+  /** Hold the whole wall on the slide on air at wall-clock time `at` (shared by every TV in the wall); null = follow the clock. */
+  setHold(at) {
+    at = at == null ? null : Number(at);
+    if (at === this.holdAt) return;
+    this.holdAt = at;
+    if (this.running) { this.stop(); this.start(); }
+  }
 
   _sleepUntil(ts, my) {
     return new Promise((r) => {
@@ -1001,6 +1023,19 @@ export class WallPlayer {
 
   async _run(my) {
     let seg = null;
+    if (this.holdAt != null) {
+      // Held from the TV menu: show that one slide and stay on it (videos loop, in step across the wall).
+      const hs = this.segAt(this.holdAt);
+      if (!hs) { this._swap(null, null); return; }
+      const el = await this._prepare(hs.slide);
+      if (my !== this.token) { el?.remove(); return; }
+      if (el) el.style.opacity = '';
+      this._swap(el, hs.slide);
+      this._play(hs, false);
+      const v = this.current?.querySelector('video'); if (v) v.loop = true;
+      this.opts.onChange?.({ index: hs.idx, total: this.slides.length, slide: hs.slide });
+      return;   // setHold() restarts the loop
+    }
     while (this.running && my === this.token) {
       const t = this.now();
       const next = seg && t < seg.end ? this.segAt(seg.end + 1) : this.segAt(t);

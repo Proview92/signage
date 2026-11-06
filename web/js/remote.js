@@ -13,7 +13,7 @@ async function sha256hex(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function createRemoteMenu({ getStatus, onReload, onUnlink, onSkip }) {
+export function createRemoteMenu({ getStatus, onReload, onUnlink, onSkip, onResume }) {
   let settings = JSON.parse(localStorage.getItem(LS_SETTINGS) || 'null') || { pin_hash: null, return_minutes: 5 };
   let open = false, mode = 'pin', pin = '', fails = 0, lockedUntil = 0, focus = 0, closeTimer = null;
 
@@ -60,7 +60,8 @@ export function createRemoteMenu({ getStatus, onReload, onUnlink, onSkip }) {
     $title.textContent = 'Screen menu';
     const isApp = !!native();
     const items = [
-      st.canSkip && onSkip ? ['skip', 'Skip to next content', 'Show the next slide now'] : null,
+      st.canSkip && onSkip ? ['skip', 'Skip to next content', st.held ? 'Show the next slide (schedule stays paused)' : 'Show the next slide and keep it on screen (pauses the schedule)'] : null,
+      st.held && onResume ? ['resume', 'Reactivate schedule', 'Go back to the normal playlist and schedule'] : null,
       ['reload', 'Reload content', 'Fetch the latest schedule and media now'],
       ['status', 'Screen status', 'Licence, device and connection details'],
       isApp ? ['wifi', 'Wi-Fi & network settings', `Connect to a different Wi-Fi network${settings.return_minutes ? ` · player reopens in ${settings.return_minutes} min` : ''}`] : null,
@@ -118,6 +119,7 @@ export function createRemoteMenu({ getStatus, onReload, onUnlink, onSkip }) {
   function action(k) {
     switch (k) {
       case 'skip': close(); onSkip?.(); break;
+      case 'resume': close(); onResume?.(); break;
       case 'reload': close(); onReload(); break;
       case 'status': renderStatus(); break;
       case 'back': renderMenu(); break;

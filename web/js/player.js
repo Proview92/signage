@@ -281,6 +281,7 @@ function evaluate() {
   }
   if (currentKey === 'expired') currentKey = null;
   if (!content) return;
+  if (isHeld() && player && currentKey) return;   // schedule paused from the TV menu
   const air = onAirPlaylist(content);
   const { playlistId, rule } = air;
   const wall = validWall(screen?.wall) ? screen.wall : null;
@@ -299,7 +300,7 @@ function evaluate() {
       ? new WallPlayer($('stage'), { resolveUrl, onChange, wall, now: () => serverNow() + (Number(screen?.wall_shift) || 0), clockReady, mutedOverride: wall.x || wall.y ? true : undefined })
       : new LayoutPlayer($('stage'), { resolveUrl, lookup: (id) => content?.playlists?.[id] || null, onChange });
     player.kind = wantKind;
-    if (wall) player.wall = wall;
+    if (wall) { player.wall = wall; player.holdAt = screen?.wall_hold != null ? Number(screen.wall_hold) : null; }
   }
   if (!playlistId) { player.clear(); nowPlaying = 'idle'; return; }
   const pl = air.pl;
@@ -310,6 +311,9 @@ function evaluate() {
   player.start();
 }
 let nowPlaying = '';
+// Held from the TV menu ("Skip to next content"): the schedule is paused until "Reactivate schedule".
+let held = false;
+const isHeld = () => (player?.kind === 'wall' ? screen?.wall_hold != null : held);
 // Video wall skipped: re-run the wall from the moved-on shared clock.
 function restartWall() { if (player?.kind === 'wall' && player.running) { player.stop(); player.start(); } }
 let onAirId = null;
@@ -339,6 +343,7 @@ function apply(row) {
   screen = row;
   localStorage.setItem(LS.screen, JSON.stringify(row));
   if (shiftChanged) restartWall();   // another TV in the wall pressed "Skip to next content"
+  if (player?.kind === 'wall' && (row.wall_hold ?? null) !== (player.holdAt ?? null)) player.setHold(row.wall_hold ?? null);
   applyRotation(row.rotation);
   if (row.claimed && row.screenshot_requested_at && Date.now() - new Date(row.screenshot_requested_at) < 5 * 60000) takeScreenshot();
   $('screen-name').textContent = row.name;
@@ -395,6 +400,7 @@ function deviceInfo() {
     display: window.innerHeight > window.innerWidth ? 'portrait' : 'landscape',
     app_update: (() => { try { return window.SignageNative?.updateAvailable?.() || undefined; } catch { return undefined; } })(),
     sleeping: sleeping || undefined,
+    held: (() => { try { return isHeld() || undefined; } catch { return undefined; } })(),
     can_turn_off: (() => { try { return window.SignageNative?.canTurnOff ? window.SignageNative.canTurnOff() : undefined; } catch { return undefined; } })(),
   };
 }
@@ -555,24 +561,38 @@ const remote = createRemoteMenu({
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
       canSkip: !!player && !sleeping && views.stage.classList.contains('on'),
+      held: isHeld(),
       needsTurnOff: (() => { try { return !!native()?.canTurnOff && !native().canTurnOff(); } catch { return false; } })(),   // show until granted, so it can be set up in advance
     };
   },
   onReload: () => location.reload(),
   // Skip to the next slide from the TV menu (not on video walls: they follow the shared clock).
+  // "Skip to next content": show the next slide and STAY on it (schedule paused) until "Reactivate schedule".
   onSkip: async () => {
     try {
       if (!player || sleeping) return;
-      if (player.kind !== 'wall') return player.next();
-      // Video wall: move the wall's shared clock on to the end of the current slide, for every TV in the wall.
-      const seg = player.segAt(player.now());
+      if (player.kind !== 'wall') { held = true; player.hold(true); return player.next(); }
+      // Video wall: every TV in the wall holds on the next slide together (shared via the database).
+      const from = player.holdAt != null ? player.holdAt : player.now();
+      const seg = player.segAt(from);
       if (!seg) return;
-      const ms = Math.max(1, Math.round(seg.end - player.now() + 50));
-      const { data, error } = await sb.rpc('wall_skip', { p_ms: ms });
+      const at = Math.round(seg.end + 1);
+      const { error } = await sb.rpc('wall_hold', { p_at: at });
       if (error) throw error;
-      screen.wall_shift = data;
-      restartWall();
+      screen.wall_hold = at;
+      player.setHold(at);
     } catch (e) { console.warn('[signage] skip failed', e); }
+  },
+  onResume: async () => {
+    try {
+      if (player?.kind === 'wall') {
+        const { error } = await sb.rpc('wall_hold', { p_at: null });
+        if (error) throw error;
+        screen.wall_hold = null;
+        player.setHold(null);
+      } else { held = false; player?.hold?.(false); }
+      evaluate();   // back to whatever the schedule says now
+    } catch (e) { console.warn('[signage] resume failed', e); }
   },
   // Unlink from the TV's own menu: back to the pairing screen with a new code.
   onUnlink: async () => {

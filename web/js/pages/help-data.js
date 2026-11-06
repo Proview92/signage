@@ -30,7 +30,8 @@ export const TV = [
   ]],
 
   ['TV menu options', 'What each item in the screen menu does.', [
-    '**Skip to next content**: show the next slide straight away (every area of a split layout moves on). On a video wall, every TV in the wall moves on together.',
+    '**Skip to next content**: show the next slide and keep it on screen: the playlist and schedule pause (every area of a split layout moves on; on a video wall every TV moves on together). Press it again for the slide after. The dashboard shows **Schedule paused on TV**.',
+    '**Reactivate schedule**: appears after a skip. Goes back to the normal playlist and schedule.',
     '**Reload content**: fetch the latest schedule and media now.',
     '**Screen status**: the TV’s name, licence, what is playing, connection, device and app version.',
     '**Wi-Fi & network settings**: opens the TV’s network settings to join a different Wi-Fi. The player reopens itself after a few minutes.',

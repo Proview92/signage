@@ -47,6 +47,7 @@ export function statusBadges(screen, rules, byId) {
   else { out.push(isOnline(screen) ? h('span', { class: 'badge ok' }, 'Online') : h('span', { class: 'badge bad' }, screen.last_seen ? `Offline · ${timeAgo(screen.last_seen)}` : 'Offline')); if (zz) out.push(zz); }
   if (needsPublish(screen, rules.filter((r) => r.screen_id === screen.id), byId)) out.push(h('span', { class: 'badge warn' }, 'Unpublished changes'));
   out.push(licenseBadge(screen));
+  if (screen.device_info?.held && isOnline(screen)) out.push(h('span', { class: 'badge warn', title: 'Someone pressed “Skip to next content” on the TV menu. Choose “Reactivate schedule” on the TV menu to go back to normal.' }, 'Schedule paused on TV'));
   if (validWall(screen.wall)) out.push(h('span', { class: 'badge', title: 'Part of a video wall' }, `Wall: ${screen.wall.name} · row ${screen.wall.y + 1}, screen ${screen.wall.x + 1}`));
   return out;
 }
