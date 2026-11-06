@@ -278,6 +278,24 @@ async function authPage(inviteToken, startSignup = false) {
   if (cameBack && linkError) msg.replaceChildren(h('div', { class: 'notice bad' }, `That link didn't work: ${linkError}. Sign in below, or use “Forgot password?”.`));
   else if (cameBack) msg.replaceChildren(h('div', { class: 'notice ok' }, '✓ Email confirmed. Sign in with your password to continue.'));
 
+  // Unknown email on the sign-in form: offer to create an account instead of failing silently.
+  function noAccountPrompt(addr) {
+    modal({
+      title: 'No account found',
+      body: [h('p', {}, 'There’s no PROVIEW SIGNAGE account for ', h('b', {}, addr), '.'), h('p', { class: 'muted' }, 'Would you like to create one? It starts with a free 3-day trial on 1 screen.')],
+      actions: [
+        { label: 'No, back to sign in', onClick: () => { pass.value = ''; msg.replaceChildren(h('div', { class: 'notice' }, 'Check the email address and try again.')); setTimeout(() => email.focus(), 50); } },
+        { label: 'Yes, create an account', class: 'primary', onClick: () => {
+          const typed = pass.value;
+          mode = 'signup'; paint();
+          email.value = addr; pass.value = typed; pass2.value = '';
+          msg.replaceChildren(h('div', { class: 'notice info' }, typed.length >= 8 ? 'Type your password again to confirm it, then press Create account.' : 'Choose a password (at least 8 characters), then press Create account.'));
+          setTimeout(() => (typed.length >= 8 ? pass2 : pass).focus(), 50);
+        } },
+      ],
+    });
+  }
+
   const form = h('form', {
     onsubmit: async (e) => {
       e.preventDefault();
@@ -296,8 +314,17 @@ async function authPage(inviteToken, startSignup = false) {
             submit.disabled = false; return;
           }
         } else {
-          const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
-          if (error) throw error;
+          const addr = email.value.trim();
+          const { error } = await sb.auth.signInWithPassword({ email: addr, password: pass.value });
+          if (error) {
+            // Supabase gives the same answer for "no such account" and "wrong password": ask which it is.
+            if (/invalid login credentials/i.test(error.message || '')) {
+              const { data: exists, error: e2 } = await sb.rpc('email_has_account', { p_email: addr });
+              if (!e2 && exists === false) { submit.disabled = false; return noAccountPrompt(addr); }
+              if (!e2 && exists === true) throw new Error('That password isn’t right. Try again, or press “Forgot password?” to reset it.');
+            }
+            throw error;
+          }
         }
       } catch (err) {
         msg.replaceChildren(h('div', { class: 'notice' }, errMsg(err)));
