@@ -5,7 +5,7 @@ import { statusBadges } from './screens.js';
 import { publishOrRequest } from '../core.js';
 import { ruleForm } from './rule-form.js';
 import { loadSites, siteSelect } from './sites-ui.js';
-import { licenseBanner, licenseDialog } from './license-ui.js';
+import { licenseBanner, licensePortalButton } from './license-ui.js';
 import { renewOnlineDialog } from './integrations.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 import { latestApp, newestFor, installedApp, appBehind } from '../app-version.js';
@@ -250,7 +250,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         h('div', { class: 'row between' }, h('span', { class: 'muted' }, L.state === 'lifetime' ? 'Expires' : (L.daysLeft >= 0 ? 'Expires' : 'Expired')), L.state === 'lifetime' ? 'Never' : L.expires ? fmtDate(L.expires) : '—'),
         state.me.is_admin && screen.license_notes ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Notes'), screen.license_notes) : null,
         h('div', { class: 'row' },
-          state.me.is_admin ? h('button', { class: 'btn sm primary', onclick: () => licenseDialog(screen, async () => { await load(); paint(); }) }, 'Change or renew licence…') : null,
+          state.me.is_admin ? licensePortalButton() : null,
           canManage() && L.state !== 'lifetime' ? h('button', { class: 'btn sm', onclick: () => renewOnlineDialog(screen) }, 'Renew online') : null)));
 
     const shotImg = h('div', { class: 'thumb shot-box', style: { borderRadius: '8px' } }, h('div', { class: 'blank' }, screen.screenshot_at ? 'Loading…' : 'No screenshot yet'));

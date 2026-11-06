@@ -2,7 +2,7 @@ import { clientLabel, clientTitle, sortClients } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, isOnline, refreshMe, setClient } from '../core.js';
 import { pairDialog } from './screens.js';
 import { showInviteLink } from './team.js';
-import { licenseBadge, licenseDialog } from './license-ui.js';
+import { licenseBadge, licensePortalButton } from './license-ui.js';
 import { licenseState, licenseSummary } from '../license.js';
 import { manageSitesDialog } from './sites-ui.js';
 import { integrationsCards } from './integrations.js';
@@ -116,7 +116,7 @@ export async function clientsPage({ main, go, rerender }) {
     h('div', { class: 'list' }, needs.map(({ s }) => h('div', { class: 'list-row' },
       h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, [cname[s.client_id] || 'Unassigned', sname[s.site_id]].filter(Boolean).join(' · '))),
       licenseBadge(s),
-      h('button', { class: 'btn sm primary', onclick: () => licenseDialog(s, () => rerender()) }, 'Renew…'))))) : null;
+      licensePortalButton('Renew'))))) : null;
 
   const allTvs = screens.length ? h('div', { class: 'card' },
     h('div', { class: 'card-head' }, h('h2', {}, 'All TVs')),
@@ -124,7 +124,7 @@ export async function clientsPage({ main, go, rerender }) {
       h('span', { class: 'badge ' + (isOnline(s) ? 'ok' : 'bad') }, isOnline(s) ? 'Online' : 'Offline'),
       h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name), h('div', { class: 'tiny' }, [cname[s.client_id] || 'Unassigned', sname[s.site_id], s.location].filter(Boolean).join(' · '))),
       licenseBadge(s),
-      h('button', { class: 'btn sm', onclick: () => licenseDialog(s, () => rerender()) }, 'Licence'),
+      
       s.client_id ? h('button', { class: 'btn sm', onclick: () => { setClient(s.client_id); go('screen/' + s.id); } }, 'Manage') : null)))) : null;
 
   const remoteCard = h('div', { class: 'card' },
