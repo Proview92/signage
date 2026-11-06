@@ -279,13 +279,16 @@ async function authPage(inviteToken, startSignup = false) {
   else if (cameBack) msg.replaceChildren(h('div', { class: 'notice ok' }, '✓ Email confirmed. Sign in with your password to continue.'));
 
   // Unknown email on the sign-in form: offer to create an account instead of failing silently.
+  let prompting = false, lastChecked = '';
   function noAccountPrompt(addr) {
+    if (prompting) return; prompting = true;
     modal({
-      title: 'No account found',
-      body: [h('p', {}, 'There’s no PROVIEW SIGNAGE account for ', h('b', {}, addr), '.'), h('p', { class: 'muted' }, 'Would you like to create one? It starts with a free 3-day trial on 1 screen.')],
+      title: 'This email doesn’t exist',
+      body: [h('p', {}, 'We couldn’t find an account for ', h('b', {}, addr), '.'), h('p', {}, 'Would you like to create a new account?'), h('p', { class: 'muted small' }, 'New accounts start with a free 3-day trial on 1 screen.')],
+      onClose: () => { prompting = false; },
       actions: [
-        { label: 'No, back to sign in', onClick: () => { pass.value = ''; msg.replaceChildren(h('div', { class: 'notice' }, 'Check the email address and try again.')); setTimeout(() => email.focus(), 50); } },
-        { label: 'Yes, create an account', class: 'primary', onClick: () => {
+        { label: 'No, go back', onClick: () => { pass.value = ''; msg.replaceChildren(h('div', { class: 'notice' }, 'Check the email address and try again.')); setTimeout(() => email.focus(), 50); } },
+        { label: 'Yes, create a new account', class: 'primary', onClick: () => {
           const typed = pass.value;
           mode = 'signup'; paint();
           email.value = addr; pass.value = typed; pass2.value = '';
@@ -295,6 +298,16 @@ async function authPage(inviteToken, startSignup = false) {
       ],
     });
   }
+
+  email.addEventListener('change', async () => {
+    const addr = email.value.trim();
+    if (mode !== 'signin' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr) || addr.toLowerCase() === lastChecked) return;
+    lastChecked = addr.toLowerCase();
+    try {
+      const { data: exists, error } = await sb.rpc('email_has_account', { p_email: addr });
+      if (!error && exists === false && mode === 'signin' && email.value.trim().toLowerCase() === lastChecked) noAccountPrompt(addr);
+    } catch {}
+  });
 
   const form = h('form', {
     onsubmit: async (e) => {
