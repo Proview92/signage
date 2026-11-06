@@ -122,6 +122,25 @@ function clientPicker() {
   return s;
 }
 
+// sidebar footer (same as Proview Employee and Bookings): who's signed in, then COLLAPSE and SIGN OUT
+const sideCollapsed = () => localStorage.getItem('signage.sideCollapsed') === '1';
+function toggleSide() {
+  const on = !sideCollapsed();
+  localStorage.setItem('signage.sideCollapsed', on ? '1' : '0');
+  document.querySelector('.app')?.classList.toggle('collapsed', on);
+}
+function sideMe(r) {
+  const email = state.me.email || '';
+  const name = state.me.name || state.me.full_name || email.split('@')[0] || 'Me';
+  const initials = name.split(/[\s._-]+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  const sub = (state.me.is_admin ? 'Proview admin' : r === 'manager' ? 'Manager' : r === 'admin' ? 'Administrator' : 'Editor') + (state.clientId && state.me.clients.length ? ' · ' + clientTitle(state.me.clients.find((c) => c.id === state.clientId)) : '');
+  const canTeam = state.clientId && (state.me.is_admin || r === 'admin' || r === 'manager');
+  return h(canTeam ? 'a' : 'div', { class: 'side-me', href: canTeam ? '#/team' : undefined, title: email },
+    h('span', { class: 'side-av' }, initials),
+    h('span', { class: 'side-me-t' }, h('b', {}, name), h('span', {}, sub)),
+    canTeam ? icon('right') : null);
+}
+
 function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
@@ -134,10 +153,10 @@ function shell(section, main) {
       bell('row'),
       link('help', 'Help', 'help'),
       n.admin ? [h('div', { class: 'nav-sep' }, 'Admin'), link('clients', 'Clients & TVs', 'clients')] : null),
+    sideMe(n.r),
     h('div', { class: 'side-foot' },
-      h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, state.me.email),
-      h('div', { class: 'tiny' }, n.r === 'admin' ? 'Administrator' : n.r === 'manager' ? 'Manager' : 'Editor'),
-      h('button', { class: 'btn sm', onclick: signOut }, icon('logout'), 'Sign out')));
+      h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
+      h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
 
   const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(), bell('icon'),
     h('a', { class: 'btn ghost icon', href: '#/help', style: { color: '#fff' }, 'aria-label': 'Help', title: 'Help' }, icon('help')),
@@ -146,7 +165,7 @@ function shell(section, main) {
     n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),
     n.admin ? h('a', { href: '#/clients', class: section === 'clients' ? 'active' : '' }, icon('clients'), 'Clients') : null);
 
-  return h('div', { class: 'app' }, side, h('div', { style: { minWidth: 0 } }, top, main), tabs);
+  return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { style: { minWidth: 0 } }, top, main), tabs);
 }
 
 // ------------------------------------------------------------ notifications bell

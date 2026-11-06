@@ -53,8 +53,30 @@ h3 { font-size: 15px; font-weight: 650; }
 .nav a.active svg { color: var(--accent); }
 .nav svg { width: 18px; height: 18px; flex: none; }
 .nav-sep { margin: 14px 12px 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6e6e78; }
-.side-foot { margin-top: auto; padding: 10px 12px; font-size: 13px; color: #8a8a94; border-top: 1px solid #24242b; }
-.side-foot button { margin-top: 8px; }
+.side { overflow: hidden; }
+.side .nav { overflow-y: auto; min-height: 0; }
+.side-me { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: #1f1f25; border: 1px solid #26262e; color: #fff; text-decoration: none; min-width: 0; }
+a.side-me:hover { background: #25252c; }
+.side-av { width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--accent-grad, #4a6cd0); background-color: #4a6cd0; color: #fff; font-weight: 700; font-size: 12.5px; }
+.side-me-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.side-me-t b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-me-t span { font-size: 11.5px; color: #8b8b95; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.side-me svg { width: 16px; height: 16px; color: #8b8b95; flex: none; }
+.side-foot { display: flex; align-items: center; padding: 10px 2px 0; }
+.sf-link { display: flex; align-items: center; gap: 6px; background: none; border: 0; color: #8b8b95; letter-spacing: .06em; font-size: 12px; font-weight: 600; padding: 6px 8px; cursor: pointer; font-family: inherit; }
+.sf-link:hover { color: #fff; }
+.sf-link svg { width: 14px; height: 14px; }
+.app { transition: grid-template-columns .15s ease; }
+.app.collapsed { grid-template-columns: 76px 1fr; }
+.app.collapsed .side { padding: 18px 10px; }
+.app.collapsed .wordmark, .app.collapsed .client-pick, .app.collapsed .nav a > span:not(.bell-dot), .app.collapsed .nav-sep, .app.collapsed .side-me-t, .app.collapsed .side-me > svg, .app.collapsed .sf-link .lbl { display: none; }
+.app.collapsed .brand { justify-content: center; padding: 4px 0 18px; }
+.app.collapsed .nav a { justify-content: center; padding: 10px 0; position: relative; }
+.app.collapsed .nav a .bell-dot { position: absolute; top: 4px; right: 10px; }
+.app.collapsed .side-me { justify-content: center; padding: 8px 0; background: none; border-color: transparent; }
+.app.collapsed .side-foot { flex-direction: column; gap: 4px; }
+.app.collapsed .side-foot .sf-link { margin: 0 !important; }
+.app.collapsed .side-foot .sf-link:first-child svg { transform: rotate(180deg); }
 
 .main { min-width: 0; padding: 28px 34px 60px; max-width: 1280px; width: 100%; }
 .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 22px; flex-wrap: wrap; }
