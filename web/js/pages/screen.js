@@ -8,12 +8,7 @@ import { loadSites, siteSelect } from './sites-ui.js';
 import { licenseBanner, licenseDialog } from './license-ui.js';
 import { renewOnlineDialog } from './integrations.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
-
-// Newest TV app published with the dashboard (written by the deploy workflow). Fetched once per visit.
-let latestAppPromise = null;
-const latestApp = () => (latestAppPromise ||= fetch('tv-version.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : null)).then((j) => j?.versionName || null).catch(() => null));
-const verNum = (v) => String(v || '').split('.').map((n) => parseInt(n, 10) || 0);
-const newer = (a, b) => { const x = verNum(a), y = verNum(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; };
+import { latestApp, newestFor, installedApp, appBehind } from '../app-version.js';
 
 export async function screenPage({ main, params: [id], go, rerender }) {
   let sites = [], screen, playlists, rules, byId, player = null, tick = null, latest = null;
@@ -169,11 +164,10 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         h('div', { class: 'row', style: { marginTop: '6px', gap: '6px' } }, statusBadges(screen, rules, byId), (() => { const t = [sites.find((x) => x.id === screen.site_id)?.name, screen.location].filter(Boolean).join(' · '); return t ? h('span', { class: 'tiny' }, t) : null; })())),
       h('div', { class: 'row' },
         (() => {
-          if (!/Android/.test(dinfo.app || '')) return null;
+          const installed = installedApp(screen);
+          if (!installed) return null;
           // Compare with the newest version ourselves: the TV's own "update available" note can be hours old.
-          const installed = dinfo.app.replace(/^Android\s*/, '');
-          const best = [latest, dinfo.app_update].filter(Boolean).reduce((m, v) => (newer(v, m) ? v : m), installed);
-          const behind = newer(best, installed);
+          const best = newestFor(screen, latest), behind = appBehind(screen, latest);
           return h('button', { class: 'btn' + (behind ? ' primary' : ''), onclick: updateApp, title: behind ? `Installed: ${installed}` : `Installed: ${installed} (up to date)` },
             behind ? `Update app to ${best}` : `App ${installed} ✓`);
         })(),

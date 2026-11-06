@@ -10,6 +10,7 @@ import { emergencyDialog, overridesBanner } from './emergency.js';
 import { publishSummary } from './show-on-tvs.js';
 import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
 import { validWall } from '../renderer.js';
+import { latestApp, appBehind, installedApp, newestFor } from '../app-version.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -183,6 +184,32 @@ export async function screensPage({ main, go }) {
         h('div', { class: 'row', style: { gap: '6px' } }, statusBadges(s, rules, byId))));
   };
 
+  // Newest TV app version, for the "Update TVs" button (repaint once it's known).
+  let latest = null;
+  latestApp().then((v) => { if (v && v !== latest) { latest = v; try { paint(); } catch {} } });
+
+  function bulkUpdateDialog(screens) {
+    const androidTvs = screens.filter((s) => installedApp(s));
+    const behind = androidTvs.filter((s) => appBehind(s, latest));
+    const list = behind.length ? behind : androidTvs;
+    if (!androidTvs.length) return toast('None of these TVs run the PROVIEW SIGNAGE Android app yet', true);
+    modal({
+      title: behind.length ? `Update ${behind.length} TV${behind.length === 1 ? '' : 's'}` : 'All TVs are up to date',
+      body: [
+        h('p', {}, behind.length
+          ? `These TVs will download and install the newest app${latest ? ` (${latest})` : ''}. Some TVs ask you to press OK on the remote to finish installing.`
+          : `Every TV already runs the newest app${latest ? ` (${latest})` : ''}. You can still ask them all to check again.`),
+        h('div', { class: 'list', style: { marginTop: '10px' } }, list.map((s) => h('div', { class: 'row between', style: { padding: '8px 0', borderBottom: '1px solid var(--line)' } },
+          h('span', {}, h('b', {}, s.name), isOnline(s) ? '' : h('span', { class: 'tiny', style: { marginLeft: '8px' } }, 'offline: updates when it next starts')),
+          h('span', { class: 'tiny' }, installedApp(s) + (appBehind(s, latest) ? ` → ${newestFor(s, latest)}` : ' ✓'))))),
+      ],
+      actions: [{ label: 'Cancel' }, { label: behind.length ? `Update ${behind.length} TV${behind.length === 1 ? '' : 's'}` : 'Check all again', class: 'primary', onClick: async () => {
+        await q(sb.from('screens').update({ update_requested_at: new Date().toISOString() }).in('id', list.map((s) => s.id)));
+        toast(`Update sent to ${list.length} TV${list.length === 1 ? '' : 's'}. Each TV installs it in the next minute or two.`);
+      } }],
+    });
+  }
+
   const paint = () => {
     const { screens, rules, byId, sites } = data;
     if (filter !== 'all' && filter !== 'none' && !sites.some((x) => x.id === filter)) filter = 'all';
@@ -210,6 +237,11 @@ export async function screensPage({ main, go }) {
         canManage() || !currentClient()?.require_approval ? h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message') : null,
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Sites') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
+        canManage() && screens.some((s) => installedApp(s)) ? (() => {
+          const n = screens.filter((s) => appBehind(s, latest)).length;
+          return h('button', { class: 'btn', onclick: () => bulkUpdateDialog(screens), title: n ? `${n} TV${n === 1 ? '' : 's'} can be updated` : 'All TVs run the newest app' },
+            icon('refresh'), n ? `Update TVs (${n})` : 'Update TVs');
+        })() : null,
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
 
     if (!screens.length) {
