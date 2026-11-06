@@ -208,6 +208,20 @@ function confirmUrl() {
   return location.origin + location.pathname + (inv ? `?invite=${inv}` : '');
 }
 
+// Sign-in left panel art: a wall of four screens (design option A)
+function signageArt() {
+  const d = document.createElement('div');
+  d.style.display = 'contents';
+  d.innerHTML = `<div class="pva pva-wall" aria-hidden="true">
+<div class="t t-menu"><b>Breakfast</b><p><span>Full English</span><span>£9.50</span></p><p><span>Avocado toast</span><span>£7.00</span></p><p><span>Flat white</span><span>£3.20</span></p></div>
+<div class="t t-promo"><small>TODAY</small><b>Happy hour<br>5–7pm</b></div>
+<div class="t t-clock"><b>09:41</b><small>Friday · Sunny 14°</small></div>
+<div class="t t-welcome"><i class="c1"></i><i class="c2"></i><b>Welcome in</b></div>
+</div>
+<div class="pva pva-chip pva-wallchip" aria-hidden="true"><span class="pva-dot" style="background:#4ade80"></span>4 screens playing</div>`;
+  return d;
+}
+
 const AUTH_LOOK = 'classic';   // original design; 'glow' | 'wall' | 'hero' also available
 async function authPage(inviteToken, startSignup = false) {
   let invite = null;
@@ -359,7 +373,7 @@ async function authPage(inviteToken, startSignup = false) {
       h('img', { class: 'auth-art-logo', src: 'logo.png', alt: '' }),
       h('div', { class: 'brand', style: { padding: 0 } }, brandMark(), wordmark(APP)),
       h('h2', {}, 'Every screen, on schedule — from your phone.'),
-      h('div', { class: 'tv' }),
+      signageArt(),
       h('div', { class: 'muted', style: { color: '#9a9aa4' } }, 'Upload, build slides, schedule and publish to your TVs.')),
     h('div', { class: 'auth-form' }, form));
 }
