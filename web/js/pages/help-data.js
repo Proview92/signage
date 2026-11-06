@@ -30,6 +30,7 @@ export const TV = [
   ]],
 
   ['TV menu options', 'What each item in the screen menu does.', [
+    '**Skip to next content**: show the next slide straight away (every area of a split layout moves on). Not shown on video walls, which stay in step together.',
     '**Reload content**: fetch the latest schedule and media now.',
     '**Screen status**: the TV’s name, licence, what is playing, connection, device and app version.',
     '**Wi-Fi & network settings**: opens the TV’s network settings to join a different Wi-Fi. The player reopens itself after a few minutes.',

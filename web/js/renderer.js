@@ -851,7 +851,7 @@ export class LayoutPlayer {
   start() { this.running = true; this.players.forEach((p) => p.start()); }
   stop() { this.running = false; this.players.forEach((p) => p.stop()); }
   clear() { this.stop(); this._reset(); this.key = null; }
-  next() { this.players[0]?.next(); }
+  next() { this.players.forEach((p) => p.next()); }   // every area moves on to its next slide
 }
 
 // ---------------------------------------------------------------------

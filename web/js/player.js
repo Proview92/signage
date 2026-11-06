@@ -550,10 +550,13 @@ const remote = createRemoteMenu({
       name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
+      canSkip: !!player && player.kind !== 'wall' && !sleeping && views.stage.classList.contains('on'),
       needsTurnOff: (() => { try { return !!native()?.canTurnOff && !native().canTurnOff(); } catch { return false; } })(),   // show until granted, so it can be set up in advance
     };
   },
   onReload: () => location.reload(),
+  // Skip to the next slide from the TV menu (not on video walls: they follow the shared clock).
+  onSkip: () => { try { if (player && player.kind !== 'wall' && !sleeping) player.next(); } catch (e) { console.warn('[signage] skip failed', e); } },
   // Unlink from the TV's own menu: back to the pairing screen with a new code.
   onUnlink: async () => {
     const { data, error } = await sb.rpc('device_unpair');
