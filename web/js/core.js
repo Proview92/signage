@@ -69,7 +69,7 @@ export function icon(name) {
   s.setAttribute('viewBox', '0 0 24 24');
   s.setAttribute('fill', 'none');
   s.setAttribute('stroke', 'currentColor');
-  s.setAttribute('stroke-width', '2');
+  s.setAttribute('stroke-width', '1.8');   // same line weight as Proview Bookings and Employee
   s.setAttribute('stroke-linecap', 'round');
   s.setAttribute('stroke-linejoin', 'round');
   s.innerHTML = P[name] || '';
