@@ -52,7 +52,7 @@
     @keyframes ovpulse { 50% { transform: scale(1.08); } }
     #remote { position: fixed; inset: 0; z-index: 50; display: none; place-items: center; background: rgba(0,0,0,.72); cursor: default; }
     #remote.on { display: grid; }
-    .rm-card { width: min(46vw, 760px); min-width: 520px; background: #17171c; border: 1px solid #2c2c35; border-radius: 2.2vmin; padding: 3vmin 3.4vmin; box-shadow: 0 4vmin 12vmin rgba(0,0,0,.6); }
+    .rm-card { width: min(46%, 760px); min-width: min(520px, 90%); background: #17171c; border: 1px solid #2c2c35; border-radius: 2.2vmin; padding: 3vmin 3.4vmin; box-shadow: 0 4vmin 12vmin rgba(0,0,0,.6); }
     .rm-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.4vmin; }
     .rm-title { font-size: 3vmin; font-weight: 750; }
     .rm-foot { margin-top: 2.2vmin; font-size: 1.7vmin; color: #8b8b95; text-align: center; }
@@ -75,30 +75,29 @@
     .rm-list button.rm-danger { background: #5a1d1d; }
     #remote .rm-list button.rm-danger.focus, #remote .rm-list button.rm-danger:hover { background: #8b2424; }
     .wm { font-size: 2.6vmin; letter-spacing: .18em; color: #fff; margin-top: -0.6vmin; }
-    /* Portrait screens: stack the steps and keep the code inside the screen */
-    @media (orientation: portrait) {
-      .steps { flex-direction: column; gap: 1.6vmin; align-items: flex-start; }
-      .contact { flex-direction: column; align-items: center; gap: 1.4vmin; }
-      #code { font-size: 14vw; padding: 2.5vw 4vw; }
-      p { max-width: 86vw; font-size: 3.4vmin; }
-      .steps { font-size: 3.4vmin; text-align: left; max-width: 80vw; }
-      .steps > div { display: flex; align-items: flex-start; gap: 1.4vmin; }
-      .steps b { flex: none; margin-right: 0; }
-      .steps b { width: 5vmin; height: 5vmin; font-size: 2.6vmin; }
-      h1 { font-size: 6.4vmin; }
-      .brand-logo { height: 14vmin; }
-      .wm { font-size: 3.8vmin; }
-      .contact { font-size: 3.2vmin; }
-      .contact svg { width: 3.6vmin; height: 3.6vmin; }
-      .rm-card { width: 88vw; min-width: 0; max-width: none; padding: 4vmin 4.4vmin; }
-      .rm-title { font-size: 4.6vmin; }
-      .rm-list button { font-size: 3.6vmin; padding: 2.4vmin 3vmin; }
-      .rm-list button span { font-size: 2.7vmin; }
-      .rm-table { font-size: 3.2vmin; }
-      .rm-note { font-size: 3.2vmin; }
-      .rm-pad button { font-size: 5vmin; }
-      .rm-foot, .rm-msg { font-size: 2.6vmin; }
-    }
+    /* Portrait screens (decided from the real screen shape, incl. dashboard rotation): see updateShape() in player.js */
+    html.portrait .steps { flex-direction: column; gap: 1.6vmin; align-items: flex-start; }
+    html.portrait .contact { flex-direction: column; align-items: center; gap: 1.4vmin; }
+    html.portrait #code { font-size: 14vmin; padding: 2.5vmin 4vmin; }
+    html.portrait p { max-width: 86vmin; font-size: 3.4vmin; }
+    html.portrait .steps { font-size: 3.4vmin; text-align: left; max-width: 80vmin; }
+    html.portrait .steps > div { display: flex; align-items: flex-start; gap: 1.4vmin; }
+    html.portrait .steps b { flex: none; margin-right: 0; }
+    html.portrait .steps b { width: 5vmin; height: 5vmin; font-size: 2.6vmin; }
+    html.portrait h1 { font-size: 6.4vmin; }
+    html.portrait .brand-logo { height: 14vmin; }
+    html.portrait .wm { font-size: 3.8vmin; }
+    html.portrait .contact { font-size: 3.2vmin; }
+    html.portrait .contact svg { width: 3.6vmin; height: 3.6vmin; }
+    html.portrait .rm-card { width: 88vmin; min-width: 0; max-width: none; padding: 4vmin 4.4vmin; }
+    html.portrait .rm-title { font-size: 4.6vmin; }
+    html.portrait .rm-list button { font-size: 3.6vmin; padding: 2.4vmin 3vmin; }
+    html.portrait .rm-list button span { font-size: 2.7vmin; }
+    html.portrait .rm-table { font-size: 3.2vmin; }
+    html.portrait .rm-note { font-size: 3.2vmin; }
+    html.portrait .rm-pad button { font-size: 5vmin; }
+    html.portrait .rm-foot, html.portrait .rm-msg { font-size: 2.6vmin; }
+
     .load-track { width: min(60vw, 900px); height: 1.6vmin; min-height: 8px; background: rgba(255,255,255,.12); border-radius: 99px; overflow: hidden; margin: 2vmin 0 1vmin; }
     #load-bar { height: 100%; width: 0; background: linear-gradient(90deg, #2f84d4, #5a5fbb); border-radius: 99px; transition: width .4s ease; }
     #loading { background: radial-gradient(ellipse at 30% 20%, #1f2638, #0b0c12 70%); }

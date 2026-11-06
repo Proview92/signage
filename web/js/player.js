@@ -368,7 +368,18 @@ function apply(row) {
 function applyRotation(deg) {
   const r = [90, 180, 270].includes(Number(deg)) ? Number(deg) : 0;
   for (const d of [90, 180, 270]) document.body.classList.toggle('rot' + d, d === r);
+  updateShape();
 }
+
+// Portrait or landscape, as the viewer sees it: the window shape, turned by the dashboard's rotation setting.
+// (A CSS orientation query alone gets this wrong for rotated screens and while the TV is still starting up.)
+function updateShape() {
+  const turned = document.body.classList.contains('rot90') || document.body.classList.contains('rot270');
+  const tall = window.innerHeight > window.innerWidth;
+  document.documentElement.classList.toggle('portrait', turned ? !tall : tall);
+}
+window.addEventListener('resize', updateShape);
+updateShape();
 
 function deviceInfo() {
   const dpr = window.devicePixelRatio || 1;

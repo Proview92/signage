@@ -135,8 +135,10 @@ class MainActivity : Activity() {
             mediaPlaybackRequiresUserGesture = false
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-            loadWithOverviewMode = true
-            useWideViewPort = true
+            // Lay the page out at the WebView's real size, 1:1. ("Wide viewport / overview" zoomed the page out
+            // when the TV reported a different screen size while starting up: small, narrow menu after a reboot.)
+            loadWithOverviewMode = false
+            useWideViewPort = false
             userAgentString = "$userAgentString ProviewSignageTV/${BuildConfig.VERSION_NAME}"
         }
         w.addJavascriptInterface(Bridge(), "SignageNative")
