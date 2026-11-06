@@ -587,3 +587,15 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
   .look-classic .auth-form { padding: 24px 14px; align-content: start; min-height: 100vh; }
   .look-classic .auth-form form { padding: 26px 20px; border-radius: 18px; margin-top: 4vh; }
 }
+
+/* Small centred confirm box (e.g. "This email doesn't exist" on the sign-in page) */
+.modal.compact { width: min(380px, 100%); text-align: center; }
+.modal.compact .modal-head { position: relative; justify-content: center; padding: 22px 44px 0; }
+.modal.compact .modal-head h2 { font-size: 19px; }
+.modal.compact .modal-head .btn.icon { position: absolute; right: 10px; top: 12px; }
+.modal.compact .modal-body { padding: 10px 24px 18px; gap: 8px; }
+.modal.compact .modal-body p { margin: 0; line-height: 1.45; }
+.modal.compact .nm-email { word-break: break-all; }
+.modal.compact .nm-note { font-size: 13px; color: var(--ink-3); }
+.modal.compact .modal-foot { padding: 0 24px 22px; flex-direction: column-reverse; gap: 8px; }
+.modal.compact .modal-foot .btn { width: 100%; justify-content: center; height: 42px; }

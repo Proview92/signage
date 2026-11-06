@@ -94,7 +94,7 @@ export function errMsg(e) {
   return m.replace(/^.*?ERROR:\s*/, '');
 }
 
-export function modal({ title, body, actions = [], wide = false, onClose }) {
+export function modal({ title, body, actions = [], wide = false, compact = false, onClose }) {
   const back = h('div', { class: 'modal-back' });
   const close = () => { back.remove(); document.removeEventListener('keydown', onKey); onClose?.(); };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -113,7 +113,7 @@ export function modal({ title, body, actions = [], wide = false, onClose }) {
       },
     }, a.label));
   }
-  back.append(h('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog' },
+  back.append(h('div', { class: 'modal' + (wide ? ' wide' : '') + (compact ? ' compact' : ''), role: 'dialog' },
     h('div', { class: 'modal-head' }, h('h2', {}, title),
       h('button', { class: 'btn ghost icon', onclick: close, 'aria-label': 'Close' }, icon('x'))),
     h('div', { class: 'modal-body' }, body),

@@ -284,7 +284,10 @@ async function authPage(inviteToken, startSignup = false) {
     if (prompting) return; prompting = true;
     modal({
       title: 'This email doesn’t exist',
-      body: [h('p', {}, 'We couldn’t find an account for ', h('b', {}, addr), '.'), h('p', {}, 'Would you like to create a new account?'), h('p', { class: 'muted small' }, 'New accounts start with a free 3-day trial on 1 screen.')],
+      compact: true,
+      body: [h('p', {}, 'We couldn’t find an account for', h('br'), h('b', { class: 'nm-email' }, addr.toLowerCase())),
+        h('p', {}, 'Would you like to create a new account?'),
+        h('p', { class: 'nm-note' }, 'Includes a free 3-day trial on 1 screen.')],
       onClose: () => { prompting = false; },
       actions: [
         { label: 'No, go back', onClick: () => { pass.value = ''; msg.replaceChildren(h('div', { class: 'notice' }, 'Check the email address and try again.')); setTimeout(() => email.focus(), 50); } },
