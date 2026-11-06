@@ -129,7 +129,7 @@ function toggleSide() {
 }
 function sideMe(r) {
   const email = state.me.email || '';
-  const name = state.me.name || state.me.full_name || email.split('@')[0] || 'Me';
+  const name = email.split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') || state.me.full_name || state.me.name || 'Me';
   const initials = name.replace(/[^\p{L}\p{N}\s._-]/gu,' ').split(/[\s._-]+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
   const sub = (state.me.is_admin ? 'Proview admin' : r === 'manager' ? 'Manager' : r === 'admin' ? 'Administrator' : 'Editor') + (state.clientId && state.me.clients.length ? ' · ' + clientTitle(state.me.clients.find((c) => c.id === state.clientId)) : '');
   const canTeam = state.clientId && (state.me.is_admin || r === 'admin' || r === 'manager');
