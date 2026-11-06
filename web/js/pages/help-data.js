@@ -52,6 +52,14 @@ export const TV = [
     'If the picture still comes out sideways, open the TV in the dashboard, press the pencil next to its name and set **Screen rotation**.',
   ]],
 
+  ['Sleep hours on the TV', 'What the TV does when its sleep hours start and end.', [
+    'At the switch-off time the screen goes black and the content stops.',
+    'If the TV has allowed it, the app also switches the TV stick off, and most TVs switch off with it. At the switch-on time both wake up and the content starts again.',
+    'To allow it (once per TV): press **Menu** on the remote, choose **Allow switching the TV off**, then **Activate** / **Allow** on the next screen. Until then the TV shows a black screen during sleep hours.',
+    'Need the screen during sleep hours? Press **OK** on the remote: it wakes for 1 hour, then goes back to sleep.',
+    'If someone switches the TV on during sleep hours and presses nothing, it goes back to sleep after a minute.',
+  ], ['Some TVs don’t switch themselves off or on with the TV stick (HDMI-CEC, often called Anynet+, SimpLink, Bravia Sync or CEC in the TV’s settings). Turn that setting on in the TV for the best result.', 'Fire TV sticks may not allow apps to switch them off. They use the black screen instead.']],
+
   ['Updating the TV app', 'Keep TVs on the newest version.', [
     'When a new version is available, the TV’s page in the dashboard shows **Update app to …** (and **App x.x ✓** when it is up to date).',
     'Press it and the TV downloads and installs the update. Some TVs ask for a one-time OK on screen.',
@@ -148,6 +156,15 @@ export const DASH = [
     '**Device**: model, app version, resolution, last seen.',
     'Top buttons: **Reload TV**, **Update app**, **Re-send to TV**. The pencil edits the name, site, position and screen rotation.',
   ]],
+
+  ['Sleep hours', 'Switch TVs off out of hours and back on in the morning.', [
+    'Open a TV from **Screens**. Find the **Sleep hours** card and press **Edit**.',
+    'Tick **Switch this TV off out of hours**, then choose **Switch off at** and **Switch on at** (the TV’s local time), and the nights it applies.',
+    'Choose **Switch the TV off** (best: saves power; needs a one-off Allow on each TV) or **Black screen only** (works on every TV).',
+    'Under **Apply to**, choose this TV, every TV at the same site, or all your TVs, then press **Save**. TVs pick it up within seconds.',
+    'Need it on outside its hours? Press **Wake now** on the TV’s page (stays on until the next switch-off). **Sleep now** switches it off early. **Back to normal hours** cancels either.',
+    'On the Screens page a TV in its sleep hours shows **Sleeping until …** instead of Offline.',
+  ], ['A TV that is fully switched off can’t receive Wake now until it wakes at its set time: press OK on its remote to wake it straight away.']],
 
   ['Video walls', 'Several TVs showing one big picture together.', [
     'On **Screens**, press **Video wall**, name the wall and set the number of columns and rows.',

@@ -5,6 +5,8 @@ import android.app.Activity
 import android.app.AlarmManager
 import android.app.AlertDialog
 import android.app.PendingIntent
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.webkit.JavascriptInterface
@@ -86,6 +88,10 @@ class MainActivity : Activity() {
         @JavascriptInterface fun checkForUpdate(manual: Boolean) { Updater.check(this@MainActivity, manual) }
         @JavascriptInterface fun versionCode(): Int = BuildConfig.VERSION_CODE
         @JavascriptInterface fun updateAvailable(): String = Updater.available(this@MainActivity) ?: ""
+        // Sleep hours (set on the dashboard)
+        @JavascriptInterface fun sleepMode(on: Boolean, wakeAtMs: String, turnOff: Boolean) = runOnUiThread { setSleep(on, wakeAtMs.toLongOrNull() ?: 0L, turnOff) }
+        @JavascriptInterface fun canTurnOff(): Boolean = turnOffAllowed()
+        @JavascriptInterface fun allowTurnOff() = runOnUiThread { askToAllowTurnOff() }
     }
 
     companion object { @Volatile var running = false }
@@ -99,6 +105,7 @@ class MainActivity : Activity() {
             WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
             WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
         )
+        if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         setContentView(root)
         createWebView()
@@ -248,6 +255,66 @@ class MainActivity : Activity() {
     }
 
     private val retry = Runnable { load() }
+
+    // ------------------------------------------------------------------ sleep hours
+    private val dpm by lazy { getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager }
+    private val adminComponent by lazy { ComponentName(this, AdminReceiver::class.java) }
+    private fun turnOffAllowed(): Boolean = try { dpm.isAdminActive(adminComponent) } catch (_: Exception) { false }
+
+    /** Ask once on the TV for permission to switch the screen off ("device admin" with only the lock-screen policy). */
+    private fun askToAllowTurnOff() {
+        if (turnOffAllowed()) { Toast.makeText(this, "Already allowed", Toast.LENGTH_SHORT).show(); return }
+        try {
+            startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+                .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                    "Lets PROVIEW SIGNAGE switch this TV off during the sleep hours set on the dashboard, and on again in the morning."))
+        } catch (_: Exception) {
+            Toast.makeText(this, "This TV doesn't allow apps to switch it off. It will show a black screen during sleep hours instead.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun wakePendingIntent(): PendingIntent = PendingIntent.getBroadcast(this, 7,
+        Intent(this, WakeReceiver::class.java),
+        PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_IMMUTABLE else 0))
+
+    private fun scheduleWake(atMs: Long) {
+        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pi = wakePendingIntent()
+        am.cancel(pi)
+        if (atMs <= System.currentTimeMillis()) return
+        try {
+            when {
+                Build.VERSION.SDK_INT >= 31 && !am.canScheduleExactAlarms() -> am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
+                Build.VERSION.SDK_INT >= 23 -> am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMs, pi)
+                else -> am.setExact(AlarmManager.RTC_WAKEUP, atMs, pi)
+            }
+        } catch (_: Exception) {
+            try { am.set(AlarmManager.RTC_WAKEUP, atMs, pi) } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Sleep: stop keeping the screen on and dim it; if allowed, switch the TV off now and set an alarm to wake it.
+     * Wake: keep the screen on again (the player reloads itself).
+     */
+    private fun setSleep(on: Boolean, wakeAtMs: Long, turnOff: Boolean) {
+        val lp = window.attributes
+        if (on) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            lp.screenBrightness = 0.01f
+            window.attributes = lp
+            scheduleWake(wakeAtMs)
+            if (turnOff && turnOffAllowed()) {
+                handler.postDelayed({ try { dpm.lockNow() } catch (_: Exception) {} }, 1500)
+            }
+        } else {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            window.attributes = lp
+            scheduleWake(0)
+        }
+    }
 
     private fun loadFailed() {
         if (!fromCache && prefs.getBoolean("player_cached", false)) {

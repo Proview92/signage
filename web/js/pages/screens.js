@@ -11,6 +11,7 @@ import { publishSummary } from './show-on-tvs.js';
 import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
 import { validWall } from '../renderer.js';
 import { latestApp, appBehind, installedApp, newestFor } from '../app-version.js';
+import { sleepBadge, isAsleep } from './sleep-ui.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -40,7 +41,10 @@ export function screenThumb(screen, contentOverride) {
 
 export function statusBadges(screen, rules, byId) {
   const out = [];
-  out.push(isOnline(screen) ? h('span', { class: 'badge ok' }, 'Online') : h('span', { class: 'badge bad' }, screen.last_seen ? `Offline · ${timeAgo(screen.last_seen)}` : 'Offline'));
+  const zz = sleepBadge(screen);
+  // A TV switched off for its sleep hours is expected to be offline: show "Sleeping" instead.
+  if (zz && !isOnline(screen)) out.push(zz);
+  else { out.push(isOnline(screen) ? h('span', { class: 'badge ok' }, 'Online') : h('span', { class: 'badge bad' }, screen.last_seen ? `Offline · ${timeAgo(screen.last_seen)}` : 'Offline')); if (zz) out.push(zz); }
   if (needsPublish(screen, rules.filter((r) => r.screen_id === screen.id), byId)) out.push(h('span', { class: 'badge warn' }, 'Unpublished changes'));
   out.push(licenseBadge(screen));
   if (validWall(screen.wall)) out.push(h('span', { class: 'badge', title: 'Part of a video wall' }, `Wall: ${screen.wall.name} · row ${screen.wall.y + 1}, screen ${screen.wall.x + 1}`));

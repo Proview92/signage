@@ -9,6 +9,7 @@ import { LayoutPlayer, WallPlayer, validWall, onAirPlaylist } from './renderer.j
 import { licenseState, licenseSummary } from './license.js';
 import { createRemoteMenu } from './remote.js';
 import { shrinkImage } from './imgfit.js';
+import { sleepState, hhmm, DEFAULT_SLEEP } from './sleep.js';
 
 const qs = new URLSearchParams(location.search);
 const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
@@ -20,7 +21,7 @@ const LS = { screen: 'signage.tv.screen', reload: 'signage.tv.reload' };
 const MEDIA_CACHE = 'signage-media-v1';
 
 const $ = (id) => document.getElementById(id);
-const views = { boot: $('boot'), pair: $('pair'), wait: $('wait'), loading: $('loading'), stage: $('stage'), expired: $('expired'), error: $('error') };
+const views = { boot: $('boot'), pair: $('pair'), wait: $('wait'), loading: $('loading'), stage: $('stage'), expired: $('expired'), error: $('error'), sleep: $('sleep') };
 function show(name) { for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === name); }
 
 let screen = null;        // our screens row
@@ -143,6 +144,7 @@ let prepGen = 0;
 const fmtMB = (b) => (b / 1048576 >= 10 ? Math.round(b / 1048576) : (b / 1048576).toFixed(1)) + ' MB';
 function showProgress(onScreen, done, total, frac, got, size) {
   const pct = Math.round(((done + Math.min(1, frac)) / total) * 100);
+  if (sleeping) return;   // downloading quietly overnight: keep the screen dark
   if (onScreen) {
     $('upd').classList.add('on');
     $('upd-text').textContent = `Updating content · ${pct}%`;
@@ -200,7 +202,72 @@ async function prune() {
 // ------------------------------------------------------------ playback
 function isExpired() { return screen?.claimed && ['expired', 'none'].includes(licenseState(screen).state); }
 
+// ------------------------------------------------------------ sleep hours
+// Set on the dashboard (screens.sleep / sleep_override). While asleep: black screen, playback stopped,
+// and the Android app switches the TV off when it has permission (it wakes the TV again at the end).
+let sleeping = false;
+let sleepHintTimer = null, sleepRelockTimer = null;
+const WAKE_KEY = 'signage.tv.wakeUntil';   // staff pressed OK on the remote: stay awake until then
+const native = () => window.SignageNative;
+
+function sleepNow() {
+  if (!screen?.claimed || isExpired()) return { asleep: false };
+  const st = sleepState(screen.sleep, screen.sleep_override);
+  const woke = +localStorage.getItem(WAKE_KEY) || 0;
+  if (st.asleep && woke > Date.now()) return { asleep: false, until: new Date(woke), manual: true };
+  return st;
+}
+const turnOffWanted = () => (screen?.sleep?.off ?? DEFAULT_SLEEP.off);
+
+function goNativeSleep(st) {
+  try { native()?.sleepMode?.(true, String(st.until ? st.until.getTime() : 0), !!turnOffWanted()); } catch {}
+}
+
+function checkSleep() {
+  const st = sleepNow();
+  if (st.asleep && !sleeping) {
+    sleeping = true;
+    console.log('[signage] sleep hours: going to sleep until', st.until?.toString());
+    player?.clear(); player = null; currentKey = 'sleep'; nowPlaying = 'sleeping';
+    $('sleep-msg').textContent = st.until ? `${screen?.name || 'This screen'} wakes up at ${hhmm(st.until)}.` : '';
+    show('sleep');
+    goNativeSleep(st);
+    heartbeat?.();
+  } else if (!st.asleep && sleeping) {
+    console.log('[signage] sleep hours: waking up');
+    try { native()?.sleepMode?.(false, '0', false); } catch {}
+    sleeping = false;
+    location.reload();   // fresh start: content plays straight away
+  } else if (st.asleep) {
+    if (!views.sleep.classList.contains('on')) show('sleep');   // e.g. after a publish downloaded overnight
+    $('sleep-msg').textContent = st.until ? `${screen?.name || 'This screen'} wakes up at ${hhmm(st.until)}.` : '';
+  }
+  return sleeping;
+}
+
+// While asleep: any key shows a hint; OK wakes it for an hour. If someone switches the TV back on during
+// sleep hours and does nothing, it goes back to sleep after a minute.
+function showSleepHint() {
+  if (!sleeping) return;
+  $('sleep').classList.add('hint');
+  clearTimeout(sleepHintTimer); sleepHintTimer = setTimeout(() => $('sleep').classList.remove('hint'), 20000);
+  clearTimeout(sleepRelockTimer); sleepRelockTimer = setTimeout(() => { const st = sleepNow(); if (sleeping && st.asleep) goNativeSleep(st); }, 60000);
+}
+document.addEventListener('keydown', (e) => {
+  if (!sleeping) return;
+  if (e.key === 'Enter' || e.key === ' ' || e.keyCode === 23) {
+    e.preventDefault(); e.stopImmediatePropagation();
+    localStorage.setItem(WAKE_KEY, String(Date.now() + 3600000));
+    try { native()?.sleepMode?.(false, '0', false); } catch {}
+    location.reload();
+    return;
+  }
+  showSleepHint();
+}, true);
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; try { evaluate(); } catch {} showSleepHint(); });   // TV switched back on / woken by the alarm
+
 function evaluate() {
+  if (checkSleep()) return;
   if (isExpired()) {
     if (currentKey !== 'expired') {
       currentKey = 'expired'; player?.clear(); nowPlaying = 'licence expired';
@@ -312,6 +379,8 @@ function deviceInfo() {
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     display: window.innerHeight > window.innerWidth ? 'portrait' : 'landscape',
     app_update: (() => { try { return window.SignageNative?.updateAvailable?.() || undefined; } catch { return undefined; } })(),
+    sleeping: sleeping || undefined,
+    can_turn_off: (() => { try { return window.SignageNative?.canTurnOff ? window.SignageNative.canTurnOff() : undefined; } catch { return undefined; } })(),
   };
 }
 
@@ -470,6 +539,7 @@ const remote = createRemoteMenu({
       name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
+      needsTurnOff: (() => { try { return !!screen?.sleep?.on && !!turnOffWanted() && !!native()?.canTurnOff && !native().canTurnOff(); } catch { return false; } })(),
     };
   },
   onReload: () => location.reload(),

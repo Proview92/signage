@@ -66,6 +66,7 @@ export function createRemoteMenu({ getStatus, onReload, onUnlink }) {
       isApp ? ['exit', `Exit to home screen${settings.return_minutes ? ` (reopens in ${settings.return_minutes} min)` : ''}`, 'For changing other TV settings'] : null,
       isApp ? ['exit-stay', 'Exit until next restart', 'Stays closed until the TV is switched off and on'] : null,
       isApp && native()?.checkForUpdate ? ['update', 'Check for app update', `Installed: version ${native()?.appVersion?.() || '?'}`] : null,
+      isApp && st.needsTurnOff ? ['turnoff', 'Allow switching the TV off', 'Needed for sleep hours: lets the app switch the TV off at night and on again in the morning'] : null,
       isApp && st.needsOverlay ? ['overlay', 'Allow automatic reopening', 'Grant “Display over other apps” so the player can reopen itself'] : null,
       st.paired && onUnlink ? ['unlink', 'Unlink this TV', 'Disconnect it from its account and show the pairing code again'] : null,
       ['close', 'Close menu', ''],
@@ -128,6 +129,7 @@ export function createRemoteMenu({ getStatus, onReload, onUnlink }) {
       }
       case 'exit-stay': close(); native()?.exitToHome(0); break;
       case 'overlay': native()?.openOverlayPermission(); break;
+      case 'turnoff': close(); native()?.allowTurnOff?.(); break;
       case 'update': close(); native()?.checkForUpdate?.(true); break;
       case 'close': close(); break;
       case 'unlink': renderUnlink(); break;

@@ -569,3 +569,12 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .hc-dots i:nth-child(2) { animation-delay: .15s; } .hc-dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes hcdot { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
 @media (max-width: 600px) { .hc-msg { max-width: 94%; } .hc-log { padding: 12px; } .hc-form { padding: 10px 12px 12px; } }
+
+/* Sleep hours */
+.badge.sleep { background: #eceaf8; color: #4b45a0; }
+.chip-day { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 14px; cursor: pointer; color: var(--ink-2); }
+.chip-day.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.notice.warn { background: #fff7e6; border-color: #f5d9a3; color: #7a4d00; }
+.sleep-how-title { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+.sleep-opt { display: flex !important; gap: 10px; align-items: flex-start; font-weight: 400 !important; cursor: pointer; }
+.sleep-opt input { margin-top: 3px; flex: none; width: auto; }

@@ -9,6 +9,7 @@ import { licenseBanner, licenseDialog } from './license-ui.js';
 import { renewOnlineDialog } from './integrations.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 import { latestApp, newestFor, installedApp, appBehind } from '../app-version.js';
+import { sleepCard } from './sleep-ui.js';
 
 export async function screenPage({ main, params: [id], go, rerender }) {
   let sites = [], screen, playlists, rules, byId, player = null, tick = null, latest = null;
@@ -294,7 +295,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     const banner = licenseBanner(screen);
     main.replaceChildren(head, banner ? h('div', { style: { marginBottom: '16px' } }, banner) : '', h('div', { class: 'split' },
       h('div', { class: 'stack' }, onair, assignedCard(), shot, lic, device),
-      h('div', { class: 'stack' }, sched)));
+      h('div', { class: 'stack' }, sched, sleepCard(screen, { onChange: async () => { await load(); paint(); } }))));
     startPreview(preview);
   }
   paint();
