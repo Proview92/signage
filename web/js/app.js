@@ -208,17 +208,58 @@ function confirmUrl() {
   return location.origin + location.pathname + (inv ? `?invite=${inv}` : '');
 }
 
-// Sign-in left panel art: a wall of four screens (design option A)
+// Sign-in left panel art: the shop screen designs from the website (pizza, takeaway, barber, clothing)
 function signageArt() {
   const d = document.createElement('div');
   d.style.display = 'contents';
-  d.innerHTML = `<div class="pva pva-wall" aria-hidden="true">
-<div class="t t-menu"><b>Breakfast</b><p><span>Full English</span><span>£9.50</span></p><p><span>Avocado toast</span><span>£7.00</span></p><p><span>Flat white</span><span>£3.20</span></p></div>
-<div class="t t-promo"><small>TODAY</small><b>Happy hour<br>5–7pm</b></div>
-<div class="t t-clock"><b>09:41</b><small>Friday · Sunny 14°</small></div>
-<div class="t t-welcome"><i class="c1"></i><i class="c2"></i><b>Welcome in</b></div>
-</div>
-<div class="pva pva-chip pva-wallchip" aria-hidden="true"><span class="pva-dot" style="background:#4ade80"></span>4 screens playing</div>`;
+  d.innerHTML = `<div class="pva pva-shop" aria-hidden="true"><div class="col"><div class="dv land"><div class="scr"><div class="pz">
+  <div class="hd"><b>Tonight's deals</b><span>PIZZA · GRILL · WRAPS</span></div>
+  <div class="cards">
+    <div class="cd"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="#e7a54a"/><circle cx="50" cy="50" r="38" fill="#d9472b"/><circle cx="50" cy="50" r="36" fill="#f6d36b" opacity=".85"/><g fill="#b3261e"><circle cx="36" cy="34" r="7"/><circle cx="64" cy="38" r="7"/><circle cx="46" cy="62" r="7"/><circle cx="68" cy="64" r="6"/><circle cx="30" cy="56" r="5"/></g><g stroke="#3b7d2f" stroke-width="3" stroke-linecap="round"><path d="M54 24l4 3M24 44l3 4M58 78l4-2"/></g></svg><h6>Any large pizza</h6><p>Plus 2 sides of your choice</p><div class="pr">£14.99</div></div>
+    <div class="cd hot"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M14 40h72v44H14z" fill="#c98a4b"/><path d="M14 40l12-16h48l12 16z" fill="#e0a466"/><rect x="34" y="52" width="32" height="16" rx="3" fill="#c1272d"/><path d="M14 40h72" stroke="#8a5a2c" stroke-width="2"/></svg><h6>Family box</h6><p>2 large pizzas, wings, fries &amp; 1.5L drink</p><div class="pr">£24.99</div></div>
+    <div class="cd"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M30 86 58 14l22 10-26 70z" fill="#f2d79b"/><path d="M58 14l22 10-6 14-22-10z" fill="#7cc142"/><path d="M52 28l22 10-4 9-22-10z" fill="#d9472b"/><path d="M30 86l24 8 6-16-24-8z" fill="#fff" opacity=".9"/></svg><h6>Wrap meal</h6><p>Chicken or falafel wrap, fries &amp; can</p><div class="pr">£7.49</div></div>
+  </div>
+  <div class="tk"><div class="tr"><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span><span>Free delivery over £20</span><span>Collection in 15 minutes</span><span>Order online for collection</span></div></div>
+</div></div></div><div class="dv land"><div class="scr"><div class="tw">
+  <div class="promo">
+    <div class="cyc"><div class="tag">Meal deal</div><div class="h">Smash burger, fries &amp; drink</div><div class="d">Double patty, cheese, house sauce</div><div class="burst"><div><small>ONLY</small>£6.99</div></div><svg class="art" viewBox="0 0 200 170" aria-hidden="true"><path d="M20 72c0-38 36-60 80-60s80 22 80 60z" fill="#e9a24a"/><g fill="#fff3d6"><ellipse cx="70" cy="38" rx="4" ry="2.4"/><ellipse cx="100" cy="28" rx="4" ry="2.4"/><ellipse cx="130" cy="40" rx="4" ry="2.4"/><ellipse cx="88" cy="50" rx="4" ry="2.4"/><ellipse cx="118" cy="56" rx="4" ry="2.4"/></g><path d="M14 80q14 14 28 0t28 0 28 0 28 0 28 0 28 0 28 0v8H14z" fill="#7cc142"/><path d="M28 86h144l-20 26-26-18-24 22-26-22-26 18z" fill="#ffc93c"/><rect x="16" y="90" width="168" height="26" rx="13" fill="#5a2e1b"/><path d="M22 124h156a0 0 0 0 1 0 0c0 18-22 30-78 30S22 142 22 124z" fill="#d98c3a"/></svg></div>
+    <div class="cyc"><div class="tag">Every Friday</div><div class="h">Loaded fries</div><div class="d">Cheese, jalapeños &amp; crispy onions</div><div class="burst"><div><small>NOW</small>£3.49</div></div><svg class="art" viewBox="0 0 200 170" aria-hidden="true"><g fill="#ffd34d"><rect x="58" y="20" width="12" height="80" rx="3" transform="rotate(-10 64 60)"/><rect x="76" y="10" width="12" height="90" rx="3" transform="rotate(-4 82 55)"/><rect x="94" y="6" width="12" height="94" rx="3"/><rect x="112" y="10" width="12" height="90" rx="3" transform="rotate(5 118 55)"/><rect x="130" y="20" width="12" height="80" rx="3" transform="rotate(11 136 60)"/></g><path d="M44 70h112l-14 92H58z" fill="#d7261e"/><path d="M44 70q56 26 112 0" fill="#b51c15"/><circle cx="100" cy="120" r="16" fill="#ffcc29"/></svg></div>
+    <div class="cyc"><div class="tag">New in</div><div class="h">Thick shakes</div><div class="d">Strawberry, Oreo-style cookie or vanilla</div><div class="burst"><div><small>FROM</small>£3.99</div></div><svg class="art" viewBox="0 0 200 170" aria-hidden="true"><rect x="110" y="0" width="9" height="60" rx="4" fill="#ff5a7a" transform="rotate(14 114 30)"/><path d="M62 40c0-20 76-20 76 0v8H62z" fill="#fff"/><circle cx="100" cy="24" r="9" fill="#d7261e"/><path d="M58 50h84l-12 112H70z" fill="#f6a5c0"/><path d="M58 50h84l-2 18H60z" fill="#fff" opacity=".6"/><rect x="66" y="98" width="68" height="16" fill="#fff" opacity=".85"/></svg></div>
+  </div>
+  <div class="menu">
+    <h5>Burgers <em>HALAL</em></h5>
+    <div class="mi"><span>Classic smash</span><b>£5.49</b></div>
+    <div class="mi"><span>Double cheese</span><b>£6.99</b></div>
+    <div class="mi"><span>Spicy chicken</span><b>£5.99</b></div>
+    <div class="mi"><span>Veggie stack</span><b>£5.49</b></div>
+    <h5>Sides</h5>
+    <div class="mi"><span>Fries · regular</span><b>£2.49</b></div>
+    <div class="mi"><span>6 hot wings</span><b>£3.99</b></div>
+    <h5>Drinks</h5>
+    <div class="mi"><span>Cans · 330ml</span><b>£1.20</b></div>
+    <div class="mi"><span>Thick shake</span><b>£3.99</b></div>
+  </div>
+  <div class="tk" style="grid-column:1/-1"><div class="tr"><span>Order at the counter</span><span>Open till 2am, Fri &amp; Sat</span><span>Delivery available</span><span>Student deals with valid ID</span><span>Order at the counter</span><span>Open till 2am, Fri &amp; Sat</span><span>Delivery available</span><span>Student deals with valid ID</span></div></div>
+</div></div></div></div><div class="dv port"><div class="scr"><div class="bb">
+  <div class="top"><div class="pole" aria-hidden="true"></div><div class="name">The Cut Club<small>Barbers · est. 2014</small></div><div class="clk js-clock">10:24</div></div>
+  <div class="list">
+    <div class="row"><span>Skin fade</span><i></i><b>£18</b></div>
+    <div class="row"><span>Classic cut</span><i></i><b>£15</b></div>
+    <div class="row"><span>Scissor cut</span><i></i><b>£20</b></div>
+    <div class="row"><span>Beard trim<small>Line-up &amp; shape</small></span><i></i><b>£8</b></div>
+    <div class="row"><span>Hot towel shave</span><i></i><b>£20</b></div>
+    <div class="row"><span>Kids · under 12</span><i></i><b>£12</b></div>
+  </div>
+  <div class="card">
+    <div class="cyc c1"><div><div class="big">Walk-ins welcome</div><div class="sm">Average wait today: 15 min</div></div></div>
+    <div class="cyc c2"><div class="qr" aria-hidden="true"><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i></i><i></i><i class="o"></i><i></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i class="o"></i><i></i><i></i><i class="o"></i><i></i><i></i></div><div><div class="big">Book online</div><div class="sm">Scan to skip the queue</div></div></div>
+  </div>
+</div></div></div><div class="dv port cl-dv"><div class="scr"><div class="cl">
+  <div class="cyc s1"><div class="brand">Northline</div><div><div class="h">Autumn edit</div><div class="p" style="margin-top:3cqw">New season, now in store</div></div><svg class="hanger" viewBox="0 0 200 120" aria-hidden="true" fill="none" stroke="#2b2118" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"><path d="M100 44v-8c0-6 10-8 10-18a10 10 0 0 0-20 0"/><path d="M100 44 12 96h176z"/><path d="M38 96v20h124V96" stroke="#c2410c"/></svg><div class="p"><b>Knitwear from £29</b></div></div>
+  <div class="cyc s2"><div class="brand">Northline</div><div class="h">Up to 50% off</div><div class="tagw"><div class="pricetag">Denim</div></div><div class="p">Selected jeans &amp; jackets, this week only</div></div>
+  <div class="cyc s3"><div class="brand">Northline</div><div class="h">Members get 10% off</div><div class="p">Join free at the till and save today</div></div>
+  <div class="tk"><div class="tr"><span>Free alterations</span><span>Click &amp; collect</span><span>Returns within 28 days</span><span>Free alterations</span><span>Click &amp; collect</span><span>Returns within 28 days</span></div></div>
+</div></div></div></div>`;
   return d;
 }
 
