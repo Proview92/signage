@@ -44,7 +44,9 @@ Deno.serve(async (req) => {
 
   // Who is asking?
   const auth = req.headers.get("Authorization") ?? "";
-  const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+  // Projects on the newer publishable keys: use the key the dashboard sent, else the built-in one.
+  const anonKey = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
+  const sb = createClient(Deno.env.get("SUPABASE_URL")!, anonKey, {
     global: { headers: { Authorization: auth } },
   });
   const { data: { user } } = await sb.auth.getUser();

@@ -68,7 +68,7 @@ function helpChat() {
     try {
       const history = msgs.filter((m) => !m.error).map(({ role, content }) => ({ role, content }));
       const { data, error: err } = await sb.functions.invoke('help-chat', { body: { messages: history, page: 'Help' } });
-      if (err) { try { error = (await err.context?.json?.())?.error; } catch {} error ||= 'The help assistant is not available right now.'; }
+      if (err) { try { const j = await err.context?.json?.(); error = j?.error || (j?.message && `The help assistant is not available right now (${j.message}).`); } catch {} error ||= 'The help assistant is not available right now.'; }
       else reply = data?.reply;
     } catch { error = 'Could not reach the help assistant. Check your internet connection.'; }
     busy = false;
