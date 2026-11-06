@@ -130,7 +130,7 @@ function toggleSide() {
 function sideMe(r) {
   const email = state.me.email || '';
   const name = state.me.name || state.me.full_name || email.split('@')[0] || 'Me';
-  const initials = name.split(/[\s._-]+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  const initials = name.replace(/[^\p{L}\p{N}\s._-]/gu,' ').split(/[\s._-]+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
   const sub = (state.me.is_admin ? 'Proview admin' : r === 'manager' ? 'Manager' : r === 'admin' ? 'Administrator' : 'Editor') + (state.clientId && state.me.clients.length ? ' · ' + clientTitle(state.me.clients.find((c) => c.id === state.clientId)) : '');
   const canTeam = state.clientId && (state.me.is_admin || r === 'admin' || r === 'manager');
   return h(canTeam ? 'a' : 'div', { class: 'side-me', href: canTeam ? '#/team' : undefined, title: email },

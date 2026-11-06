@@ -857,3 +857,18 @@ body{font-size:15px;line-height:1.45}
 @media (min-width:901px),(max-width:700px){.side .nav>button:not(.nav-group):not(.nav-more),.side .nav>a{height:40px;box-sizing:border-box}}
 @media (max-width:700px){.app .side .side-me{display:flex!important}.side .client-pick select{font-size:15px!important}}
 @media (max-width:700px) and (hover:none) and (pointer:coarse){.side .client-pick select{font-size:16px!important}}
+
+/* rail v3: identical iPad/narrow rail on all Proview apps */
+@media (min-width:701px) and (max-width:900px){
+.side .nav{gap:0!important;row-gap:0!important}
+.side .nav>button:not(.nav-more),.side .nav>a{height:56px!important;min-height:0!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;gap:5px!important;padding:0 2px!important;margin:0!important;font-size:15px!important;font-weight:550!important}
+.side .nav>button svg,.side .nav>a svg{width:18px!important;height:18px!important;margin:0!important;order:0!important;flex:none}
+.side .nav .slbl,.side .nav>a>span:not(.bell-dot):not(.cnt){display:block!important;font-size:10.5px!important;line-height:12px!important;font-weight:500!important;letter-spacing:-.1px!important;text-transform:none!important;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:64px;margin:0!important}
+.side .nav .nav-group{color:inherit!important}
+.app .side .side-me{display:flex!important;justify-content:center;margin:8px 10px!important;padding:12px 0!important}
+.app .side .side-me-t,.app .side .side-me>svg{display:none!important}
+.side .side-foot{flex-direction:column!important;align-items:center!important;padding:0 0 12px!important;gap:0!important}
+.side .side-foot .slbl,.side .side-foot [data-act=collapse],.side .side-foot .sf-link:not([data-act=logout]):not(:last-child){display:none!important}
+.side .side-foot>*{width:30px!important;height:26px!important;padding:0!important;margin:0!important;display:flex!important;align-items:center;justify-content:center;flex-direction:row!important;gap:0!important}
+.side .side-foot>* svg{width:18px!important;height:18px!important;margin:0!important}
+}
