@@ -6,7 +6,6 @@ import { playlistsPage } from './pages/playlists.js';
 import { editorPage } from './pages/editor.js';
 import { mediaPage } from './pages/media.js';
 import { teamPage } from './pages/team.js';
-import { clientsPage } from './pages/clients.js';
 import { activityPage } from './pages/activity.js';
 import { reportsPage } from './pages/reports.js';
 import { helpPage } from './pages/help.js';
@@ -26,7 +25,6 @@ const routes = [
   [/^team$/, teamPage, 'team'],
   [/^activity(\?.*)?$/, activityPage, 'activity'],
   [/^reports$/, reportsPage, 'reports'],
-  [/^clients$/, clientsPage, 'clients'],
   [/^help$/, helpPage, 'help'],
 ];
 
@@ -72,14 +70,14 @@ async function render() {
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
   if (!state.me.is_admin && !state.me.clients.length) return root.replaceChildren(setupBusiness());
+  // Proview admin: clients and licences are managed at license.proviewcrm.co.uk; with none yet, point there.
+  if (state.me.is_admin && !state.me.clients.length) return root.replaceChildren(noClientsYet());
   // Always have a valid business selected (never "none" for someone who belongs to one).
-  if (!state.me.is_admin && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
+  if (!state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
 
   let match = null, page = null, section = null;
   for (const [re, fn, sec] of routes) { const m = path.match(re); if (m) { match = m; page = fn; section = sec; break; } }
-  if (!page) return go(state.me.is_admin && !state.clientId ? 'clients' : 'screens');
-  if (section === 'clients' && !state.me.is_admin) return go('screens');
-  if (section !== 'clients' && !state.clientId) return go('clients');
+  if (!page) return go('screens');
 
   const main = h('main', { class: 'main' });
   root.replaceChildren(shell(section, main));
@@ -116,7 +114,7 @@ function clientPicker() {
   if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, clientTitle(cs[0]));
   const s = h('select', {
     'aria-label': 'Client',
-    onchange: (e) => { setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p === 'clients' ? 'screens' : p || 'screens')); if (location.hash === to) render(); else location.hash = to; },
+    onchange: (e) => { setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p || 'screens')); if (location.hash === to) render(); else location.hash = to; },
   });
   for (const c of cs) s.append(h('option', { value: c.id, selected: c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
   return s;
@@ -152,7 +150,7 @@ function shell(section, main) {
       n.items.map(([k, l, i]) => link(k, l, i)),
       bell('row'),
       link('help', 'Help', 'help'),
-      n.admin ? [h('div', { class: 'nav-sep' }, 'Admin'), link('clients', 'Clients & TVs', 'clients')] : null),
+      n.admin ? [h('div', { class: 'nav-sep' }, 'Admin'), h('a', { href: 'https://license.proviewcrm.co.uk', target: '_blank', rel: 'noopener', title: 'Clients and licences are managed in the licence portal' }, icon('clients'), h('span', {}, 'Licence portal ↗'))] : null),
     sideMe(n.r),
     h('div', { class: 'side-foot' },
       h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
@@ -163,7 +161,7 @@ function shell(section, main) {
     h('button', { class: 'btn ghost icon', style: { color: '#fff' }, onclick: signOut, 'aria-label': 'Sign out' }, icon('logout')));
   const tabs = h('nav', { class: 'tabbar' },
     n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),
-    n.admin ? h('a', { href: '#/clients', class: section === 'clients' ? 'active' : '' }, icon('clients'), 'Clients') : null);
+    null);
 
   return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { style: { minWidth: 0 } }, top, main), tabs);
 }
@@ -498,6 +496,17 @@ function setupBusiness() {
     h('div', { style: { textAlign: 'center' } }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out')));
   setTimeout(() => name.focus(), 50);
   return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
+}
+
+function noClientsYet() {
+  return h('div', { class: 'auth-form', style: { minHeight: '100vh' } },
+    h('div', { class: 'stack', style: { maxWidth: '440px', textAlign: 'center' } },
+      h('h1', {}, 'No clients yet'),
+      h('p', { class: 'muted' }, 'Add clients, sites and licences in the Proview licence portal, then come back here.'),
+      h('div', { class: 'row', style: { justifyContent: 'center', gap: '8px' } },
+        h('a', { class: 'btn primary', href: 'https://license.proviewcrm.co.uk', target: '_blank', rel: 'noopener' }, 'Open licence portal ↗'),
+        h('button', { class: 'btn', onclick: () => render() }, 'Check again'),
+        h('button', { class: 'btn', onclick: signOut }, 'Sign out'))));
 }
 
 function noAccess() {
