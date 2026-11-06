@@ -1,8 +1,5 @@
-// Admin: email alerts (Resend) and online payments (Stripe Payment Links).
+// Admin: email alerts (Resend). Online payments are managed in the Proview licence portal.
 import { sb, state, h, q, rpc, toast, modal, field, select, timeAgo } from '../core.js';
-import { LICENSE_TYPES } from '../license.js';
-
-const PAY_PLANS = LICENSE_TYPES.filter(([k]) => !['trial7', 'custom'].includes(k));
 
 export async function integrationsCards(rerender) {
   let st;
@@ -34,42 +31,6 @@ export async function integrationsCards(rerender) {
     }
   };
 
-  // ---------------- payments
-  const payDialog = () => {
-    const key = h('input', { type: 'password', autocomplete: 'off', placeholder: st.has_stripe_key ? 'Saved — leave blank to keep' : 'rk_live_…' });
-    let on = st.stripe_enabled;
-    const plans = structuredClone(st.stripe_plans || {});
-    const rows = PAY_PLANS.map(([k, label]) => {
-      const p = plans[k] || {};
-      const link = h('input', { type: 'url', value: p.link || '', placeholder: 'https://buy.stripe.com/…' });
-      const price = h('input', { type: 'number', min: 0, step: '0.01', value: p.amount ? (p.amount / 100).toFixed(2) : '', placeholder: '0.00', style: { width: '110px' } });
-      return { k, label, link, price };
-    });
-    modal({ title: 'Online licence payments', wide: true, body: [
-      h('div', { class: 'notice info' }, h('b', {}, 'How it works. '), 'In Stripe, create a Payment Link for each licence you sell. Paste each link and its price below. Clients see “Renew online” on their TV’s licence. When they pay, the licence extends automatically within about 5 minutes.'),
-      h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: on, onchange: (e) => (on = e.target.checked) }), 'Offer online renewal to clients'),
-      field('Stripe restricted key', key, 'Stripe → Developers → API keys → Create restricted key → give “Checkout Sessions: Read”, nothing else. Paste it here yourself.'),
-      h('div', { class: 'stack', style: { gap: '8px' } }, h('div', { class: 'tiny' }, 'Plans (GBP). Leave a link blank to not sell that plan online.'),
-        ...rows.map((r) => h('div', { class: 'row', style: { flexWrap: 'nowrap' } }, h('div', { style: { width: '110px', fontWeight: 600 } }, r.label), h('div', { class: 'grow' }, r.link), h('span', { class: 'tiny' }, '£'), r.price))),
-      st.stripe_last_error ? h('div', { class: 'notice' }, 'Last check: ' + st.stripe_last_error) : st.stripe_checked_at ? h('div', { class: 'tiny' }, 'Last checked ' + timeAgo(st.stripe_checked_at)) : null],
-    actions: [{ label: 'Cancel' }, { label: 'Save', class: 'primary', onClick: async () => {
-      const out = {};
-      for (const r of rows) {
-        const link = r.link.value.trim();
-        if (!link) continue;
-        if (!/^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com)\//.test(link)) throw new Error(`${r.label}: paste a Stripe Payment Link (https://buy.stripe.com/…)`);
-        const amt = Math.round(parseFloat(r.price.value) * 100);
-        if (!(amt > 0)) throw new Error(`${r.label}: enter the price`);
-        out[r.k] = { link, amount: amt, currency: 'gbp', label: r.label };
-      }
-      if (on && !Object.keys(out).length) throw new Error('Add at least one plan');
-      const p = { stripe_enabled: on, stripe_plans: out };
-      if (key.value.trim()) p.stripe_secret_key = key.value.trim();
-      await rpc('set_integration_settings', { p });
-      toast('Payment settings saved'); rerender();
-    } }] });
-  };
-
   const status = (ok, text) => h('span', { class: 'badge ' + (ok ? 'ok' : 'plain') }, text);
   return h('div', { class: 'stack' },
     h('div', { class: 'card' },
@@ -80,26 +41,30 @@ export async function integrationsCards(rerender) {
           h('button', { class: 'btn sm', onclick: alertsDialog }, 'Set up')))),
     h('div', { class: 'card' },
       h('div', { class: 'card-head' },
-        h('div', {}, h('h2', {}, 'Online payments'), h('div', { class: 'tiny' }, 'Clients renew licences by card (Stripe); licences extend automatically.')),
-        h('div', { class: 'row' }, status(st.stripe_enabled && st.has_stripe_key, st.stripe_enabled && st.has_stripe_key ? `On · ${Object.keys(st.stripe_plans || {}).length} plans` : 'Off'),
-          h('button', { class: 'btn sm', onclick: payDialog }, 'Set up')))));
+        h('div', {}, h('h2', {}, 'Online payments'), h('div', { class: 'tiny' }, 'Prices, Stripe links and payments for all Proview apps are managed in the licence portal.')),
+        h('a', { class: 'btn sm', href: 'https://license.proviewcrm.co.uk', target: '_blank', rel: 'noopener' }, 'Licence portal ↗'))));
 }
 
-/** Client-side: pick a plan and pay for a TV's licence. */
+/** Client-side: pick a plan and pay for a TV's licence (prices are set in the Proview licence portal). */
 export async function renewOnlineDialog(screen) {
-  const plans = await rpc('get_payment_plans');
-  const entries = Object.entries(plans || {});
-  if (!entries.length) return toast('Online renewal isn’t available. Contact Proview to renew.', true);
+  const plans = await rpc('licence_buy_plans');
+  const entries = Object.entries(plans || {}).sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
+  if (!entries.length) return toast('Online payment isn’t available yet. Call Proview on 020 8935 5495 to buy or renew.', true);
   let pick = entries.find(([k]) => k === 'm12')?.[0] || entries[0][0];
-  modal({ title: `Renew licence: ${screen.name}`, body: [
-    h('p', { class: 'muted small', style: { margin: 0 } }, 'Choose a plan. Time is added on top of the current licence. You’ll pay securely with Stripe; the licence updates within about 5 minutes.'),
+  const buying = !screen.license_type || screen.license_type === 'trial7';
+  modal({ title: `${buying ? 'Buy a licence' : 'Renew licence'}: ${screen.name}`, body: [
+    h('p', { class: 'muted small', style: { margin: 0 } }, buying
+      ? 'Choose a plan. You’ll pay securely with Stripe, and the TV is licensed within about 5 minutes.'
+      : 'Choose a plan. Time is added on top of the current licence. You’ll pay securely with Stripe; the licence updates within about 5 minutes.'),
     h('div', { class: 'stack', style: { gap: '8px' } }, entries.map(([k, p]) => h('label', { class: 'row card pad', style: { fontWeight: 600, padding: '12px 14px' } },
-      h('input', { type: 'radio', name: 'plan', checked: k === pick, onchange: () => (pick = k) }), h('span', { class: 'grow' }, p.label || k), `£${(p.amount / 100).toFixed(2)}`)))],
+      h('input', { type: 'radio', name: 'plan', checked: k === pick, onchange: () => (pick = k) }), h('span', { class: 'grow' }, p.label || k), money(p))))],
   actions: [{ label: 'Cancel' }, { label: 'Pay with card', class: 'primary', onClick: () => {
     const p = plans[pick];
     const u = new URL(p.link);
-    u.searchParams.set('client_reference_id', `${screen.id}__${pick}`);
+    u.searchParams.set('client_reference_id', `${p.ref || 'pvs'}__${screen.id}__${pick}`);
     if (state.me.email) u.searchParams.set('prefilled_email', state.me.email);
     window.open(u.toString(), '_blank', 'noopener');
   } }] });
 }
+const ORDER = ['m1', 'm3', 'm6', 'm12', 'm24', 'm36', 'lifetime'];
+const money = (p) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: (p.currency || 'gbp').toUpperCase() }).format(p.amount / 100);

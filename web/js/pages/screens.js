@@ -222,13 +222,13 @@ export async function screensPage({ main, go }) {
     const addTv = (siteId = '') => {
       // Free trial: 1 screen. Explain instead of letting the pairing fail.
       if (trial && screens.length >= 1) return modal({ title: 'Your free trial includes 1 screen', body: [
-        h('p', {}, 'To add more TVs, buy a licence for your first TV: open it and press “Renew online” under Licence.'),
+        h('p', {}, 'To add more TVs, buy a licence for your first TV: open it and press “Buy licence online” under Licence.'),
         h('p', { class: 'muted' }, 'Want a price for several screens? Call us on 020 8935 5495.')],
         actions: [{ label: 'Close' }, { label: 'Open my TV', class: 'primary', onClick: () => go('screen/' + screens[0].id) }] });
       return pairDialog({ fixedClient: state.clientId, siteId, onDone: (s) => go('screen/' + s.id) });
     };
     const trialNote = trial ? h('div', { class: 'notice info', style: { marginBottom: '14px' } }, h('b', {}, 'Free trial · 1 screen for 3 days. '),
-      screens.length ? 'Buy a licence for your TV (open it and press “Renew online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.') : null;
+      screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.') : null;
 
     const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); paint(); } },
       h('option', { value: 'all', selected: filter === 'all' }, `All sites · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),
