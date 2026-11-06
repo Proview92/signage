@@ -296,7 +296,7 @@ function evaluate() {
   if (!player) {
     const clockReady = wall && Date.now() - clockSyncedAt > 60000 ? syncClock() : null;
     player = wall
-      ? new WallPlayer($('stage'), { resolveUrl, onChange, wall, now: serverNow, clockReady, mutedOverride: wall.x || wall.y ? true : undefined })
+      ? new WallPlayer($('stage'), { resolveUrl, onChange, wall, now: () => serverNow() + (Number(screen?.wall_shift) || 0), clockReady, mutedOverride: wall.x || wall.y ? true : undefined })
       : new LayoutPlayer($('stage'), { resolveUrl, lookup: (id) => content?.playlists?.[id] || null, onChange });
     player.kind = wantKind;
     if (wall) player.wall = wall;
@@ -310,6 +310,8 @@ function evaluate() {
   player.start();
 }
 let nowPlaying = '';
+// Video wall skipped: re-run the wall from the moved-on shared clock.
+function restartWall() { if (player?.kind === 'wall' && player.running) { player.stop(); player.start(); } }
 let onAirId = null;
 let onAirName = '';
 let playLog = null;   // set by proof-of-play logger
@@ -333,8 +335,10 @@ function apply(row) {
     if (Date.now() - new Date(row.update_requested_at) < 15 * 60000) { try { window.SignageNative?.checkForUpdate?.(true); } catch {} }
   }
 
+  const shiftChanged = player?.kind === 'wall' && (Number(row.wall_shift) || 0) !== (Number(screen?.wall_shift) || 0);
   screen = row;
   localStorage.setItem(LS.screen, JSON.stringify(row));
+  if (shiftChanged) restartWall();   // another TV in the wall pressed "Skip to next content"
   applyRotation(row.rotation);
   if (row.claimed && row.screenshot_requested_at && Date.now() - new Date(row.screenshot_requested_at) < 5 * 60000) takeScreenshot();
   $('screen-name').textContent = row.name;
@@ -550,13 +554,26 @@ const remote = createRemoteMenu({
       name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
-      canSkip: !!player && player.kind !== 'wall' && !sleeping && views.stage.classList.contains('on'),
+      canSkip: !!player && !sleeping && views.stage.classList.contains('on'),
       needsTurnOff: (() => { try { return !!native()?.canTurnOff && !native().canTurnOff(); } catch { return false; } })(),   // show until granted, so it can be set up in advance
     };
   },
   onReload: () => location.reload(),
   // Skip to the next slide from the TV menu (not on video walls: they follow the shared clock).
-  onSkip: () => { try { if (player && player.kind !== 'wall' && !sleeping) player.next(); } catch (e) { console.warn('[signage] skip failed', e); } },
+  onSkip: async () => {
+    try {
+      if (!player || sleeping) return;
+      if (player.kind !== 'wall') return player.next();
+      // Video wall: move the wall's shared clock on to the end of the current slide, for every TV in the wall.
+      const seg = player.segAt(player.now());
+      if (!seg) return;
+      const ms = Math.max(1, Math.round(seg.end - player.now() + 50));
+      const { data, error } = await sb.rpc('wall_skip', { p_ms: ms });
+      if (error) throw error;
+      screen.wall_shift = data;
+      restartWall();
+    } catch (e) { console.warn('[signage] skip failed', e); }
+  },
   // Unlink from the TV's own menu: back to the pairing screen with a new code.
   onUnlink: async () => {
     const { data, error } = await sb.rpc('device_unpair');
