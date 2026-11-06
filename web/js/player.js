@@ -539,7 +539,7 @@ const remote = createRemoteMenu({
       name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
-      needsTurnOff: (() => { try { return !!screen?.sleep?.on && !!turnOffWanted() && !!native()?.canTurnOff && !native().canTurnOff(); } catch { return false; } })(),
+      needsTurnOff: (() => { try { return !!native()?.canTurnOff && !native().canTurnOff(); } catch { return false; } })(),   // show until granted, so it can be set up in advance
     };
   },
   onReload: () => location.reload(),
