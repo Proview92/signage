@@ -144,6 +144,7 @@ function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
 
+  const meEl = sideMe(n.r);
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
     h('div', { class: 'client-pick' }, clientPicker()),
@@ -158,20 +159,26 @@ function shell(section, main) {
       bell('row'),
       link('help', 'Help', 'help'),
       n.admin ? [h('div', { class: 'nav-sep' }, 'Admin'), h('a', { href: 'https://license.proviewcrm.co.uk', target: '_blank', rel: 'noopener', title: 'Clients and licences are managed in the licence portal' }, icon('clients'), h('span', {}, 'Licence portal ↗'))] : null),
-    sideMe(n.r),
+    meEl,
     h('div', { class: 'side-foot' },
       h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
       h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
 
   // header bar (same as Proview Bookings and Employee): menu button on phones, page title, notifications, help
   const toggleNav = () => document.querySelector('.app')?.classList.toggle('navopen');
+  const avTxt = meEl.querySelector('.side-av')?.textContent || '?';
+  const meTitle = [meEl.querySelector('.side-me-t b')?.textContent, meEl.querySelector('.side-me-t span')?.textContent].filter(Boolean).join(' · ');
+  const topMe = h('div', { class: 'top-me' },
+    h('button', { class: 'top-av', title: meTitle, 'aria-label': 'My account', onclick: () => meEl.click() }, avTxt),
+    h('button', { class: 'icon-btn top-out', title: 'Sign out', 'aria-label': 'Sign out', onclick: signOut }, icon('logout')));
   const top = h('header', { class: 'top' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', title: 'Menu', onclick: toggleNav }, icon('menu')),
     h('h2', {}, PAGE_TITLES[section] || ''),
     h('div', { class: 'sp' }),
     h('span', { class: 'top-pick' }, clientPicker()),
     bell('icon'),
-    h('a', { class: 'icon-btn', href: '#/help', 'aria-label': 'Help', title: 'Help' }, icon('help')));
+    h('a', { class: 'icon-btn', href: '#/help', 'aria-label': 'Help', title: 'Help' }, icon('help')),
+    topMe);
   const scrim = h('div', { class: 'nav-scrim', onclick: toggleNav });
   return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main), scrim);
 }
