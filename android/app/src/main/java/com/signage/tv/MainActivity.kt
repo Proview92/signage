@@ -15,6 +15,10 @@ import android.util.Base64
 import android.view.PixelCopy
 import java.io.ByteArrayOutputStream
 import android.net.Uri
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -84,8 +88,11 @@ class MainActivity : Activity() {
         @JavascriptInterface fun updateAvailable(): String = Updater.available(this@MainActivity) ?: ""
     }
 
+    companion object { @Volatile var running = false }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        running = true
         window.addFlags(
             WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
             WindowManager.LayoutParams.FLAG_FULLSCREEN or
@@ -132,12 +139,21 @@ class MainActivity : Activity() {
         }
         w.webViewClient = object : WebViewClient() {
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) showOffline()
+                if (request.isForMainFrame) loadFailed()
             }
 
             @Deprecated("pre-API 23")
             override fun onReceivedError(view: WebView, errorCode: Int, description: String?, failingUrl: String?) {
-                if (failingUrl == null || failingUrl.startsWith(playerUrl.substringBefore('?'))) showOffline()
+                if (failingUrl == null || failingUrl.startsWith(playerUrl.substringBefore('?'))) loadFailed()
+            }
+
+            override fun onPageFinished(view: WebView, url: String?) {
+                // Remember that a full copy of the player is saved on the TV, so the next power-on
+                // can open it straight away even before the internet is up.
+                if (offline || fromCache || url == null || !url.startsWith(playerUrl.substringBefore('?'))) return
+                view.evaluateJavascript("!!document.getElementById('stage')") { r ->
+                    if (r == "true") prefs.edit().putBoolean("player_cached", true).apply()
+                }
             }
 
             @Deprecated("pre-API 24")
@@ -177,8 +193,16 @@ class MainActivity : Activity() {
     private var loadedH = 0
     private val sizeReload = Runnable { if (!offline) web?.reload() }
 
+    /** True while the player was opened from the copy saved on the TV (no internet yet). */
+    private var fromCache = false
+
     private fun load() {
         offline = false
+        // No internet yet (typical straight after power-on): open the player saved on the TV so the
+        // last content plays immediately; switch to live as soon as the network comes up.
+        fromCache = !hasNetwork() && prefs.getBoolean("player_cached", false)
+        web?.settings?.cacheMode = if (fromCache) WebSettings.LOAD_CACHE_ELSE_NETWORK else WebSettings.LOAD_DEFAULT
+        if (fromCache) watchNetwork()
         val uri = Uri.parse(playerUrl).buildUpon()
             .appendQueryParameter("app", BuildConfig.VERSION_NAME)
             .appendQueryParameter("model", "${Build.MANUFACTURER} ${Build.MODEL}".trim())
@@ -219,10 +243,44 @@ class MainActivity : Activity() {
             </div></body></html>""".trimIndent()
         web?.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null)
         handler.removeCallbacks(retry)
-        handler.postDelayed(retry, 15_000)
+        watchNetwork()
+        handler.postDelayed(retry, 5_000)
     }
 
     private val retry = Runnable { load() }
+
+    private fun loadFailed() {
+        if (!fromCache && prefs.getBoolean("player_cached", false)) {
+            // Online load failed (Wi-Fi up but no internet yet): use the saved copy meanwhile.
+            fromCache = true
+            web?.settings?.cacheMode = WebSettings.LOAD_CACHE_ELSE_NETWORK
+            watchNetwork()
+            handler.post { web?.reload() }
+            return
+        }
+        showOffline()
+    }
+
+    private val connectivity by lazy { getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager }
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
+
+    @Suppress("DEPRECATION")
+    private fun hasNetwork(): Boolean = try { connectivity.activeNetworkInfo?.isConnected == true } catch (_: Exception) { true }
+
+    /** Reload the live player the moment the network comes up (instead of waiting for the retry timer). */
+    private fun watchNetwork() {
+        if (netCallback != null) return
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                handler.postDelayed({ if (offline || fromCache) { handler.removeCallbacks(retry); load() } }, 1500)
+            }
+        }
+        try {
+            connectivity.registerNetworkCallback(
+                NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), cb)
+            netCallback = cb
+        } catch (_: Exception) {}
+    }
 
     /** Reload once a day around 04:00 to keep long-running WebViews healthy. */
     private fun scheduleNightlyReload() {
@@ -453,5 +511,10 @@ class MainActivity : Activity() {
 
     override fun onResume() { super.onResume(); web?.onResume(); web?.resumeTimers(); hideSystemUi() }
     override fun onPause() { web?.onPause(); super.onPause() }
-    override fun onDestroy() { handler.removeCallbacksAndMessages(null); web?.destroy(); super.onDestroy() }
+    override fun onDestroy() {
+        running = false
+        handler.removeCallbacksAndMessages(null)
+        netCallback?.let { try { connectivity.unregisterNetworkCallback(it) } catch (_: Exception) {} }
+        web?.destroy(); super.onDestroy()
+    }
 }
