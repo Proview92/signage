@@ -578,3 +578,12 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 .sleep-how-title { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
 .sleep-opt { display: flex !important; gap: 10px; align-items: flex-start; font-weight: 400 !important; cursor: pointer; }
 .sleep-opt input { margin-top: 3px; flex: none; width: auto; }
+
+/* Sign-in page (classic look): the form sits on a white card, desktop and phone */
+.look-classic .auth-form { background: var(--bg); }
+.look-classic .auth-form form { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 34px 32px; width: min(440px, 100%);
+  box-shadow: 0 1px 2px rgba(20,20,30,.04), 0 18px 50px -18px rgba(20,20,30,.18); }
+@media (max-width: 820px) {
+  .look-classic .auth-form { padding: 24px 14px; align-content: start; min-height: 100vh; }
+  .look-classic .auth-form form { padding: 26px 20px; border-radius: 18px; margin-top: 4vh; }
+}
