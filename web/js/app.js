@@ -413,7 +413,7 @@ async function authPage(inviteToken, startSignup = false) {
     h('div', { class: 'auth-art' },
       h('img', { class: 'auth-art-logo', src: 'logo.png', alt: '' }),
       h('div', { class: 'brand', style: { padding: 0 } }, brandMark(), wordmark(APP)),
-      h('h2', {}, 'Every screen, on schedule — from your phone.'),
+      h('h2', {}, 'Every screen, every offer — changed in seconds.'),
       signageArt(),
       h('div', { class: 'muted', style: { color: '#9a9aa4' } }, 'Upload, build slides, schedule and publish to your TVs.')),
     h('div', { class: 'auth-form' }, form));
