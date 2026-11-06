@@ -248,7 +248,7 @@ async function authPage(inviteToken, startSignup = false) {
     title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in';
     sub.textContent = invite && !invite.used
       ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'manager' ? 'a manager' : 'an editor'}.`
-      : mode === 'signup' ? 'Start your free 7-day trial on 1 screen. No card needed. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
+      : mode === 'signup' ? 'Start your free 3-day trial on 1 screen. No card needed. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';
     pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
@@ -369,13 +369,13 @@ function setupBusiness() {
     try {
       await rpc('create_my_business', { p_name: name.value, p_phone: phone.value || null });
       await refreshMe();
-      toast('Welcome! Now pair your TV to start your 7-day trial.');
+      toast('Welcome! Now pair your TV to start your 3-day trial.');
       location.hash = '#/screens'; render();
     } catch (err) { msg.replaceChildren(h('div', { class: 'notice bad' }, errMsg(err))); submit.disabled = false; }
   } },
     h('img', { src: 'logo.png', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
     h('h1', { style: { textAlign: 'center', margin: '6px 0 0' } }, 'Set up your business'),
-    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Signed in as ${state.me.email}. Your free trial includes 1 screen for 7 days, with every feature.`),
+    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Signed in as ${state.me.email}. Your free trial includes 1 screen for 3 days, with every feature.`),
     msg, field('Business name', name), field('Phone number', phone), submit,
     h('p', { class: 'tiny', style: { textAlign: 'center', margin: 0 } }, 'Were you invited to someone else’s account? Open the invite link from your email instead.'),
     h('div', { style: { textAlign: 'center' } }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out')));

@@ -12,7 +12,7 @@ export const TV = [
     'On your phone or computer, sign in to the dashboard and go to **Screens → Add a TV**.',
     'Type the code from the TV, give the TV a name (e.g. “Counter TV”), pick the site, then press **Pair TV**.',
     'Within a few seconds the TV shows “paired”. It plays as soon as you publish a playlist to it.',
-  ], ['A brand-new TV gets a free 7-day trial licence when it is first paired.', 'The code changes every hour while the TV is waiting, so always use the one on screen now.']],
+  ], ['A brand-new TV gets a free 3-day trial licence when it is first paired.', 'The code changes every hour while the TV is waiting, so always use the one on screen now.']],
 
   ['What the TV does on its own', 'Once paired, the TV needs no attention.', [
     'It starts the player automatically when the TV is switched on.',
@@ -188,7 +188,7 @@ export const DASH = [
   ]],
 
   ['Licences', 'Every TV needs an active licence to play.', [
-    'New TVs get a 7-day trial when first paired.',
+    'New TVs get a 3-day trial when first paired.',
     'A TV’s licence is shown on its card and its page. You get reminders before it ends.',
     'Renew on the TV’s page with **Renew online**, or contact Proview.',
   ]],

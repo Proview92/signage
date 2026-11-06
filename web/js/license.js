@@ -1,10 +1,11 @@
 // Per-TV licence helpers, shared by the dashboard and the TV player.
 // Keep GRACE_DAYS in sync with public.license_grace() in the database.
+// Free trials ('trial7', now 3 days long) get no grace: they stop when they end.
 export const GRACE_DAYS = 7;
 const DAY = 86400000;
 
 export const LICENSE_TYPES = [
-  ['trial7', '7-day trial'],
+  ['trial7', '3-day trial'],
   ['m1', '1 month'],
   ['m3', '3 months'],
   ['m6', '6 months'],
@@ -24,7 +25,7 @@ export function previewExpiry(type, { extend = false, current = null, custom = n
   const now = new Date();
   const base = extend && current && new Date(current) > now ? new Date(current) : now;
   const d = new Date(base);
-  if (type === 'trial7') d.setDate(d.getDate() + 7);
+  if (type === 'trial7') d.setDate(d.getDate() + 3);
   else {
     const day = d.getDate();
     d.setDate(1); d.setMonth(d.getMonth() + MONTHS[type]);
@@ -44,7 +45,7 @@ export function licenseState(screen, now = Date.now()) {
   const exp = new Date(screen.license_expires_at).getTime();
   const daysLeft = Math.ceil((exp - now) / DAY);
   if (now < exp) return { state: daysLeft <= 14 ? 'expiring' : 'active', type, daysLeft, expires: exp };
-  const graceEnd = exp + GRACE_DAYS * DAY;
+  const graceEnd = exp + (type === 'trial7' ? 0 : GRACE_DAYS) * DAY;
   if (now < graceEnd) return { state: 'grace', type, daysLeft, graceLeft: Math.ceil((graceEnd - now) / DAY), expires: exp };
   return { state: 'expired', type, daysLeft, expires: exp };
 }

@@ -80,7 +80,7 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
         if (loc.value.trim()) extra.location = loc.value.trim();
         if (site && clientId) extra.site_id = site;
         if (Object.keys(extra).length) await q(sb.from('screens').update(extra).eq('id', s.id));
-        if (s.license_type === 'trial7') toast(`${s.name} paired — 7-day trial started`);
+        if (s.license_type === 'trial7') toast(`${s.name} paired — 3-day trial started`);
         else if (s.license_type) toast(`${s.name} paired`);
         else toast(`${s.name} paired, but no free trial: ${s.trial_blocked_reason || 'this device needs a licence'}`, true);
         onDone?.(s);
@@ -195,7 +195,7 @@ export async function screensPage({ main, go }) {
         actions: [{ label: 'Close' }, { label: 'Open my TV', class: 'primary', onClick: () => go('screen/' + screens[0].id) }] });
       return pairDialog({ fixedClient: state.clientId, siteId, onDone: (s) => go('screen/' + s.id) });
     };
-    const trialNote = trial ? h('div', { class: 'notice info', style: { marginBottom: '14px' } }, h('b', {}, 'Free trial · 1 screen for 7 days. '),
+    const trialNote = trial ? h('div', { class: 'notice info', style: { marginBottom: '14px' } }, h('b', {}, 'Free trial · 1 screen for 3 days. '),
       screens.length ? 'Buy a licence for your TV (open it and press “Renew online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.') : null;
 
     const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); paint(); } },
