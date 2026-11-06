@@ -731,3 +731,97 @@ input.invalid { border-color: var(--bad) !important; outline-color: var(--bad) !
 @media (prefers-reduced-motion: reduce) {.pva-shop .cyc, .pva-shop .tk .tr, .pva-shop .burst, .pva-shop .tw .mi, .pva-shop .bb .pole::before, .pva-shop .cl .tagw, .pva-shop .pz .cd.hot { animation: none !important; }
 .pva-shop .cyc { opacity: 0; }
 .pva-shop .cyc:first-child { opacity: 1; }}
+
+/* =====================================================================
+   Shared Proview theme: sizes match Proview Bookings and Employee exactly
+   (sidebar, logo, menu, picker, profile card, footer, header bar, buttons)
+   ===================================================================== */
+body { font-size: 14px; }
+.side { padding: 0; gap: 0; overflow: hidden; }
+.side .brand { padding: 18px 10px 14px 14px; gap: 8px; font-size: 14px; font-weight: 400; letter-spacing: normal; }
+.side .brand-mark { width: 32px; height: 26px; }
+.side .wordmark { font-size: 13px; letter-spacing: .02em; }
+.side .wordmark b { margin-right: .3em; }
+.client-pick { margin: 0 14px 12px; }
+.client-pick:empty { display: none; }
+.client-pick select { width: 100%; background: #23232a; color: #fff; border: 1px solid #33333c; border-radius: 9px; padding: 9px 30px 9px 11px; font: 500 14px var(--font); appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
+.client-pick select:hover { border-color: #4a4a55; }
+.client-pick select option { background: #23232a; color: #fff; }
+.side .nav { flex: 1; min-height: 0; overflow: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 0; }
+.nav a { gap: 12px; padding: 9px 12px; font-weight: 500; font-size: 14px; color: #c9c9d1; line-height: 20px; }
+.nav svg { width: 19px; height: 19px; }
+.nav-sep { margin: 0; padding: 14px 10px 6px; }
+.side-me { margin: 10px 10px 8px; padding: 12px; }
+.side-foot { padding: 0 10px 14px; }
+.app.collapsed { grid-template-columns: 72px 1fr; }
+
+.main-col { min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
+.top { display: flex; align-items: center; gap: 12px; padding: 12px 22px; background: var(--panel); border-bottom: 1px solid var(--line); min-height: 62px; box-sizing: border-box; position: sticky; top: 0; z-index: 20; }
+.top h2 { font-size: 18px; font-weight: 650; letter-spacing: -.01em; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top .sp { flex: 1; }
+.icon-btn, .top .btn.icon.bell { position: relative; background: none; border: 1px solid transparent; border-radius: 10px; width: 38px; height: 38px; padding: 0; display: grid; place-items: center; cursor: pointer; color: var(--ink); text-decoration: none; }
+.icon-btn:hover, .top .btn.icon.bell:hover { background: var(--bg); border-color: var(--line); }
+.icon-btn svg, .top .bell svg { width: 20px; height: 20px; }
+.menu-btn { display: none !important; }
+.nav-scrim { display: none; }
+.topbar, .tabbar { display: none !important; }
+.main { padding: 20px 22px 40px; }
+.page-head h1 { font-size: 21px; font-weight: 650; letter-spacing: -.01em; }
+.btn { padding: 0 14px; }
+
+/* iPad: icon-only sidebar, like Bookings and Employee */
+@media (min-width: 701px) and (max-width: 900px) {
+  .app, .app.collapsed { grid-template-columns: 72px 1fr !important; }
+  .side { display: flex !important; padding: 0; }
+  .app .wordmark, .app .client-pick, .app .nav a > span:not(.bell-dot), .app .nav-sep, .app .side-me, .app .sf-link .lbl, .app .side-foot .sf-link:first-child { display: none !important; }
+  .app .side .brand { justify-content: center; padding: 18px 0 14px; }
+  .app .nav a { justify-content: center; padding: 10px 0; position: relative; }
+  .app .nav a .bell-dot { position: absolute; top: 4px; right: 8px; }
+  .app .side-foot { flex-direction: column; align-items: center; }
+  .app .side-foot .sf-link { margin: 0 !important; }
+  .main { padding: 20px 22px 40px; }
+}
+
+/* phones: slide-in side menu, like Bookings and Employee */
+@media (max-width: 700px) {
+  .app, .app.collapsed { grid-template-columns: 1fr !important; }
+  .side { display: flex !important; position: fixed; top: 0; bottom: 0; left: 0; width: 280px; max-width: 86vw; height: 100dvh; z-index: 76; transform: translateX(-105%); transition: transform .25s ease; box-shadow: 10px 0 40px rgba(0,0,0,.35); padding-bottom: env(safe-area-inset-bottom); }
+  .app.navopen .side { transform: none; }
+  .app.navopen .nav-scrim { display: block; position: fixed; inset: 0; background: rgba(20,20,24,.45); z-index: 75; }
+  .app.collapsed .wordmark, .app.collapsed .client-pick, .app.collapsed .nav-sep, .app.collapsed .side-me-t { display: revert; }
+  .app.collapsed .nav a > span, .app.collapsed .sf-link .lbl { display: inline !important; }
+  .app.collapsed .nav a { justify-content: flex-start; padding: 9px 12px; }
+  .app.collapsed .side .brand { justify-content: flex-start; padding: 18px 10px 14px 14px; }
+  .side-foot .sf-link:first-child { display: none; }
+  .menu-btn { display: grid !important; margin-left: -4px; flex: none; }
+  .top { padding: 8px 10px; gap: 2px; min-height: 56px; }
+  .top h2 { font-size: 16px; flex: 1; }
+  .top .sp { display: none; }
+  .main { padding: 14px 12px 40px; }
+}
+.side .wordmark { font-weight: 500; }
+.client-pick select { line-height: 20px; }
+.nav-sep { line-height: 15px; }
+.side-me { font-size: 12px; }
+.side-me-t b { line-height: 18px; }
+.side-me-t span { line-height: 16px; }
+.sf-link { line-height: 17px; border-radius: 9px; }
+.top .bell, .top .btn.icon.bell { color: var(--ink); }
+@media (max-width: 700px) { .icon-btn, .top .btn.icon.bell { width: 36px; height: 36px; } }
+.top .bell svg { color: var(--ink); }
+.top .bell { margin-left: 0; }
+.bell-row { gap: 12px; font-weight: 500; font-size: 14px; line-height: 20px; }
+.bell-row svg { color: inherit; width: 19px; height: 19px; }
+@media (max-width: 700px) { .top { min-height: 62px; } }
+/* iPad: short names under the icons and the client picker in the header (same as Bookings and Employee) */
+.top-pick { display: none; }
+@media (min-width: 701px) and (max-width: 900px) {
+  .app .nav a, .app .nav a.bell-row { flex-direction: column; gap: 4px; padding: 8px 2px 7px; justify-content: center; }
+  .app .nav a > span:not(.bell-dot) { display: block !important; font-size: 10.5px; line-height: 1.15; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; letter-spacing: -.1px; }
+  .app .nav a .bell-dot { top: 2px; right: 12px; }
+  .top-pick { display: block; max-width: 46%; min-width: 0; margin: 0 6px; }
+  .top-pick:empty, .top-pick > div { display: none; }
+  .top-pick select { width: 100%; padding: 7px 28px 7px 10px; font: 500 15px var(--font); line-height: 20px; border-radius: 9px; background-color: #fff; color: var(--ink); border: 1px solid var(--line); appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
+}

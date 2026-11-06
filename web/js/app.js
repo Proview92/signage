@@ -139,6 +139,7 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
+const PAGE_TITLES = { screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Team', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
@@ -156,14 +157,17 @@ function shell(section, main) {
       h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
       h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
 
-  const top = h('header', { class: 'topbar' }, h('div', { class: 'brand' }, brandMark(), wordmark(APP)), clientPicker(), bell('icon'),
-    h('a', { class: 'btn ghost icon', href: '#/help', style: { color: '#fff' }, 'aria-label': 'Help', title: 'Help' }, icon('help')),
-    h('button', { class: 'btn ghost icon', style: { color: '#fff' }, onclick: signOut, 'aria-label': 'Sign out' }, icon('logout')));
-  const tabs = h('nav', { class: 'tabbar' },
-    n.items.map(([k, l, i]) => h('a', { href: '#/' + k, class: section === k ? 'active' : '' }, icon(i), l)),
-    null);
-
-  return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { style: { minWidth: 0 } }, top, main), tabs);
+  // header bar (same as Proview Bookings and Employee): menu button on phones, page title, notifications, help
+  const toggleNav = () => document.querySelector('.app')?.classList.toggle('navopen');
+  const top = h('header', { class: 'top' },
+    h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', title: 'Menu', onclick: toggleNav }, icon('menu')),
+    h('h2', {}, PAGE_TITLES[section] || ''),
+    h('div', { class: 'sp' }),
+    h('span', { class: 'top-pick' }, clientPicker()),
+    bell('icon'),
+    h('a', { class: 'icon-btn', href: '#/help', 'aria-label': 'Help', title: 'Help' }, icon('help')));
+  const scrim = h('div', { class: 'nav-scrim', onclick: toggleNav });
+  return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main), scrim);
 }
 
 // ------------------------------------------------------------ notifications bell
