@@ -14,7 +14,7 @@ import { q, timeAgo, modal } from './core.js';
 
 const root = document.getElementById('root');
 const APP = window.SIGNAGE_CONFIG?.APP_NAME || 'PROVIEW SIGNAGE';
-document.title = APP;
+document.title = 'Proview Signage';
 
 // ------------------------------------------------------------ routing
 const routes = [
