@@ -281,6 +281,9 @@ function apply(row) {
   if (!row.content) {
     content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear(); $('upd').classList.remove('on');
     $('wait-name').textContent = row.name;
+    // After a power cut the TV can come up before the internet or the latest data is ready.
+    // Don't rely on the 60-second safety net: check again soon.
+    clearTimeout(waitRecheck); waitRecheck = setTimeout(() => (screen?.claimed && !screen.content ? boot() : null), 20000);
     return show('wait');
   }
   if (currentKey === 'expired') currentKey = null;
@@ -485,6 +488,21 @@ async function loadSettings() {
 }
 
 let booting = false;
+let waitRecheck = null;
+// Self-heal watchdog (e.g. after a power cut): if the TV is paired and has content to play but is
+// still showing a holding screen (paired / error / starting up), restart the player page —
+// the same as pressing "Reload" on the remote. At most once every 3 minutes.
+const BOOTED_AT = Date.now();
+setInterval(() => {
+  if (!screen?.claimed || !screen.content || isExpired()) return;
+  const stuck = ['wait', 'error', 'boot'].some((k) => views[k].classList.contains('on'));
+  if (!stuck || Date.now() - BOOTED_AT < 45000) return;
+  let last = 0; try { last = +sessionStorage.getItem('signage.selfheal') || 0; } catch {}
+  if (Date.now() - last < 180000) return;
+  try { sessionStorage.setItem('signage.selfheal', String(Date.now())); } catch {}
+  console.warn('[signage] content available but not showing; reloading');
+  location.reload();
+}, 15000);
 async function boot() {
   if (booting) return;
   booting = true;

@@ -155,10 +155,27 @@ class MainActivity : Activity() {
                 return !isPlayerHost(request.url.host)
             }
         }
+        // After a power cut the TV can start this app before the screen has switched to its final
+        // resolution. The page would then stay laid out for the temporary size (narrow menu, missing
+        // content), so once the size settles on something new, reload the player.
+        w.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ ->
+            val nw = r - l; val nh = b - t
+            if (nw <= 0 || nh <= 0) return@addOnLayoutChangeListener
+            if (loadedW == 0) { loadedW = nw; loadedH = nh; return@addOnLayoutChangeListener }
+            if (nw != loadedW || nh != loadedH) {
+                loadedW = nw; loadedH = nh
+                handler.removeCallbacks(sizeReload)
+                handler.postDelayed(sizeReload, 2500)
+            }
+        }
         root.addView(w, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         w.requestFocus()
         web = w
     }
+
+    private var loadedW = 0
+    private var loadedH = 0
+    private val sizeReload = Runnable { if (!offline) web?.reload() }
 
     private fun load() {
         offline = false
