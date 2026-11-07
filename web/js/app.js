@@ -124,7 +124,7 @@ function clientPicker() {
       setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p && p !== 'clients' ? p : 'screens')); if (location.hash === to) render(); else location.hash = to;
     },
   });
-  if (state.me.is_admin) s.append(h('option', { value: '__all', selected: onAll }, `All clients (${cs.length})`));
+  if (state.me.is_admin) s.append(h('option', { value: '__all', selected: onAll }, `All sites (${cs.length})`));
   for (const c of cs) s.append(h('option', { value: c.id, selected: !onAll && c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
   return s;
 }
@@ -156,7 +156,7 @@ function shell(section, main) {
   const meEl = sideMe(n.r);
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
-    h('div', { class: 'client-pick' }, clientPicker()),
+    h('div', { class: 'client-pick' }, (() => { const p = clientPicker(); return p && p.tagName === 'SELECT' ? [h('label', { class: 'pv-viewing' }, /^#\/?clients/.test(location.hash) ? 'Master view' : 'Viewing site'), p] : p; })()),
     h('nav', { class: 'nav' },
       // group headers, same style as Proview Bookings (Service / Grow / Team / Manage)
       n.items.length ? h('div', { class: 'nav-sep' }, 'Content') : null,
