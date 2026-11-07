@@ -295,6 +295,20 @@ function signageArt() {
   return d;
 }
 
+// "Sign in with Proview account" (managers and admins; one login across Proview apps)
+const PV_ACCOUNT = 'https://license.proviewcrm.co.uk/account/';
+let pvErr = '';
+async function pvSso(token) {
+  const cfg = window.SIGNAGE_CONFIG || {};
+  const r = await fetch(cfg.SUPABASE_URL + '/functions/v1/sso-login', { method: 'POST', headers: { 'content-type': 'application/json', apikey: cfg.SUPABASE_ANON_KEY }, body: JSON.stringify({ assertion: token }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.token_hash) throw new Error(j.error || 'Sign-in with your Proview account failed. Please try again.');
+  const cur = (await sb.auth.getSession()).data.session?.user;
+  if (cur && String(cur.email || '').toLowerCase() !== j.email) await sb.auth.signOut();
+  const { error } = await sb.auth.verifyOtp({ token_hash: j.token_hash, type: 'magiclink' });
+  if (error) throw error;
+}
+
 const AUTH_LOOK = 'classic';   // original design; 'glow' | 'wall' | 'hero' also available
 async function authPage(inviteToken, startSignup = false) {
   let invite = null;
@@ -325,6 +339,10 @@ async function authPage(inviteToken, startSignup = false) {
   const title = h('h1');
   const sub = h('p', { class: 'muted', style: { margin: 0 } });
   const swap = h('button', { class: 'btn ghost sm', type: 'button' });
+  const pvRow = h('div', { class: 'stack', style: { gap: '12px' } },
+    h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--muted)', fontSize: '13px' } },
+      h('span', { style: { flex: 1, height: '1px', background: 'var(--line)' } }), 'or', h('span', { style: { flex: 1, height: '1px', background: 'var(--line)' } })),
+    h('button', { class: 'btn', type: 'button', onclick: () => { location.href = PV_ACCOUNT + '?app=signage&return=' + encodeURIComponent(location.origin + location.pathname); } }, 'Sign in with Proview account'));
   const forgot = h('button', { class: 'btn ghost sm', type: 'button', onclick: async () => {
     if (!email.value) return toast('Enter your email first', true);
     const { error } = await sb.auth.resetPasswordForEmail(email.value, { redirectTo: location.origin + location.pathname });
@@ -345,6 +363,7 @@ async function authPage(inviteToken, startSignup = false) {
     pass2.required = mode === 'signup';
     pass2.value = ''; checkMatch();
     forgot.classList.toggle('hidden', mode === 'signup');
+    pvRow.classList.toggle('hidden', mode === 'signup');
     msg.replaceChildren();
   };
   // After sign-up: a clear "check your email" panel with the next steps.
@@ -364,6 +383,7 @@ async function authPage(inviteToken, startSignup = false) {
   paint();
   if (cameBack && linkError) msg.replaceChildren(h('div', { class: 'notice bad' }, `That link didn't work: ${linkError}. Sign in below, or use “Forgot password?”.`));
   else if (cameBack) msg.replaceChildren(h('div', { class: 'notice ok' }, '✓ Email confirmed. Sign in with your password to continue.'));
+  if (pvErr) { msg.replaceChildren(h('div', { class: 'notice' }, pvErr)); pvErr = ''; }
 
   // Unknown email on the sign-in form: offer to create an account instead of failing silently.
   let prompting = false, lastChecked = '';
@@ -435,7 +455,7 @@ async function authPage(inviteToken, startSignup = false) {
       submit.disabled = false;
     },
   }, h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'logo.png', alt: '' }), wordmark(APP)),
-    title, sub, msg, field('Email', email), passField, pass2Field, submit,
+    title, sub, msg, field('Email', email), passField, pass2Field, submit, pvRow,
     h('div', { class: 'row between' }, swap, forgot));
 
   // Sign-in page design: 'glow' | 'wall' | 'hero' (?look=… to preview another)
@@ -547,6 +567,11 @@ function errorPage(e) {
 // ------------------------------------------------------------ boot
 (async () => {
   if (!configured) return render();
+  const pv = location.hash.match(/[#&]pv_sso=([^&]+)/);
+  if (pv) {
+    history.replaceState(null, '', location.pathname + location.search);
+    try { await pvSso(pv[1]); } catch (e) { pvErr = errMsg(e); }
+  }
   const { data } = await sb.auth.getSession();
   state.session = data.session;
   sb.auth.onAuthStateChange((event, session) => {
