@@ -2,6 +2,7 @@ import { configured } from './sb.js';
 import { startHub, statusDot } from './hub-app.js';
 import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role, promptBox, passwordToggle } from './core.js';
 import { screensPage } from './pages/screens.js';
+import { clientsPage } from './pages/clients.js';
 import { screenPage } from './pages/screen.js';
 import { playlistsPage } from './pages/playlists.js';
 import { editorPage } from './pages/editor.js';
@@ -27,6 +28,7 @@ const routes = [
   [/^activity(\?.*)?$/, activityPage, 'activity'],
   [/^reports$/, reportsPage, 'reports'],
   [/^help$/, helpPage, 'help'],
+  [/^clients$/, clientsPage, 'clients'],
 ];
 
 let cleanup = null, renderSeq = 0;
@@ -113,11 +115,17 @@ function clientPicker() {
   const cs = state.me.clients;
   if (!cs.length) return null;
   if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, clientTitle(cs[0]));
+  const onAll = /^#\/?clients/.test(location.hash);
   const s = h('select', {
     'aria-label': 'Client',
-    onchange: (e) => { setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p || 'screens')); if (location.hash === to) render(); else location.hash = to; },
+    onchange: (e) => {
+      // Proview admins: "All clients" opens the overview of every client
+      if (e.target.value === '__all') return go('clients');
+      setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p && p !== 'clients' ? p : 'screens')); if (location.hash === to) render(); else location.hash = to;
+    },
   });
-  for (const c of cs) s.append(h('option', { value: c.id, selected: c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
+  if (state.me.is_admin) s.append(h('option', { value: '__all', selected: onAll }, `All clients (${cs.length})`));
+  for (const c of cs) s.append(h('option', { value: c.id, selected: !onAll && c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
   return s;
 }
 
@@ -140,7 +148,7 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
-const PAGE_TITLES = { screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Team', help: 'Help' };
+const PAGE_TITLES = { clients: 'All clients', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Team', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
