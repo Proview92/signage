@@ -175,6 +175,8 @@ function shell(section, main) {
     h('div', { class: 'sp' }),
     h('span', { class: 'top-pick' }, clientPicker()),
     window.PVHub ? window.PVHub.tray({ dot: statusDot(), bell: bell('icon') }) : bell('icon'),
+    // back to dashboard.proviewcrm.co.uk: managers and admins only (editors don't get it)
+    (window.PVHub && window.PVHub.dashLink && window.PVHub.dashLink(['admin', 'manager'].includes(role()))) || null,
     topMe);
   startHub(go);
   const scrim = h('div', { class: 'nav-scrim', onclick: toggleNav });
