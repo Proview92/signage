@@ -889,3 +889,6 @@ html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .s
 .side .nav>a>span:not(.bell-dot),.side .nav>button .lbl{font-size:14px!important}
 .side .nav-sec,.side .nav-sep,.side .nav .nav-group{padding-top:10px!important;padding-bottom:3px!important;line-height:13px!important;min-height:0!important;height:auto!important}
 }
+
+.top .top-me{border-left:0!important;padding-left:0!important;margin-left:8px!important}
+@media (max-width:700px){.top .top-me{margin-left:4px!important}}

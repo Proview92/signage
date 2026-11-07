@@ -1,4 +1,5 @@
 import { configured } from './sb.js';
+import { startHub, statusDot } from './hub-app.js';
 import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role, promptBox, passwordToggle } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { screenPage } from './pages/screen.js';
@@ -173,9 +174,9 @@ function shell(section, main) {
     h('h2', {}, PAGE_TITLES[section] || ''),
     h('div', { class: 'sp' }),
     h('span', { class: 'top-pick' }, clientPicker()),
-    bell('icon'),
-    h('a', { class: 'icon-btn', href: '#/help', 'aria-label': 'Help', title: 'Help' }, icon('help')),
+    window.PVHub ? window.PVHub.tray({ dot: statusDot(), bell: bell('icon') }) : bell('icon'),
     topMe);
+  startHub(go);
   const scrim = h('div', { class: 'nav-scrim', onclick: toggleNav });
   return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main), scrim);
 }
@@ -221,8 +222,8 @@ function bell(variant = 'row') {
   const el = variant === 'row'
     ? h('a', { href: 'javascript:void 0', class: 'bell-row', onclick: (e) => { e.preventDefault(); openNotifications(); } }, icon('bell'), h('span', {}, 'Notifications'), dot)
     : h('button', { class: 'btn ghost icon bell', title: 'Notifications', 'aria-label': 'Notifications', onclick: openNotifications }, icon('bell'), dot);
-  if (variant === 'row') { loadBells(); clearInterval(window.__bellTimer); window.__bellTimer = setInterval(loadBells, 60000); }
-  else paintBells();
+  if (variant === 'row' || !window.__bellTimer) { loadBells(); clearInterval(window.__bellTimer); window.__bellTimer = setInterval(loadBells, 60000); }
+  else { for (const d of bellViews) if (!d.isConnected && d !== dot) bellViews.delete(d); paintBells(); }
   return el;
 }
 
