@@ -26,6 +26,19 @@ export async function clientsPage({ main, go }) {
       h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn sm primary', onclick: () => open(c.id) }, 'Open')));
   });
 
+  // TVs that aren't assigned to any client (e.g. paired but not handed over yet), so the totals add up
+  const ids = new Set(clients.map((c) => c.id));
+  const loose = screens.filter((s) => !s.client_id || !ids.has(s.client_id));
+  if (loose.length) {
+    const on = loose.filter(isOnline).length, bad = needs(loose);
+    rows.push(h('tr', { class: 'ov-loose' },
+      h('td', {}, h('b', {}, 'Not assigned to a client'), h('div', { class: 'tiny' }, 'TVs paired but not given to a client yet. Move them to a client in the licence portal.')),
+      h('td', {}, String(loose.length)),
+      h('td', {}, h('span', { class: 'badge ' + (on === loose.length ? 'ok' : on ? 'warn' : 'bad') }, `${on} of ${loose.length}`)),
+      h('td', {}, bad ? h('span', { class: 'badge bad' }, `${bad} need${bad === 1 ? 's' : ''} attention`) : h('span', { class: 'badge ok' }, 'All OK')),
+      h('td', {})));
+  }
+
   main.replaceChildren(
     h('div', { class: 'page-head' },
       h('div', {}, h('h1', {}, 'All clients'), h('p', { class: 'muted' }, 'Screens and licences across every client. Open one to see it as its team does.')),
