@@ -892,3 +892,13 @@ html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .s
 
 .top .top-me{border-left:0!important;padding-left:0!important;margin-left:8px!important}
 @media (max-width:700px){.top .top-me{margin-left:4px!important}}
+
+/* "All clients" overview (Proview admins) */
+.ov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.ov-stat { padding: 14px 16px; }
+.ov-v { font-size: 26px; font-weight: 700; margin-top: 4px; }
+.ov-card { overflow-x: auto; }
+.ov-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ov-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.ov-table td { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ov-table tr:last-child td { border-bottom: 0; }
