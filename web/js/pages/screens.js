@@ -1,7 +1,7 @@
 import { clientLabel, clientTitle } from '../core.js';
 import { publishOrRequest, renameDialog } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, mediaUrl, needsPublish, currentClient } from '../core.js';
-import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive } from '../renderer.js';
+import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet } from '../renderer.js';
 import { licenseBadge } from './license-ui.js';
 import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
@@ -26,7 +26,7 @@ export async function loadClientData(clientId) {
 export function screenThumb(screen, contentOverride) {
   const box = h('div', { class: 'thumb' });
   const content = contentOverride ?? screen.content;
-  const { pl } = onAirPlaylist(content);
+  const { pl } = onAirPlaylist(content, new Date(), pausedSet(screen.paused_playlists));
   const slide = pl?.slides?.find((s) => isSlideActive(s)) || pl?.slides?.[0];
   if (!slide) {
     box.append(h('div', { class: 'blank' }, screen.content ? 'Nothing scheduled right now' : 'Nothing published yet'));

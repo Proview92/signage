@@ -249,7 +249,24 @@ export function resolveSchedule(content, now = new Date()) {
  * What should be on air, including "add-on" playlists that play after the
  * default one (content.also). Returns { playlistId, rule, key, pl, name }.
  */
-export function onAirPlaylist(content, now = new Date()) {
+/** Which playlists are switched off right now, from a TV's paused_playlists ({id: "stop" | ISO time}). */
+export function pausedSet(map, now = Date.now()) {
+  const out = new Set();
+  for (const [id, v] of Object.entries(map || {})) if (v === 'stop' || Date.parse(v) > now) out.add(id);
+  return out;
+}
+
+/** The same content with paused/stopped playlists taken out of the default, add-ons and schedule. */
+export function withoutPaused(content, paused) {
+  if (!content || !paused?.size) return content;
+  return { ...content,
+    default: paused.has(content.default) ? null : content.default,
+    also: (content.also || []).filter((id) => !paused.has(id)),
+    schedule: (content.schedule || []).filter((r) => !paused.has(r.playlist_id)) };
+}
+
+export function onAirPlaylist(content, now = new Date(), paused = null) {
+  content = withoutPaused(content, paused);
   const r = resolveSchedule(content, now);
   if (!content) return { ...r, key: null, pl: null, name: null };
   const also = (content.also || []).filter((id) => content.playlists?.[id] && id !== r.playlistId);

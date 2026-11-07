@@ -159,6 +159,14 @@ export const DASH = [
     'Top buttons: **Reload TV**, **Update app**, **Re-send to TV**. The pencil edits the name, site, position and screen rotation.',
   ]],
 
+  ['Pause, stop and play a playlist', 'Take one playlist off your TVs for a while without changing any schedules.', [
+    'Open **Playlists** (or a TV’s page, under **Playlists on this TV**).',
+    '**Pause**: choose how long (30 minutes, 1 hour, 2 hours, until the end of today, until tomorrow 06:00, or a date and time). TVs skip the playlist and play whatever else is scheduled, then go back to it by themselves.',
+    '**Stop**: TVs skip the playlist until you press **Play**.',
+    '**Play**: puts it back on the TVs straight away.',
+    'A paused playlist shows **Paused until …**, a stopped one shows **Stopped**. If it was the only thing on a TV, that TV shows a blank screen meanwhile.',
+  ], ['Pausing doesn’t publish anything: edits you haven’t published stay unpublished.']],
+
   ['Sleep hours', 'Switch TVs off out of hours and back on in the morning.', [
     'Open a TV from **Screens**. Find the **Sleep hours** card and press **Edit**.',
     'Tick **Switch this TV off out of hours**, then choose **Switch off at** and **Switch on at** (the TV’s local time), and the nights it applies.',

@@ -1,6 +1,6 @@
 import { clientLabel } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
-import { SlidePlayer, LayoutPlayer, onAirPlaylist, resolveSchedule, describeRule, DAY_NAMES, localDate, zonePlaylistIds } from '../renderer.js';
+import { SlidePlayer, LayoutPlayer, onAirPlaylist, pausedSet, resolveSchedule, describeRule, DAY_NAMES, localDate, zonePlaylistIds } from '../renderer.js';
 import { statusBadges } from './screens.js';
 import { publishOrRequest } from '../core.js';
 import { ruleForm } from './rule-form.js';
@@ -10,9 +10,10 @@ import { renewOnlineDialog } from './integrations.js';
 import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
 import { latestApp, newestFor, installedApp, appBehind } from '../app-version.js';
 import { sleepCard } from './sleep-ui.js';
+import { loadPauses, pauseBadge, pauseControls } from './playlist-pause.js';
 
 export async function screenPage({ main, params: [id], go, rerender }) {
-  let sites = [], screen, playlists, rules, byId, player = null, tick = null, latest = null;
+  let sites = [], screen, playlists, rules, byId, player = null, tick = null, latest = null, pauses = {};
 
   const load = async () => {
     [screen, playlists, rules, sites] = await Promise.all([
@@ -21,6 +22,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
       q(sb.from('schedule_items').select('*').eq('screen_id', id).order('priority', { ascending: false }).order('created_at', { ascending: false })),
       loadSites(state.clientId).catch(() => []),
       latestApp().then((v) => { latest = v; }),
+      loadPauses().then((v) => { pauses = v; }),
     ]);
     byId = Object.fromEntries(playlists.map((p) => [p.id, p]));
   };
@@ -142,7 +144,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
   function startPreview(box) {
     player?.stop();
-    const { pl } = onAirPlaylist(screen.content);
+    const { pl } = onAirPlaylist(screen.content, new Date(), pausedSet(screen.paused_playlists));
     box.replaceChildren();
     if (!pl) { box.append(h('div', { class: 'thumb' }, h('div', { class: 'blank' }, screen.content ? 'Nothing scheduled right now' : 'Nothing published yet'))); return; }
     const stage = h('div', { class: 'preview-box' + (pl.settings?.orientation === 'portrait' ? ' portrait' : '') });
@@ -154,7 +156,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
 
   function paint() {
     const draft = draftContent(screen, rules, byId);
-    const live = onAirPlaylist(screen.content);
+    const live = onAirPlaylist(screen.content, new Date(), pausedSet(screen.paused_playlists));
     const liveName = live.name;
     const dinfo = screen.device_info || {};
 
@@ -237,7 +239,10 @@ export async function screenPage({ main, params: [id], go, rerender }) {
             h('div', { style: { minWidth: 0 } },
               h('div', { style: { fontWeight: 650 } }, byId[pid].name, pid === liveId ? h('span', { class: 'badge ok', style: { marginLeft: '8px' } }, 'Playing now') : null),
               h('div', { class: 'small muted', style: { overflow: 'hidden', textOverflow: 'ellipsis' } }, `${(byId[pid].slides || []).length} slides · ${rs.join(' · ')}`)),
-            h('a', { class: 'btn sm', href: '#/playlist/' + pid, style: { flex: 'none' } }, icon('edit'), 'Edit')))
+            h('div', { class: 'row', style: { gap: '6px', flex: 'none', flexWrap: 'wrap', justifyContent: 'flex-end' } },
+              pauseBadge(pauses[pid]),
+              pauseControls(byId[pid], pauses[pid], async () => { await load(); paint(); }),
+              h('a', { class: 'btn sm', href: '#/playlist/' + pid }, icon('edit'), 'Edit'))))
             : h('div', { class: 'list-row muted small' }, 'No playlists assigned yet. Choose a default playlist below.')));
     }
 

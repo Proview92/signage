@@ -6,6 +6,7 @@ import { showOnTvsDialog } from './show-on-tvs.js';
 import { pickMedia } from './media.js';
 import { newSlide } from '../renderer.js';
 import { modal, field, renameDialog } from '../core.js';
+import { loadPauses, pauseBadge, pauseControls } from './playlist-pause.js';
 
 export function playlistLength(p) {
   return (p.slides || []).reduce((t, s) => t + (Number(s.duration) > 0 ? Number(s.duration) : (s.video_duration || 10)), 0);
@@ -17,6 +18,8 @@ export async function playlistsPage({ main, go }) {
     q(sb.from('screens').select('id,default_playlist_id').eq('client_id', state.clientId)),
     q(sb.from('schedule_items').select('screen_id,playlist_id').eq('client_id', state.clientId)),
   ]);
+  const pauses = await loadPauses();
+  const refresh = () => window.dispatchEvent(new HashChangeEvent('hashchange'));
   const usedOn = (pid) => new Set([...screens.filter((s) => s.default_playlist_id === pid).map((s) => s.id), ...rules.filter((r) => r.playlist_id === pid).map((r) => r.screen_id)]).size;
 
   // New playlist: straight into the editor's first step (name, screen and layout are set there).
@@ -67,8 +70,10 @@ export async function playlistsPage({ main, go }) {
               toast('Deleted'); go('playlists'); window.dispatchEvent(new HashChangeEvent('hashchange'));
             } }, icon('trash')))),
         h('div', { class: 'small muted' }, `${p.slides.length} slide${p.slides.length === 1 ? '' : 's'} · ${fmtDuration(playlistLength(p))}${p.settings?.orientation === 'portrait' ? ' · Portrait' : ''}`),
-        h('div', { class: 'row', style: { gap: '6px' } },
+        h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } },
+          pauseBadge(pauses[p.id]),
           h('span', { class: 'badge plain' }, n ? `On ${n} TV${n > 1 ? 's' : ''}` : 'Not scheduled'),
-          h('span', { class: 'tiny' }, 'Edited ' + timeAgo(p.updated_at)))));
+          h('span', { class: 'tiny' }, 'Edited ' + timeAgo(p.updated_at))),
+        n ? h('div', { class: 'row pl-play', style: { gap: '6px', flexWrap: 'wrap' } }, ...pauseControls(p, pauses[p.id], refresh)) : null));
   })));
 }

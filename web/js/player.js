@@ -5,7 +5,7 @@
 //  3. Caches all media locally so it keeps playing when offline
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
-import { LayoutPlayer, WallPlayer, validWall, onAirPlaylist } from './renderer.js';
+import { LayoutPlayer, WallPlayer, validWall, onAirPlaylist, pausedSet } from './renderer.js';
 import { licenseState, licenseSummary } from './license.js';
 import { createRemoteMenu } from './remote.js';
 import { shrinkImage } from './imgfit.js';
@@ -282,7 +282,7 @@ function evaluate() {
   if (currentKey === 'expired') currentKey = null;
   if (!content) return;
   if (isHeld() && player && currentKey) return;   // schedule paused from the TV menu
-  const air = onAirPlaylist(content);
+  const air = onAirPlaylist(content, new Date(), pausedSet(screen?.paused_playlists));   // skip playlists paused/stopped on the dashboard
   const { playlistId, rule } = air;
   const wall = validWall(screen?.wall) ? screen.wall : null;
   const wallKey = wall ? `|wall:${wall.id}:${wall.cols}x${wall.rows}@${wall.x},${wall.y}:${wall.bezel || ''}` : '';
