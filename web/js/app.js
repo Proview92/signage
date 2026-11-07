@@ -296,7 +296,7 @@ function signageArt() {
 }
 
 // "Sign in with Proview account" (managers and admins; one login across Proview apps)
-const PV_ACCOUNT = 'https://license.proviewcrm.co.uk/account/';
+const PV_ACCOUNT = 'https://dashboard.proviewcrm.co.uk/';
 let pvErr = '';
 async function pvSso(token) {
   const cfg = window.SIGNAGE_CONFIG || {};
