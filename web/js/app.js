@@ -694,6 +694,16 @@ function errorPage(e) {
 }
 
 // ------------------------------------------------------------ boot
+// The page starts on the loading splash (index.html) and stays there until render() knows the sign-in state
+// (signed in: the app; signed out: sign-in; Proview-account hand-off: after it has signed in).
+// Failsafe: still on the splash after 8 seconds (offline, say): show the sign-in page, or the "try again" page
+// when there is a saved session; a later render still replaces it.
+window.__pvApp = true;
+setTimeout(async () => {
+  if (!root.querySelector(':scope > .pv-splash')) return;
+  const page = state.session ? errorPage(new Error('Proview Signage is taking longer than usual to load. Check your internet connection and try again.')) : await authPage(null, false);
+  if (root.querySelector(':scope > .pv-splash')) root.replaceChildren(page);
+}, 8000);
 (async () => {
   if (!configured) return render();
   const pv = location.hash.match(/[#&]pv_sso=([^&]+)/);

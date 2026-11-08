@@ -13,9 +13,28 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,700..900&amp;family=Instrument+Sans:wght@500;600;700&amp;family=JetBrains+Mono:wght@700;800&amp;display=swap" />
   <link rel="stylesheet" href="css/stage.css" />
   <link rel="stylesheet" href="css/app.css" />
+  <style>
+    /* Loading splash (the Proview standard, as Proview Bookings): only the 72px app icon, centred on the page
+       background, with a 1.2s pulse, until the sign-in state is known (js/app.js replaces it). */
+    .pv-splash{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg,#f4f3ef);z-index:2147483000}
+    .pv-splash .pv-splash-icon{width:72px;height:72px;border-radius:22%;background:url(icon-app.svg) center/contain no-repeat;opacity:.9;animation:pvsplash 1.2s ease-in-out infinite}
+    @keyframes pvsplash{50%{opacity:.35}}
+    @media (prefers-reduced-motion:reduce){.pv-splash .pv-splash-icon{animation:none}}
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div class="pv-splash" role="status" aria-label="Loading Proview Signage"><div class="pv-splash-icon"></div></div></div>
+  <script>
+    // Failsafe when the app's code itself can't load (offline before it was ever cached): after 8 seconds show a
+    // message instead of the splash. Once js/app.js runs it handles the 8 seconds itself (sign-in or "try again").
+    setTimeout(function () {
+      var r = document.getElementById('root');
+      if (window.__pvApp || !r.querySelector('.pv-splash')) return;
+      r.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;font:15px/1.45 system-ui,sans-serif;color:#17171c;text-align:center">'
+        + '<div><p style="margin:0 0 14px">Proview Signage couldn\u2019t load. Check your internet connection and try again.</p>'
+        + '<button onclick="location.reload()" style="font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;cursor:pointer">Try again</button></div></div>';
+    }, 8000);
+  </script>
   <script src="config.js"></script>
   <script src="hub.js"></script>
   <script type="module" src="js/app.js"></script>
