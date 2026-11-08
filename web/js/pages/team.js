@@ -1,12 +1,21 @@
+// Users: Owner / Admin (and the Proview admin) invite people, set their role, pick their sites,
+// switch features on or off, and remove them. The database enforces all of this (migration 030).
 import { clientTitle } from '../core.js';
-import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, refreshMe, errMsg } from '../core.js';
+import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, errMsg, FEATURES, featureDefault, roleLabel } from '../core.js';
+import { loadSites } from './sites-ui.js';
 
 export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
+
+const ROLE_OPTIONS = [
+  ['manager', 'Owner / Admin — every site, every feature, manages users'],
+  ['site_manager', 'Manager — chosen sites and features, publishes without approval'],
+  ['editor', 'Staff — chosen sites and features'],
+];
 
 /** Invite dialog: emails the invite from PROVIEW SIGNAGE (autoSend), with Copy link as a fallback. */
 export function showInviteLink(inv, clientName, { autoSend = false } = {}) {
   const link = inviteLink(inv.token);
-  const role = inv.role === 'manager' ? 'manager' : 'editor';
+  const role = roleLabel(inv.role).toLowerCase();
   const statusEl = h('div', { class: 'notice info', style: { display: 'none' } });
   const setStatus = (text, kind = 'info') => { statusEl.textContent = text; statusEl.className = 'notice' + (kind === 'ok' ? ' ok' : kind === 'bad' ? ' bad' : ' info'); statusEl.style.display = ''; };
   const sendBtn = h('button', { class: 'btn primary', type: 'button' }, icon('send'), autoSend ? 'Send again' : 'Send invite email');
@@ -30,22 +39,78 @@ export function showInviteLink(inv, clientName, { autoSend = false } = {}) {
   if (autoSend) send();
 }
 
-export function inviteDialog(clientId, clientName, onDone) {
-  const email = h('input', { type: 'email', placeholder: 'name@company.com' });
-  let role = 'editor';
-  modal({ title: `Invite someone to ${clientName}`, body: [
-    field('Email address', email),
-    field('Access', select([['editor', 'Editor — media, playlists & schedules'], ['manager', 'Manager — also add TVs and invite people']], role, (v) => (role = v)))],
-  actions: [{ label: 'Cancel' }, { label: 'Send invite', class: 'primary', onClick: async () => {
-    const e = email.value.trim().toLowerCase();
-    if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('Enter a valid email address');
-    const inv = await q(sb.from('invites').insert({ client_id: clientId, email: e, role }).select().single());
-    onDone?.();
-    setTimeout(() => showInviteLink(inv, clientName, { autoSend: true }), 50);
-  } }] });
+/**
+ * Role + sites + features editor. a = { role, site_ids (null = all sites), features }.
+ * Returns { el, value() } where value() gives the row fields to save.
+ */
+function accessEditor(a, sites) {
+  let role = a.role || 'editor';
+  let all = a.site_ids == null;
+  const chosen = new Set(a.site_ids || []);
+  const feats = { ...(a.features || {}) };
+  const on = (k) => (typeof feats[k] === 'boolean' ? feats[k] : featureDefault(k));
+
+  const checkRow = (checked, label, onchange, extra = {}) => h('label', { class: 'row small', style: { gap: '8px', alignItems: 'center', padding: '3px 0', cursor: 'pointer' } },
+    h('input', { type: 'checkbox', checked, onchange: (e) => onchange(e.target.checked), ...extra }), h('span', {}, label));
+
+  const siteBox = h('div', {});
+  const paintSites = () => siteBox.replaceChildren(
+    checkRow(all, 'All sites (including sites added later)', (v) => { all = v; paintSites(); }),
+    sites.length
+      ? h('div', { style: { paddingLeft: '22px', opacity: all ? 0.5 : 1 } }, sites.map((s) => checkRow(all || chosen.has(s.id), s.name, (v) => { v ? chosen.add(s.id) : chosen.delete(s.id); }, { disabled: all })))
+      : h('div', { class: 'tiny' }, 'This business has no sites yet. Add them on the Screens page (Sites button).'));
+  paintSites();
+
+  const featBox = h('div', {}, FEATURES.map(([k, label]) => checkRow(on(k), label, (v) => { feats[k] = v; })));
+  const scoped = h('div', { class: 'stack' },
+    field('Sites they can see', siteBox),
+    field('What they can use', featBox, 'Everything not ticked is hidden and blocked for them.'));
+  const paintRole = () => scoped.classList.toggle('hidden', role === 'manager');
+  paintRole();
+
+  const el = h('div', { class: 'stack' },
+    field('Role', select(ROLE_OPTIONS, role, (v) => { role = v; paintRole(); })),
+    scoped);
+  const value = () => {
+    if (role === 'manager') return { role, site_ids: null, features: {} };
+    if (!all && !chosen.size && sites.length) throw new Error('Pick at least one site, or tick All sites');
+    const features = {};
+    for (const [k] of FEATURES) features[k] = on(k);
+    return { role, site_ids: all ? null : [...chosen], features };
+  };
+  return { el, value };
 }
 
-const roleLabel = { manager: 'Manager', editor: 'Editor' };
+function accessSummary(m, sites) {
+  if (m.role === 'manager') return 'All sites · all features';
+  const siteTxt = m.site_ids == null ? 'All sites' : (m.site_ids.map((id) => sites.find((s) => s.id === id)?.name).filter(Boolean).join(', ') || 'No sites');
+  const off = FEATURES.filter(([k]) => !(typeof (m.features || {})[k] === 'boolean' ? m.features[k] : featureDefault(k)));
+  return `${siteTxt} · ${off.length ? 'No access to: ' + off.map(([, l]) => l.split(' (')[0]).join(', ') : 'all features'}`;
+}
+
+export async function inviteDialog(clientId, clientName, onDone) {
+  const sites = await loadSites(clientId).catch(() => []);
+  const email = h('input', { type: 'email', placeholder: 'name@company.com' });
+  const acc = accessEditor({ role: 'editor', site_ids: null, features: {} }, sites);
+  modal({ title: `Invite someone to ${clientName}`, wide: true, body: [field('Email address', email), acc.el],
+    actions: [{ label: 'Cancel' }, { label: 'Send invite', class: 'primary', onClick: async () => {
+      const e = email.value.trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('Enter a valid email address');
+      const inv = await q(sb.from('invites').insert({ client_id: clientId, email: e, ...acc.value() }).select().single());
+      onDone?.();
+      setTimeout(() => showInviteLink(inv, clientName, { autoSend: true }), 50);
+    } }] });
+}
+
+function editDialog(m, sites, clientName, onDone) {
+  const acc = accessEditor(m, sites);
+  modal({ title: `Access for ${m.email || 'this person'}`, wide: true, body: [h('p', { class: 'muted', style: { margin: 0 } }, `What ${m.email} can see and do in ${clientName}.`), acc.el],
+    actions: [{ label: 'Cancel' }, { label: 'Save', class: 'primary', onClick: async () => {
+      await q(sb.from('client_members').update(acc.value()).eq('client_id', state.clientId).eq('user_id', m.user_id));
+      toast('Access updated');
+      onDone?.();
+    } }] });
+}
 
 // Admin: reset someone's password to the temporary password 123456 (they choose a new one when they sign in).
 async function resetPassword(m) {
@@ -60,43 +125,46 @@ async function resetPassword(m) {
   } catch (e) { toast(errMsg(e), true); }
 }
 
-export async function teamPage({ main, rerender }) {
+export async function teamPage({ main }) {
   const client = currentClient();
   const manage = canManage();
   const load = async () => Promise.all([
-    rpc('list_members', { p_client: state.clientId }),
+    rpc('list_team', { p_client: state.clientId }),
     manage ? q(sb.from('invites').select('*').eq('client_id', state.clientId).is('accepted_at', null).order('created_at', { ascending: false })) : [],
+    loadSites(state.clientId).catch(() => []),
   ]);
-  let [members, invites] = await load();
+  let [members, invites, sites] = await load();
 
   const paint = () => {
     main.replaceChildren(
       h('div', { class: 'page-head' },
-        h('div', {}, h('h1', {}, 'Team'), h('p', { class: 'muted' }, `People who can manage ${clientTitle(client)}'s screens.`)),
+        h('div', {}, h('h1', {}, 'Users'), h('p', { class: 'muted' }, `People who can manage ${clientTitle(client)}'s screens, which sites they see and what they can use.`)),
         manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Invite someone') : null),
       h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),
-          h('div', { class: 'list' }, members.length ? members.map((m) => h('div', { class: 'list-row' },
-            h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.email || 'Unknown', m.user_id === state.me.user_id ? h('span', { class: 'tiny' }, '  (you)') : null),
-              h('div', { class: 'tiny' }, 'Joined ' + timeAgo(m.created_at))),
-            manage && m.user_id !== state.me.user_id
-              ? select([['editor', 'Editor'], ['manager', 'Manager']], m.role, async (v) => { await q(sb.from('client_members').update({ role: v }).eq('client_id', state.clientId).eq('user_id', m.user_id)); toast('Role updated'); })
-              : h('span', { class: 'badge plain' }, roleLabel[m.role]),
-            state.me.is_admin && m.user_id !== state.me.user_id ? h('button', { class: 'btn sm', title: 'Reset to the temporary password 123456', onclick: () => resetPassword(m) }, 'Reset password') : null,
-            manage && m.user_id !== state.me.user_id ? h('button', { class: 'btn sm danger', onclick: async () => {
-              if (!(await confirmBox('Remove member?', `${m.email} will lose access to ${clientTitle(client)}.`, 'Remove'))) return;
-              await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
-              refresh();
-            } }, 'Remove') : null))
+          h('div', { class: 'list' }, members.length ? members.map((m) => {
+            const me = m.user_id === state.me.user_id;
+            return h('div', { class: 'list-row' },
+              h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.email || 'Unknown', me ? h('span', { class: 'tiny' }, '  (you)') : null),
+                h('div', { class: 'tiny' }, accessSummary(m, sites) + ' · joined ' + timeAgo(m.created_at))),
+              h('span', { class: 'badge plain' }, roleLabel(m.role)),
+              manage && !me ? h('button', { class: 'btn sm', onclick: () => editDialog(m, sites, clientTitle(client), refresh) }, icon('edit'), 'Edit access') : null,
+              state.me.is_admin && !me ? h('button', { class: 'btn sm', title: 'Reset to the temporary password 123456', onclick: () => resetPassword(m) }, 'Reset password') : null,
+              manage && !me ? h('button', { class: 'btn sm danger', onclick: async () => {
+                if (!(await confirmBox('Remove user?', `${m.email} will lose access to ${clientTitle(client)}.`, 'Remove'))) return;
+                await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
+                refresh();
+              } }, 'Remove') : null);
+          })
             : h('div', { class: 'list-row muted small' }, state.me.is_admin ? 'No client users yet. Invite the client’s staff so they can manage their own screens.' : 'No members.'))),
         manage ? h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Pending invites')),
           h('div', { class: 'list' }, invites.length ? invites.map((i) => h('div', { class: 'list-row' },
-            h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, i.email), h('div', { class: 'tiny' }, `${roleLabel[i.role]} · created ${timeAgo(i.created_at)}`)),
+            h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, i.email), h('div', { class: 'tiny' }, `${roleLabel(i.role)} · ${accessSummary(i, sites)} · created ${timeAgo(i.created_at)}`)),
             h('button', { class: 'btn sm', onclick: () => showInviteLink(i, clientTitle(client)) }, icon('send'), 'Resend'),
             h('button', { class: 'btn sm danger', onclick: async () => { await q(sb.from('invites').delete().eq('id', i.id)); refresh(); } }, 'Revoke')))
             : h('div', { class: 'list-row muted small' }, 'No pending invites.'))) : null,
-        !manage ? h('div', { class: 'notice info' }, 'Ask a manager if you need to add people or TVs.') : null));
+        h('div', { class: 'notice info' }, 'Owners / Admins see every site and feature. Managers and Staff only see the sites and features you tick. Nobody can change their own access.')));
   };
-  const refresh = async () => { [members, invites] = await load(); paint(); };
+  const refresh = async () => { [members, invites, sites] = await load(); paint(); };
   paint();
 }

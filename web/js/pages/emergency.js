@@ -1,5 +1,5 @@
 // Emergency / priority messages that take over screens immediately.
-import { sb, state, h, icon, q, toast, modal, field, select, timeAgo, clientTitle } from '../core.js';
+import { sb, state, h, icon, q, toast, modal, field, select, timeAgo, clientTitle, mySiteIds } from '../core.js';
 import { loadSites } from './sites-ui.js';
 
 export const OVERRIDE_STYLES = {
@@ -29,9 +29,11 @@ export async function emergencyDialog({ onDone } = {}) {
   const sites = state.clientId ? await loadSites(state.clientId).catch(() => []) : [];
   const msg = h('input', { type: 'text', placeholder: 'e.g. Please evacuate the building', maxLength: 120 });
   const sub = h('input', { type: 'text', placeholder: 'Optional second line, e.g. Use the nearest fire exit', maxLength: 200 });
-  let style = 'red', scope = state.clientId ? 'client' : 'all', site = sites[0]?.id || '', dur = '0';
+  // People limited to some sites can only send to one of their sites (the database checks this too).
+  const allSites = mySiteIds() === null;
+  let style = 'red', scope = state.clientId ? (allSites ? 'client' : 'site') : 'all', site = sites[0]?.id || '', dur = '0';
   const scopes = [
-    ...(state.clientId ? [['client', `All screens for ${clientTitle(state.me.clients.find((c) => c.id === state.clientId))}`]] : []),
+    ...(state.clientId && allSites ? [['client', `All screens for ${clientTitle(state.me.clients.find((c) => c.id === state.clientId))}`]] : []),
     ...(state.clientId && sites.length ? [['site', 'One site…']] : []),
     ...(isAdmin ? [['all', 'Every screen, all clients']] : []),
   ];

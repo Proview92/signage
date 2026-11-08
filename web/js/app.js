@@ -1,6 +1,6 @@
 import { configured } from './sb.js';
 import { startHub, statusDot } from './hub-app.js';
-import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role, promptBox, passwordToggle } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { clientsPage } from './pages/clients.js';
 import { screenPage } from './pages/screen.js';
@@ -24,7 +24,7 @@ const routes = [
   [/^playlists$/, playlistsPage, 'playlists'],
   [/^playlist\/([\w-]+)$/, editorPage, 'playlists'],
   [/^media$/, mediaPage, 'media'],
-  [/^team$/, teamPage, 'team'],
+  [/^(?:team|users)$/, teamPage, 'team'],
   [/^activity(\?.*)?$/, activityPage, 'activity'],
   [/^reports$/, reportsPage, 'reports'],
   [/^help$/, helpPage, 'help'],
@@ -81,6 +81,8 @@ async function render() {
   let match = null, page = null, section = null;
   for (const [re, fn, sec] of routes) { const m = path.match(re); if (m) { match = m; page = fn; section = sec; break; } }
   if (!page) return go('screens');
+  // Pages switched off for this person (features) or for owners/admins only: back to Screens.
+  if (!canView(section)) return go('screens');
 
   const main = h('main', { class: 'main' });
   root.replaceChildren(shell(section, main));
@@ -106,8 +108,8 @@ function nav(section) {
     ['media', 'Media', 'media'],
     ['reports', 'Reports', 'chart'],
     ['activity', 'Activity', 'activity'],
-    ['team', 'Team', 'team'],
-  ];
+    ['team', 'Users', 'team'],
+  ].filter(([k]) => canView(k));
   return { items: state.clientId ? items : [], admin: state.me.is_admin, r, section };
 }
 
@@ -140,7 +142,7 @@ function sideMe(r) {
   const email = state.me.email || '';
   const name = email.split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') || state.me.full_name || state.me.name || 'Me';
   const initials = name.replace(/[^\p{L}\p{N}\s._-]/gu,' ').split(/[\s._-]+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
-  const sub = (state.me.is_admin ? 'Proview admin' : r === 'manager' ? 'Manager' : r === 'admin' ? 'Administrator' : 'Editor') + (state.clientId && state.me.clients.length ? ' · ' + clientTitle(state.me.clients.find((c) => c.id === state.clientId)) : '');
+  const sub = (state.me.is_admin ? 'Proview admin' : roleLabel(r) || 'Staff') + (state.clientId && state.me.clients.length ? ' · ' + clientTitle(state.me.clients.find((c) => c.id === state.clientId)) : '');
   const canTeam = state.clientId && (state.me.is_admin || r === 'admin' || r === 'manager');
   return h(canTeam ? 'a' : 'div', { class: 'side-me', href: canTeam ? '#/team' : undefined, title: email },
     h('span', { class: 'side-av' }, initials),
@@ -148,7 +150,7 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
-const PAGE_TITLES = { clients: 'All clients', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Team', help: 'Help' };
+const PAGE_TITLES = { clients: 'All clients', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
@@ -362,7 +364,7 @@ async function authPage(inviteToken, startSignup = false) {
   const paint = () => {
     title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in';
     sub.textContent = invite && !invite.used
-      ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'manager' ? 'a manager' : 'an editor'}.`
+      ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'manager' ? 'an owner / admin' : invite.role === 'site_manager' ? 'a manager' : 'staff'}.`
       : mode === 'signup' ? 'Start your free 3-day trial on 1 screen. No card needed. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';

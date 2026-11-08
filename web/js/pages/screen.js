@@ -1,5 +1,5 @@
 import { clientLabel } from '../core.js';
-import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
+import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, hasFeature, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
 import { SlidePlayer, LayoutPlayer, onAirPlaylist, pausedSet, resolveSchedule, describeRule, DAY_NAMES, localDate, zonePlaylistIds } from '../renderer.js';
 import { statusBadges } from './screens.js';
 import { publishOrRequest } from '../core.js';
@@ -256,7 +256,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         state.me.is_admin && screen.license_notes ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Notes'), screen.license_notes) : null,
         h('div', { class: 'row' },
           state.me.is_admin ? licensePortalButton() : null,
-          canManage() && L.state !== 'lifetime' ? h('button', { class: 'btn sm' + (['none', 'expired', 'grace'].includes(L.state) || screen.license_type === 'trial7' ? ' primary' : ''), onclick: () => renewOnlineDialog(screen) }, !screen.license_type || screen.license_type === 'trial7' ? 'Buy licence online' : 'Renew online') : null)));
+          hasFeature('billing') && L.state !== 'lifetime' ? h('button', { class: 'btn sm' + (['none', 'expired', 'grace'].includes(L.state) || screen.license_type === 'trial7' ? ' primary' : ''), onclick: () => renewOnlineDialog(screen) }, !screen.license_type || screen.license_type === 'trial7' ? 'Buy licence online' : 'Renew online') : null)));
 
     const shotImg = h('div', { class: 'thumb shot-box', style: { borderRadius: '8px' } }, h('div', { class: 'blank' }, screen.screenshot_at ? 'Loading…' : 'No screenshot yet'));
     if (screen.screenshot_path) sb.storage.from('screenshots').createSignedUrl(screen.screenshot_path, 600).then(({ data }) => {

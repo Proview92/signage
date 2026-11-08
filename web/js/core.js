@@ -221,6 +221,41 @@ export function currentClient() { return state.me?.clients.find((c) => c.id === 
 export function role() { return state.me?.is_admin ? 'admin' : currentClient()?.role || null; }
 export const canManage = () => ['admin', 'manager'].includes(role());
 
+// Proview access model. Stored roles: 'manager' = Owner / Admin (whole business), 'site_manager' = Manager,
+// 'editor' = Staff. Managers and Staff have site_ids (null = all sites) and features ({key:false} = off).
+// Keep FEATURES in step with supabase/migrations/030_access_model.sql (the database enforces them).
+export const FEATURES = [
+  ['screens', 'TV settings (name, site, sleep, reload, video wall)'],
+  ['schedule', 'Schedules (what plays on each TV, publish a TV)'],
+  ['playlists', 'Playlists & templates'],
+  ['media', 'Media library (upload, edit, delete)'],
+  ['emergency', 'Emergency messages'],
+  ['reports', 'Reports'],
+  ['activity', 'Activity log'],
+  ['billing', 'Licence payments (buy / renew online)'],
+];
+const FEATURE_OFF_BY_DEFAULT = ['billing'];
+export const ROLE_LABEL = { admin: 'Proview admin', manager: 'Owner / Admin', site_manager: 'Manager', editor: 'Staff' };
+export const roleLabel = (r) => ROLE_LABEL[r] || r || '';
+export const featureDefault = (f) => !FEATURE_OFF_BY_DEFAULT.includes(f);
+/** Owners, admins and the Proview master have every feature; Managers/Staff follow their switches. */
+export function hasFeature(f) {
+  if (canManage()) return true;
+  const c = currentClient();
+  if (!c) return false;
+  const v = (c.features || {})[f];
+  return typeof v === 'boolean' ? v : featureDefault(f);
+}
+/** Site ids this person is limited to, or null for every site. */
+export const mySiteIds = () => (canManage() ? null : currentClient()?.site_ids ?? null);
+const PAGE_FEATURE = { playlists: 'playlists', media: 'media', reports: 'reports', activity: 'activity' };
+export function canView(section) {
+  if (section === 'team') return canManage();
+  if (section === 'screens') return true;           // TVs are listed for everyone (their own sites only)
+  const f = PAGE_FEATURE[section];
+  return !f || hasFeature(f);
+}
+
 // ---------------------------------------------------------------- media URLs
 const urlCache = new Map();
 export async function mediaUrl(path) {

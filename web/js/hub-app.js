@@ -1,9 +1,9 @@
 // Proview Signage: data for the shared header tray (../hub.js).
-import { sb, state, q, rpc, canManage, toast } from './core.js';
+import { sb, state, q, rpc, canManage, canView, roleLabel, toast } from './core.js';
 
 const H = () => window.PVHub;
 const cap = (s) => String(s || '').split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') || 'Someone';
-const PAGES = [['screens', 'Screens'], ['playlists', 'Playlists'], ['media', 'Media'], ['reports', 'Reports'], ['activity', 'Activity'], ['team', 'Team'], ['help', 'Help']];
+const PAGES = [['screens', 'Screens'], ['playlists', 'Playlists'], ['media', 'Media'], ['reports', 'Reports'], ['activity', 'Activity'], ['team', 'Users'], ['help', 'Help']];
 
 const cache = { client: null, index: { screens: [], playlists: [], media: [] }, people: [], msgs: [], reqs: [], chatOff: false, loadedAt: 0 };
 
@@ -72,7 +72,7 @@ export function startHub(go) {
     key: () => (state.me?.user_id || 'x') + '.' + (state.clientId || ''),
     searchItems(qs) {
       const out = [];
-      const pages = PAGES.filter(([k]) => state.clientId || k === 'help');
+      const pages = PAGES.filter(([k]) => k === 'help' || (state.clientId && canView(k)));
       pages.filter(([, l]) => !qs || l.toLowerCase().includes(qs)).forEach(([k, l]) => out.push({ group: 'Pages', icon: 'page', label: l, run: () => go(k) }));
       if (qs) {
         const m = (x) => (x.name || '').toLowerCase().includes(qs);
@@ -86,7 +86,7 @@ export function startHub(go) {
       me: () => ({ id: state.me?.user_id }),
       teamName: () => (state.me?.clients || []).find((c) => c.id === state.clientId)?.name || 'Everyone',
       unavailable: () => (!state.clientId ? 'Pick a business first.' : cache.chatOff ? 'Team chat isn’t switched on yet. It will appear here as soon as Proview turns it on.' : ''),
-      people: () => cache.people.map((p) => ({ id: p.user_id, name: cap(p.email), sub: p.role === 'manager' ? 'Manager' : 'Editor' })),
+      people: () => cache.people.map((p) => ({ id: p.user_id, name: cap(p.email), sub: roleLabel(p.role) })),
       cached: () => cache.msgs.map((m) => ({ id: m.id, by: m.author, byName: cap(m.author_email), to: m.to_user || 'all', text: m.body, at: m.created_at })),
       refresh: async () => { await loadChat(); },
       async send(conv, text) {

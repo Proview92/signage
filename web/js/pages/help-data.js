@@ -202,9 +202,10 @@ export const DASH = [
     'Publish requests from Editors appear here. Press **Approve & publish**, or **Reject** with a reason the editor will see.',
   ]],
 
-  ['Team and roles', 'Invite people and control what they can do.', [
-    'Go to **Team** and press invite. Enter their email and choose a role.',
-    '**Editor**: media, playlists and schedules. **Manager**: also adds TVs and invites people.',
+  ['Users and roles', 'Invite people and control what they can do.', [
+    'Go to **Users** and press invite. Enter their email, choose a role, tick the sites they can see and the features they can use.',
+    '**Owner / Admin**: every site and feature, adds TVs and sites, manages users. **Manager**: only their sites and features, publishes without approval. **Staff**: only their sites and features.',
+    'Press **Edit access** next to a person to change their role, sites or features. Nobody can change their own access.',
     'Send the invite email, or copy the link and send it yourself (WhatsApp, text…).',
     'Forgotten password? An administrator can press **Reset password**: the person signs in with 123456 and must choose a new password straight away.',
   ]],
