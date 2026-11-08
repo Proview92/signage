@@ -45,8 +45,6 @@ h3 { font-size: 15px; font-weight: 650; }
 .wordmark b { font-weight: 500; }   /* same style as SIGNAGE, in white */
 .wordmark span { font-weight: 500; background: var(--accent-grad-light); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .brand-mark { width: 36px; height: 26px; flex: none; background: url(../logo.png) center / contain no-repeat; }
-.client-pick { margin: 0 4px 14px; }
-.client-pick select { width: 100%; background: #23232a; color: #fff; border: 1px solid #33333c; }
 .nav a { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 9px; text-decoration: none; color: var(--side-ink); font-weight: 550; }
 .nav a:hover { background: #1f1f25; color: #fff; }
 .nav a.active { background: #26262e; color: #fff; }
@@ -69,7 +67,7 @@ a.side-me:hover { background: #25252c; }
 .app { transition: grid-template-columns .15s ease; }
 .app.collapsed { grid-template-columns: 76px 1fr; }
 .app.collapsed .side { padding: 18px 10px; }
-.app.collapsed .wordmark, .app.collapsed .client-pick, .app.collapsed .nav a > span:not(.bell-dot), .app.collapsed .nav-sep, .app.collapsed .side-me-t, .app.collapsed .side-me > svg, .app.collapsed .sf-link .lbl { display: none; }
+.app.collapsed .wordmark, .app.collapsed .nav a > span:not(.bell-dot), .app.collapsed .nav-sep, .app.collapsed .side-me-t, .app.collapsed .side-me > svg, .app.collapsed .sf-link .lbl { display: none; }
 .app.collapsed .brand { justify-content: center; padding: 4px 0 18px; }
 .app.collapsed .nav a { justify-content: center; padding: 10px 0; position: relative; }
 .app.collapsed .nav a .bell-dot { position: absolute; top: 4px; right: 10px; }
@@ -742,12 +740,6 @@ body { font-size: 14px; }
 .side .brand-mark { width: 32px; height: 26px; }
 .side .wordmark { font-size: 13px; letter-spacing: .02em; }
 .side .wordmark b { margin-right: .3em; }
-.client-pick { margin: 0 14px 12px; }
-.client-pick:empty { display: none; }
-.client-pick select { width: 100%; background: #23232a; color: #fff; border: 1px solid #33333c; border-radius: 9px; padding: 9px 30px 9px 11px; font: 500 14px var(--font); appearance: none; -webkit-appearance: none; cursor: pointer; text-overflow: ellipsis;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
-.client-pick select:hover { border-color: #4a4a55; }
-.client-pick select option { background: #23232a; color: #fff; }
 .side .nav { flex: 1; min-height: 0; overflow: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 0; }
 .nav a { gap: 12px; padding: 9px 12px; font-weight: 500; font-size: 14px; color: #c9c9d1; line-height: 20px; }
 .nav svg { width: 19px; height: 19px; }
@@ -774,7 +766,7 @@ body { font-size: 14px; }
 @media (min-width: 701px) and (max-width: 900px) {
   .app, .app.collapsed { grid-template-columns: 72px 1fr !important; }
   .side { display: flex !important; padding: 0; }
-  .app .wordmark, .app .client-pick, .app .nav a > span:not(.bell-dot), .app .nav-sep, .app .side-me, .app .sf-link .lbl, .app .side-foot .sf-link:first-child { display: none !important; }
+  .app .wordmark, .app .nav a > span:not(.bell-dot), .app .nav-sep, .app .side-me, .app .sf-link .lbl, .app .side-foot .sf-link:first-child { display: none !important; }
   .app .side .brand { justify-content: center; padding: 18px 0 14px; }
   .app .nav a { justify-content: center; padding: 10px 0; position: relative; }
   .app .nav a .bell-dot { position: absolute; top: 4px; right: 8px; }
@@ -789,7 +781,7 @@ body { font-size: 14px; }
   .side { display: flex !important; position: fixed; top: 0; bottom: 0; left: 0; width: 280px; max-width: 86vw; height: 100dvh; z-index: 76; transform: translateX(-105%); transition: transform .25s ease; box-shadow: 10px 0 40px rgba(0,0,0,.35); padding-bottom: env(safe-area-inset-bottom); }
   .app.navopen .side { transform: none; }
   .app.navopen .nav-scrim { display: block; position: fixed; inset: 0; background: rgba(20,20,24,.45); z-index: 75; }
-  .app.collapsed .wordmark, .app.collapsed .client-pick, .app.collapsed .nav-sep, .app.collapsed .side-me-t { display: revert; }
+  .app.collapsed .wordmark, .app.collapsed .nav-sep, .app.collapsed .side-me-t { display: revert; }
   .app.collapsed .nav a > span, .app.collapsed .sf-link .lbl { display: inline !important; }
   .app.collapsed .nav a { justify-content: flex-start; padding: 9px 12px; }
   .app.collapsed .side .brand { justify-content: flex-start; padding: 18px 10px 14px 14px; }
@@ -801,7 +793,6 @@ body { font-size: 14px; }
   .main { padding: 14px 12px 40px; }
 }
 .side .wordmark { font-weight: 500; }
-.client-pick select { line-height: 20px; }
 .nav-sep { line-height: 15px; }
 .side-me { font-size: 12px; }
 .side-me-t b { line-height: 18px; }
@@ -814,18 +805,12 @@ body { font-size: 14px; }
 .bell-row { gap: 12px; font-weight: 500; font-size: 14px; line-height: 20px; }
 .bell-row svg { color: inherit; width: 19px; height: 19px; }
 @media (max-width: 700px) { .top { min-height: 62px; } }
-/* iPad: short names under the icons and the client picker in the header (same as Bookings and Employee) */
-.top-pick { display: none; }
+/* iPad: short names under the icons (same as Bookings and Employee) */
 @media (min-width: 701px) and (max-width: 900px) {
   .app .nav a, .app .nav a.bell-row { flex-direction: column; gap: 4px; padding: 8px 2px 7px; justify-content: center; }
   .app .nav a > span:not(.bell-dot) { display: block !important; font-size: 10.5px; line-height: 1.15; font-weight: 500; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 64px; letter-spacing: -.1px; }
   .app .nav a .bell-dot { top: 2px; right: 12px; }
-  .top-pick { display: block; max-width: 46%; min-width: 0; margin: 0 6px; }
-  .top-pick:empty, .top-pick > div { display: none; }
-  .top-pick select { width: 100%; padding: 7px 28px 7px 10px; font: 500 15px var(--font); line-height: 20px; border-radius: 9px; background-color: #fff; color: var(--ink); border: 1px solid var(--line); appearance: none; -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23555' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; }
 }
-@media (hover: none) and (pointer: coarse) { .client-pick select { font-size: 16px; } }
 .side .wordmark { line-height: 18px; }
 /* ===== Proview theme v2: font style and sizes from Proview Signage, same profile box and footer in all apps ===== */
 body{font-size:15px;line-height:1.45}
@@ -833,7 +818,6 @@ body{font-size:15px;line-height:1.45}
 .side .brand .logo,.side .brand .brand-mark{width:36px;height:26px}
 .side .wordmark{font-size:15px;letter-spacing:.04em;font-weight:500;line-height:20px}
 .side .wordmark b{font-weight:500;margin-right:0}
-.side .client-pick select{font-size:15px;font-weight:400;line-height:20px}
 .side .nav button,.side .nav a{font-size:15px;font-weight:550;gap:11px;padding:9px 12px;line-height:22px}
 .side .nav button .lbl,.side .nav a>span:not(.bell-dot):not(.cnt){font-size:15px;font-weight:550}
 .side .nav svg{width:18px;height:18px;flex:none}
@@ -855,8 +839,7 @@ body{font-size:15px;line-height:1.45}
 .side .nav-sec,.side .nav-sep{line-height:15px!important;padding:14px 10px 6px!important;margin:0!important}
 .side .nav .gs-ring{width:18px!important;height:18px!important;flex:none}
 @media (min-width:901px),(max-width:700px){.side .nav>button:not(.nav-group):not(.nav-more),.side .nav>a{height:40px;box-sizing:border-box}}
-@media (max-width:700px){.app .side .side-me{display:flex!important}.side .client-pick select{font-size:15px!important}}
-@media (max-width:700px) and (hover:none) and (pointer:coarse){.side .client-pick select{font-size:16px!important}}
+@media (max-width:700px){.app .side .side-me{display:flex!important}}
 
 /* rail v3: identical iPad/narrow rail on all Proview apps */
 @media (min-width:701px) and (max-width:900px){
@@ -904,14 +887,6 @@ html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .s
 .ov-table tr:last-child td { border-bottom: 0; }
 .ov-table tr.ov-loose td { background: #faf9f6; }
 
-/* site picker in the sidebar: same as Proview WiFi */
-.side .pv-viewing{display:block;font-size:11px;line-height:15px;letter-spacing:.06em;text-transform:uppercase;color:#8b8b95;margin:0 2px 6px;font-weight:400}
-.side #sitePick select,.side #orgPick select,.side .client-pick select{width:100%!important;height:42px!important;border-radius:10px!important;border:1px solid #2c2c35!important;background-color:#1f1f25!important;color:#fff!important;font-size:14px!important;font-weight:600!important;padding:0 34px 0 12px!important;appearance:none!important;-webkit-appearance:none!important;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b4b4bd' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 10px center!important;background-size:16px 16px!important}
-.side #sitePick select:focus-visible,.side #orgPick select:focus-visible,.side .client-pick select:focus-visible{outline:2px solid #5a8dee;outline-offset:2px}
-.side #sitePick option,.side #orgPick option,.side .client-pick option{color:#141418;background:#fff;font-weight:400}
-.app.collapsed .side .pv-viewing{display:none!important}
-@media (min-width:701px) and (max-width:900px){.side .pv-viewing{display:none!important}}
-
 /* phones: a compact icon menu always on the left (same on all Proview apps) */
 @media (max-width:700px){
 html .app{grid-template-columns:60px minmax(0,1fr)!important}
@@ -920,9 +895,7 @@ html .menu-btn,html .nav-scrim,html #navScrim{display:none!important}
 html .side .brand{justify-content:center!important;padding:2px 0 10px!important;margin:0!important;gap:0!important;width:auto!important}
 html .side .brand .wordmark,html .side .brand>span:not(.brand-mark):not(.pv-mark){display:none!important}
 html .side .brand svg,html .side .brand img,html .side .brand .brand-mark{width:32px!important;height:23px!important;margin:0 auto!important}
-html body .side .nav .nav-sec,html body .side .nav .nav-sep,html body .side .nav .nav-div,html .side .pv-viewing,html .side .sp-title,html .side .nav-sec,html .side .nav-sep,html .side .nav .nav-group-h,html .side .side-me,html .side .side-foot{display:none!important}
-html .side #sitePick,html .side #orgPick,html .side .client-pick{display:block!important;margin:0 0 8px!important;padding:0!important;position:relative}
-html .side #sitePick select,html .side #orgPick select,html .side .client-pick select{width:50px!important;height:40px!important;min-width:0!important;padding:0!important;margin:0 auto!important;display:block;color:transparent!important;text-indent:-999px;font-size:16px!important;border-radius:10px!important;background-position:center!important;background-size:18px 18px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23d9d9e0' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4'/%3E%3C/svg%3E")!important}
+html body .side .nav .nav-sec,html body .side .nav .nav-sep,html body .side .nav .nav-div,html .side .sp-title,html .side .nav-sec,html .side .nav-sep,html .side .nav .nav-group-h,html .side .side-me,html .side .side-foot{display:none!important}
 html .side .nav{gap:0!important;row-gap:0!important;flex:1 1 auto;overflow:visible!important}
 html .side .nav>button:not(.nav-more),html .side .nav>a{height:52px!important;min-height:0!important;width:100%!important;flex-direction:column!important;justify-content:center!important;align-items:center!important;gap:4px!important;padding:0 1px!important;margin:0!important;border-radius:9px!important}
 html .side .nav>button svg,html .side .nav>a svg{width:18px!important;height:18px!important;margin:0!important;flex:none}
@@ -939,4 +912,19 @@ html .side .nav .nav-group .rail-ic{display:block!important}html .side .nav .nav
  html .side .nav>button svg,html .side .nav>a svg{width:18px!important;height:18px!important;margin:0!important;flex:none}
  html .side .nav>a .ext{display:none!important}
  html .side .nav .slbl,html .side .nav>a>span:not(.bell-dot):not(.cnt){display:block!important;font-size:10px!important;line-height:12px!important;font-weight:500!important;letter-spacing:-.1px!important;max-width:58px!important;overflow:visible!important;text-overflow:clip!important;white-space:nowrap;text-align:center}
+}
+
+/* site picker: in the top header right after the page title, on every screen size (same as Proview WiFi;
+   Bookings and Label use the same .hdr-pick markup and rules) */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.top .hdr-pick { margin: 0 0 0 6px; flex: 0 1 auto; min-width: 0; }
+.top .hdr-pick select { display: block; width: auto; height: 38px; max-width: 320px; min-width: 170px; border-radius: 10px; border: 1px solid var(--line); background-color: #fff; color: var(--ink); font: 600 14px var(--font); padding: 0 30px 0 12px; cursor: pointer; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+.top .hdr-pick select:focus { outline: none; border-color: var(--line); }
+.top .hdr-pick select:focus-visible { outline: 2px solid #5a8dee; outline-offset: 2px; }
+.top .hdr-pick select:disabled { opacity: 1; cursor: default; color: var(--ink); appearance: none; -webkit-appearance: none; padding-right: 12px; }
+/* phones: the tray leaves no room on the title row, so the picker gets the header's second row, full width */
+@media (max-width: 700px) {
+  .top { flex-wrap: wrap; row-gap: 6px; }
+  .top .hdr-pick { order: 1; flex: 1 0 100%; margin: 0; }
+  .top .hdr-pick select { width: 100%; min-width: 0; max-width: none; height: 36px; font-size: 13px; }
 }

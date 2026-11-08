@@ -240,7 +240,7 @@ export async function screensPage({ main, go }) {
           h('b', {}, bt?.state === 'active' ? `Free trial · 1 screen · ends ${fmtDate(bt.ends)}. ` : 'Free trial · 1 screen for 3 days. '),
           screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.');
 
-    const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); paint(); } },
+    const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); window.dispatchEvent(new Event('signage:sitefilter')); paint(); } },
       h('option', { value: 'all', selected: filter === 'all' }, `All sites · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),
       sites.map((x) => h('option', { value: x.id, selected: filter === x.id }, `${x.name} · ${screens.filter((s) => s.site_id === x.id).length} TV${screens.filter((s) => s.site_id === x.id).length === 1 ? '' : 's'}`)),
       screens.some((s) => !s.site_id) ? h('option', { value: 'none', selected: filter === 'none' }, `No site · ${screens.filter((s) => !s.site_id).length}`) : null) : null;

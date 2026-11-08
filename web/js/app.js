@@ -1,6 +1,6 @@
 import { configured } from './sb.js';
 import { startHub, statusDot } from './hub-app.js';
-import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, clearBusinessCache, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientTitle, toast, errMsg, field, refreshMe, setClient, clearBusinessCache, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { clientsPage } from './pages/clients.js';
 import { screenPage } from './pages/screen.js';
@@ -121,22 +121,73 @@ function nav(section) {
   return { items: state.clientId ? items : [], admin: state.me.is_admin, r, section };
 }
 
-function clientPicker() {
-  const cs = state.me.clients;
-  if (!cs.length && !state.me.is_admin) return null;
-  if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, clientTitle(cs[0]));
-  const onAll = /^#\/?clients/.test(location.hash);
+// ------------------------------------------------------------ site picker (top header, same as Proview WiFi)
+// One picker, in the header right after the page title, on every screen size.
+//   master: "All sites (N)" (the All sites page) + every "Business ▸ Site", grouped by business
+//   others: their business's sites ("All my sites" + each site); exactly one site: its name, disabled
+// Values: '__all' | '<clientId>|all' | '<clientId>|<siteId>'. Choosing one selects the business (saved),
+// sets the Screens site filter (signage.siteFilter.<client>) and stays on the same kind of page, as before.
+let pickSites = null;            // sites this person can see (null until the first load), refreshed on each page
+const siteFilterOf = (cid) => { try { return localStorage.getItem('signage.siteFilter.' + cid) || 'all'; } catch { return 'all'; } };
+async function loadPickSites() {
+  const { data, error } = await sb.from('sites').select('id, client_id, name');
+  pickSites = !error && data ? data.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))) : pickSites || [];
+}
+function pickGroups() {
+  return state.me.clients.map((c) => ({ c,
+    sites: (pickSites || []).filter((s) => s.client_id === c.id && (state.me.is_admin || !Array.isArray(c.site_ids) || c.site_ids.includes(s.id))) }));
+}
+function fillPicker(s) {
+  const admin = state.me.is_admin, groups = pickGroups();
+  const opt = (value, text) => h('option', { value, title: text }, text);
+  const out = [];
+  if (admin) {
+    out.push(opt('__all', pickSites ? `All sites (${groups.reduce((n, g) => n + g.sites.length, 0)})` : 'All sites'));
+    for (const { c, sites } of groups) out.push(h('optgroup', { label: clientTitle(c) },
+      opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All sites` : clientTitle(c)),
+      sites.map((x) => opt(c.id + '|' + x.id, `${clientTitle(c)} ▸ ${x.name}`))));
+  } else if (groups.length === 1) {
+    const { c, sites } = groups[0];
+    if (sites.length === 1) out.push(opt(c.id + '|' + sites[0].id, sites[0].name));
+    else { out.push(opt(c.id + '|all', sites.length ? 'All my sites' : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
+  } else {
+    for (const { c, sites } of groups) out.push(h('optgroup', { label: clientTitle(c) },
+      opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All my sites` : clientTitle(c)),
+      sites.map((x) => opt(c.id + '|' + x.id, `${clientTitle(c)} ▸ ${x.name}`))));
+  }
+  s.replaceChildren(...out);
+  s.disabled = !admin && (!pickSites || s.options.length <= 1);   // one site: shown in the same box, nothing to choose
+  syncPicker(s);
+}
+/** Select the option for where we are now (All sites page, or the business + its Screens site filter). */
+function syncPicker(s = document.querySelector('.hdr-pick select')) {
+  if (!s || !state.me) return;
+  const vals = [...s.options].map((o) => o.value), cid = state.clientId;
+  const want = state.me.is_admin && /^#\/?clients/.test(location.hash) ? '__all' : cid + '|' + siteFilterOf(cid);
+  s.value = vals.includes(want) ? want : vals.includes(cid + '|all') ? cid + '|all' : vals.find((v) => v.startsWith(cid + '|')) || vals[0] || '';
+  s.title = s.options[s.selectedIndex]?.text || '';
+}
+// The Screens page's own site filter changed: keep the header in step.
+window.addEventListener('signage:sitefilter', () => syncPicker());
+
+function sitePicker() {
+  if (!state.me.clients.length && !state.me.is_admin) return null;
   const s = h('select', {
-    'aria-label': 'Client',
+    id: 'hdr-site', 'aria-label': 'Site',
     onchange: (e) => {
-      // Proview admins: "All clients" opens the overview of every client
+      // Proview master: "All sites" opens the overview of every client and site
       if (e.target.value === '__all') return go('clients');
-      setClient(e.target.value); const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p && p !== 'clients' ? p : 'screens')); if (location.hash === to) render(); else location.hash = to;
+      const [cid, sid] = e.target.value.split('|');
+      setClient(cid);
+      try { localStorage.setItem('signage.siteFilter.' + cid, sid || 'all'); } catch {}
+      const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p && p !== 'clients' ? p : 'screens')); if (location.hash === to) render(); else location.hash = to;
     },
   });
-  if (state.me.is_admin) s.append(h('option', { value: '__all', selected: onAll }, `All sites (${cs.length})`));
-  for (const c of cs) s.append(h('option', { value: c.id, selected: !onAll && c.id === state.clientId, title: clientLabel(c) }, clientLabel(c)));
-  return s;
+  fillPicker(s);
+  // Refresh the site list (new or renamed sites) and repaint if it changed.
+  const before = JSON.stringify(pickSites);
+  loadPickSites().then(() => { if (s.isConnected && JSON.stringify(pickSites) !== before) fillPicker(s); }).catch(() => {});
+  return h('div', { class: 'hdr-pick' }, h('label', { class: 'sr', for: 'hdr-site' }, 'Site'), s);
 }
 
 // sidebar footer (same as Proview Employee and Bookings): who's signed in, then COLLAPSE and SIGN OUT
@@ -166,7 +217,6 @@ function shell(section, main) {
   const meEl = sideMe(n.r);
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
-    h('div', { class: 'client-pick' }, (() => { const p = clientPicker(); return p && p.tagName === 'SELECT' ? [h('label', { class: 'pv-viewing' }, /^#\/?clients/.test(location.hash) ? 'Master view' : 'Viewing site'), p] : p; })()),
     h('nav', { class: 'nav' },
       // group headers, same style as Proview Bookings (Service / Grow / Team / Manage)
       n.items.length ? h('div', { class: 'nav-sep' }, 'Content') : null,
@@ -180,7 +230,7 @@ function shell(section, main) {
       h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
       h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
 
-  // header bar (same as Proview Bookings and Employee): menu button on phones, page title, notifications, help
+  // header bar (same as Proview WiFi, Bookings and Employee): menu button on phones, page title, site picker, tray, profile
   const toggleNav = () => document.querySelector('.app')?.classList.toggle('navopen');
   const avTxt = meEl.querySelector('.side-av')?.textContent || '?';
   const meTitle = [meEl.querySelector('.side-me-t b')?.textContent, meEl.querySelector('.side-me-t span')?.textContent].filter(Boolean).join(' · ');
@@ -190,8 +240,8 @@ function shell(section, main) {
   const top = h('header', { class: 'top' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', title: 'Menu', onclick: toggleNav }, icon('menu')),
     h('h2', {}, PAGE_TITLES[section] || ''),
+    sitePicker(),
     h('div', { class: 'sp' }),
-    h('span', { class: 'top-pick' }, clientPicker()),
     window.PVHub ? window.PVHub.tray({ dot: statusDot(), bell: bell('icon') }) : bell('icon'),
     // back to dashboard.proviewcrm.co.uk: managers and admins only (editors don't get it)
     (window.PVHub && window.PVHub.dashLink && window.PVHub.dashLink(['admin', 'manager'].includes(role()))) || null,
