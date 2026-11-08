@@ -118,13 +118,15 @@ function nav(section) {
     ['activity', 'Activity', 'activity'],
     ['team', 'Users', 'team'],
   ].filter(([k]) => canView(k));
-  return { items: state.clientId ? items : [], admin: state.me.is_admin, r, section };
+  // The master always sees the usual pages (greyed out on All sites until a business/site is picked).
+  return { items: state.clientId || state.me.is_admin ? items : [], admin: state.me.is_admin, r, section };
 }
 
 // ------------------------------------------------------------ site picker (top header, same as Proview WiFi)
 // One picker, in the header right after the page title, on every screen size.
-//   master: "All sites (N)" (the All sites page) + every "Business ▸ Site", grouped by business
-//   others: their business's sites ("All my sites" + each site); exactly one site: its name, disabled
+//   master: "All sites (N)" (the All sites page), then every site by name (" · Business" only when two share a name)
+//   others: their business's sites ("All my sites (N)" + each site); exactly one site: its name, disabled
+// (the standard for all Proview apps: PICKER_STANDARD.md)
 // Values: '__all' | '<clientId>|all' | '<clientId>|<siteId>'. Choosing one selects the business (saved),
 // sets the Screens site filter (signage.siteFilter.<client>) and stays on the same kind of page, as before.
 let pickSites = null;            // sites this person can see (null until the first load), refreshed on each page
@@ -142,14 +144,20 @@ function fillPicker(s) {
   const opt = (value, text) => h('option', { value, title: text }, text);
   const out = [];
   if (admin) {
-    out.push(opt('__all', pickSites ? `All sites (${groups.reduce((n, g) => n + g.sites.length, 0)})` : 'All sites'));
-    for (const { c, sites } of groups) out.push(h('optgroup', { label: clientTitle(c) },
-      opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All sites` : clientTitle(c)),
-      sites.map((x) => opt(c.id + '|' + x.id, `${clientTitle(c)} ▸ ${x.name}`))));
+    const all = groups.flatMap(({ c, sites }) => sites.map((x) => ({ c, x })))
+      .sort((a, b) => String(a.x.name).localeCompare(String(b.x.name)) || clientTitle(a.c).localeCompare(clientTitle(b.c)));
+    const dup = (x) => all.filter((y) => String(y.x.name).toLowerCase() === String(x.name).toLowerCase()).length > 1;
+    out.push(opt('__all', pickSites ? `All sites (${all.length})` : 'All sites'));
+    for (const { c, x } of all) out.push(opt(c.id + '|' + x.id, dup(x) ? `${x.name} · ${clientTitle(c)}` : x.name));
+    // A whole business opened from the All sites page ("Open" on its row) isn't in the list: the box reads
+    // "<Business> (all sites)" from a hidden selected option, so it still says where you are.
+    const cur = groups.find((g) => g.c.id === state.clientId);
+    if (cur && !/^#\/?clients/.test(location.hash) && !all.some((y) => y.c.id === cur.c.id && y.x.id === siteFilterOf(cur.c.id)))
+      out.push(h('option', { value: cur.c.id + '|all', hidden: true, disabled: true }, `${clientTitle(cur.c)} (all sites)`));
   } else if (groups.length === 1) {
     const { c, sites } = groups[0];
     if (sites.length === 1) out.push(opt(c.id + '|' + sites[0].id, sites[0].name));
-    else { out.push(opt(c.id + '|all', sites.length ? 'All my sites' : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
+    else { out.push(opt(c.id + '|all', sites.length ? `All my sites (${sites.length})` : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
   } else {
     for (const { c, sites } of groups) out.push(h('optgroup', { label: clientTitle(c) },
       opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All my sites` : clientTitle(c)),
@@ -170,10 +178,20 @@ function syncPicker(s = document.querySelector('.hdr-pick select')) {
 // The Screens page's own site filter changed: keep the header in step.
 window.addEventListener('signage:sitefilter', () => syncPicker());
 
+/** A greyed page was clicked on All sites: ask for a site, focus the header dropdown and pulse it. */
+function chooseSiteFirst() {
+  toast('Choose a site in the dropdown first');
+  const box = document.querySelector('.hdr-pick'), s = box?.querySelector('select');
+  if (!box || !s) return;
+  s.focus();
+  box.classList.remove('pulse'); void box.offsetWidth; box.classList.add('pulse');
+  setTimeout(() => box.classList.remove('pulse'), 1000);
+}
+
 function sitePicker() {
   if (!state.me.clients.length && !state.me.is_admin) return null;
   const s = h('select', {
-    id: 'hdr-site', 'aria-label': 'Site',
+    id: 'hdr-site', 'aria-label': 'Choose site',
     onchange: (e) => {
       // Proview master: "All sites" opens the overview of every client and site
       if (e.target.value === '__all') return go('clients');
@@ -212,12 +230,21 @@ function sideMe(r) {
 const PAGE_TITLES = { clients: 'All sites', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
-  const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
+  // Master on All sites (no business/site picked): usual pages stay in place but greyed out; a click asks
+  // for a site in the header dropdown instead of opening the page (same in all Proview apps).
+  const onAll = n.admin && section === 'clients';
+  const link = (key, label, ic) => onAll
+    ? h('a', { class: 'disabled', role: 'link', tabindex: '0', 'aria-disabled': 'true', title: label + ' – choose a site first',
+        onclick: (e) => { e.preventDefault(); chooseSiteFirst(); },
+        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseSiteFirst(); } } }, icon(ic), h('span', {}, label))
+    : h('a', { href: '#/' + key, class: section === key ? 'active' : '', title: label }, icon(ic), h('span', {}, label));
 
   const meEl = sideMe(n.r);
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
     h('nav', { class: 'nav' },
+      // master only: All sites, always first (highlighted while the All sites page is showing)
+      n.admin ? h('a', { href: '#/clients', class: 'nav-allsites' + (section === 'clients' ? ' active' : ''), title: 'All sites', 'aria-current': section === 'clients' ? 'page' : null }, icon('clients'), h('span', {}, 'All sites')) : null,
       // group headers, same style as Proview Bookings (Service / Grow / Team / Manage)
       n.items.length ? h('div', { class: 'nav-sep' }, 'Content') : null,
       n.items.filter(([k]) => ['screens', 'playlists', 'media'].includes(k)).map(([k, l, i]) => link(k, l, i)),

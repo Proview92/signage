@@ -922,6 +922,11 @@ html .side .nav .nav-group .rail-ic{display:block!important}html .side .nav .nav
 .top .hdr-pick select:focus { outline: none; border-color: var(--line); }
 .top .hdr-pick select:focus-visible { outline: 2px solid #5a8dee; outline-offset: 2px; }
 .top .hdr-pick select:disabled { opacity: 1; cursor: default; color: var(--ink); appearance: none; -webkit-appearance: none; padding-right: 12px; }
+/* iPad / narrow desktop: the title keeps its width and the picker shrinks (to its 170px minimum) to fit */
+@media (min-width: 701px) {
+  .top h2 { flex-shrink: 0; }
+  .top .hdr-pick select { max-width: min(320px, 100%); }
+}
 /* phones: the tray leaves no room on the title row, so the picker gets the header's second row, full width */
 @media (max-width: 700px) {
   .top { flex-wrap: wrap; row-gap: 6px; }
@@ -933,3 +938,11 @@ html .side .nav .nav-group .rail-ic{display:block!important}html .side .nav .nav
 html .brand-mark.brand-mark.brand-mark.brand-mark{background:url(../icon-app.svg) center/contain no-repeat!important;border-radius:22%}
 html .side .brand .brand-mark.brand-mark.brand-mark.brand-mark,html .brand .brand-mark.brand-mark.brand-mark.brand-mark,html .app.collapsed .side .brand .brand-mark.brand-mark.brand-mark.brand-mark,html body .app .side .brand .brand-mark.brand-mark.brand-mark.brand-mark{width:30px!important;height:30px!important}
 html .wordmark span,html .wordmark span.x.x,html .wordmark2 span,html .wordmark2 span.x.x,html .wm span,html .fcols .brand .wm span{background:linear-gradient(90deg,#F97316 0%,#C2410C 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}
+
+/* master on All sites: usual pages greyed out until a business/site is picked (same in all Proview apps) */
+html .side .nav > a.disabled { opacity: .45; cursor: not-allowed; }
+html .side .nav > a.disabled:hover { background: none; color: var(--side-ink, #c9c9d1); }
+.top .hdr-pick.pulse select { animation: hdr-pick-pulse 1s ease-out; }
+@keyframes hdr-pick-pulse { 0%, 60% { box-shadow: 0 0 0 3px rgba(90, 141, 238, .55); border-color: #5a8dee; } 100% { box-shadow: 0 0 0 0 rgba(90, 141, 238, 0); } }
+/* phones: messages at the bottom of the screen, never over the header dropdown */
+@media (max-width: 700px) { .toasts { top: auto; bottom: calc(14px + env(safe-area-inset-bottom)); } }
