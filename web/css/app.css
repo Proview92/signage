@@ -928,3 +928,8 @@ html .side .nav .nav-group .rail-ic{display:block!important}html .side .nav .nav
   .top .hdr-pick { order: 1; flex: 1 0 100%; margin: 0; }
   .top .hdr-pick select { width: 100%; min-width: 0; max-width: none; height: 36px; font-size: 13px; }
 }
+
+/* App icon replaces the PV mark; app name in the icon colour */
+html .brand-mark.brand-mark.brand-mark.brand-mark{background:url(../icon-app.svg) center/contain no-repeat!important;border-radius:22%}
+html .side .brand .brand-mark.brand-mark.brand-mark.brand-mark,html .brand .brand-mark.brand-mark.brand-mark.brand-mark,html .app.collapsed .side .brand .brand-mark.brand-mark.brand-mark.brand-mark,html body .app .side .brand .brand-mark.brand-mark.brand-mark.brand-mark{width:30px!important;height:30px!important}
+html .wordmark span,html .wordmark span.x.x,html .wordmark2 span,html .wordmark2 span.x.x,html .wm span,html .fcols .brand .wm span{background:linear-gradient(90deg,#F97316 0%,#C2410C 100%)!important;-webkit-background-clip:text!important;background-clip:text!important;color:transparent!important}

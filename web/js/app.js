@@ -542,7 +542,7 @@ async function authPage(inviteToken, startSignup = false) {
       }
       submit.disabled = false;
     },
-  }, h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'logo.png', alt: '' }), wordmark(APP)),
+  }, h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'icon-app.svg', alt: '' }), wordmark(APP)),
     title, sub, msg, field('Email', email), passField, pass2Field, submit, pvRow,
     h('div', { class: 'row between' }, swap, forgot));
 
@@ -556,7 +556,7 @@ function authLayout(form) {
   return h('div', { class: 'auth look-' + look },
     h('div', { class: 'auth-bg', 'aria-hidden': 'true' }, ...Array.from({ length: 10 }, (_, i) => h('i', { class: 't' + i }))),
     h('div', { class: 'auth-art' },
-      h('img', { class: 'auth-art-logo', src: 'logo.png', alt: '' }),
+      h('img', { class: 'auth-art-logo', src: 'icon-app.svg', alt: '' }),
       h('div', { class: 'brand', style: { padding: 0 } }, brandMark(), wordmark(APP)),
       h('h2', {}, 'Every screen, every offer — changed in seconds.'),
       signageArt(),
@@ -591,7 +591,7 @@ function changePasswordPage() {
       render();
     } catch (err) { msg.replaceChildren(h('div', { class: 'notice bad' }, errMsg(err))); submit.disabled = false; }
   } },
-    h('img', { src: 'logo.png', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
+    h('img', { src: 'icon-app.svg', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
     h('h1', { style: { textAlign: 'center', margin: '6px 0 0' } }, 'Choose a new password'),
     h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Your password was reset by an administrator. Set a new one for ${state.session.user.email} to continue.`),
     field('New password', passwordToggle(pass)),
@@ -632,7 +632,7 @@ function setupBusiness(trialOn = true) {
       submit.disabled = false;
     }
   } },
-    h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'logo.png', alt: '' }), wordmark(APP)),
+    h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'icon-app.svg', alt: '' }), wordmark(APP)),
     h('h1', {}, 'Set up your business'),
     h('p', { class: 'muted', style: { margin: 0 } }, trialOn ? 'Start your free 3-day trial' : 'Your login isn’t linked to a business yet.'),
     h('p', { class: 'tiny', style: { margin: 0 } }, `Signed in as ${state.me.email}.${trialOn ? ' The trial includes 1 screen and every feature.' : ''}`),
