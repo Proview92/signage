@@ -1,6 +1,6 @@
 import { configured } from './sb.js';
 import { startHub, statusDot } from './hub-app.js';
-import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientLabel, clientTitle, toast, errMsg, field, refreshMe, setClient, clearBusinessCache, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
 import { screensPage } from './pages/screens.js';
 import { clientsPage } from './pages/clients.js';
 import { screenPage } from './pages/screen.js';
@@ -73,10 +73,10 @@ async function render() {
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
   if (!state.me.is_admin && !state.me.clients.length) return root.replaceChildren(setupBusiness());
-  // Proview admin: clients and licences are managed at license.proviewcrm.co.uk; with none yet, point there.
-  if (state.me.is_admin && !state.me.clients.length) return root.replaceChildren(noClientsYet());
   // Always have a valid business selected (never "none" for someone who belongs to one).
-  if (!state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
+  if (state.me.clients.length && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
+  // Proview master: lands on All sites (every client and site). With no clients yet, All sites is the only page.
+  if (state.me.is_admin && (!path || !state.me.clients.length) && !/^(clients|help)$/.test(path)) return go('clients');
 
   let match = null, page = null, section = null;
   for (const [re, fn, sec] of routes) { const m = path.match(re); if (m) { match = m; page = fn; section = sec; break; } }
@@ -115,7 +115,7 @@ function nav(section) {
 
 function clientPicker() {
   const cs = state.me.clients;
-  if (!cs.length) return null;
+  if (!cs.length && !state.me.is_admin) return null;
   if (cs.length === 1 && !state.me.is_admin) return h('div', { class: 'tiny', style: { color: '#9a9aa4', padding: '0 10px 14px' } }, clientTitle(cs[0]));
   const onAll = /^#\/?clients/.test(location.hash);
   const s = h('select', {
@@ -150,7 +150,7 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
-const PAGE_TITLES = { clients: 'All clients', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
+const PAGE_TITLES = { clients: 'All sites', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '' }, icon(ic), h('span', {}, label));
@@ -242,7 +242,9 @@ function bell(variant = 'row') {
 async function signOut() {
   await sb.auth.signOut();
   state.me = null;
-  location.hash = '';
+  clearBusinessCache();   // nothing of this person's businesses stays on the device
+  // Fresh page load, so nothing from this session is left in memory either (lands on the sign-in page).
+  location.replace(location.pathname);
 }
 
 // ------------------------------------------------------------ auth
@@ -545,17 +547,6 @@ function setupBusiness() {
   return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
 }
 
-function noClientsYet() {
-  return h('div', { class: 'auth-form', style: { minHeight: '100vh' } },
-    h('div', { class: 'stack', style: { maxWidth: '440px', textAlign: 'center' } },
-      h('h1', {}, 'No clients yet'),
-      h('p', { class: 'muted' }, 'Add clients, sites and licences in the Proview licence portal, then come back here.'),
-      h('div', { class: 'row', style: { justifyContent: 'center', gap: '8px' } },
-        h('a', { class: 'btn primary', href: 'https://license.proviewcrm.co.uk', target: '_blank', rel: 'noopener' }, 'Open licence portal ↗'),
-        h('button', { class: 'btn', onclick: () => render() }, 'Check again'),
-        h('button', { class: 'btn', onclick: signOut }, 'Sign out'))));
-}
-
 function noAccess() {
   return h('div', { class: 'auth-form', style: { minHeight: '100vh' } },
     h('div', { class: 'stack', style: { maxWidth: '420px', textAlign: 'center' } },
@@ -593,6 +584,7 @@ function errorPage(e) {
       promptBox('Choose a new password', 'New password (8+ characters)', { type: 'password', okLabel: 'Save password', minLength: 8 })
         .then((p) => p && sb.auth.updateUser({ password: p }).then(({ error }) => toast(error ? errMsg(error) : 'Password updated', !!error)));
     }
+    if (had && !session) clearBusinessCache();   // signed out (here, in another tab, or the session ended)
     if (had !== !!session) { state.me = null; render(); }
   });
   render();

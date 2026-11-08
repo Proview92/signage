@@ -322,10 +322,37 @@ export async function publishOrRequest(kind, id, name) {
   }
 }
 
+// Business data this dashboard keeps on the device: the selected client, and per-client / per-person view settings.
+// TV player keys (signage.tv.*, the 'signage-tv' sign-in, cached media) are never touched.
+const OWNER_KEY = 'signage.owner';
+const BIZ_KEY = (k) => k === 'signage.client' || k === OWNER_KEY || /^signage\.(siteFilter|folder|notif\.read)\./.test(k) || /^pvhub\./.test(k);
+function lsKeys() { try { return Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i)).filter(Boolean); } catch { return []; } }
+/** Sign-out / different person: forget every business this device remembered. */
+export function clearBusinessCache() {
+  for (const k of lsKeys()) if (BIZ_KEY(k)) { try { localStorage.removeItem(k); } catch {} }
+  urlCache.clear();
+  state.clientId = null;
+}
+/** Drop remembered clients this person no longer has access to on the server (deleted, or access removed). */
+function pruneBusinessCache(me) {
+  try {
+    if (localStorage.getItem(OWNER_KEY) && localStorage.getItem(OWNER_KEY) !== me.user_id) clearBusinessCache();
+    localStorage.setItem(OWNER_KEY, me.user_id);
+    const ids = new Set(me.clients.map((c) => c.id));
+    if (state.clientId && !ids.has(state.clientId)) state.clientId = null;
+    for (const k of lsKeys()) {
+      const m = k === 'signage.client' ? [null, localStorage.getItem(k)]
+        : k.match(/^signage\.(?:siteFilter|folder)\.(.+)$/) || k.match(/^pvhub\.[^.]+\.([^.]+)\./);
+      if (m && m[1] && m[1] !== 'null' && !ids.has(m[1])) localStorage.removeItem(k);
+    }
+  } catch {}
+}
+
 export async function refreshMe() {
   const me = await rpc('whoami');
   // No signed-in user (the session ended in the background): don't carry on with an empty account.
   if (!me?.user_id) { await sb.auth.signOut().catch(() => {}); throw new Error('Your sign-in has ended. Please sign in again.'); }
+  pruneBusinessCache(me);
   state.me = me;
   const ids = state.me.clients.map((c) => c.id);
   const saved = localStorage.getItem('signage.client');
