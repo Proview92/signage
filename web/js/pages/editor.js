@@ -1,5 +1,6 @@
 import { publishOrRequest } from '../core.js';
-import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg } from '../core.js';
+import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, mediaUrl, fmtDuration, errMsg, canEditContent } from '../core.js';
+import { loadSites, contentSitesPicker } from './sites-ui.js';
 import { layoutWithTicker, ITEM_TYPES, newItem, areaPixels, createStage, paintTicker } from '../renderer.js';
 import { SlidePlayer, LayoutPlayer, LAYOUTS, layoutLabel, normLayout, zoneCount, zonePlaylistIds, renderStill, newSlide, TRANSITIONS, EFFECTS, TEXT_ANIMS, TEXT_POSITIONS, BACKGROUNDS, DAY_NAMES } from '../renderer.js';
 import { pickMedia } from './media.js';
@@ -12,6 +13,9 @@ export async function editorPage({ main, params: [id], go }) {
   const pl = await q(sb.from('playlists').select('*').eq('id', id).single());
   pl.settings = pl.settings || {};
   const allPlaylists = await q(sb.from('playlists').select('id,name,slides,settings').eq('client_id', state.clientId));
+  const sites = await loadSites(state.clientId).catch(() => []);
+  // Shared with other sites and this person is limited to some sites: they can look, not change it.
+  const editable = canEditContent(pl);
   const lookup = (pid) => (pid === pl.id ? pl : allPlaylists.find((x) => x.id === pid)) || null;
   let sel = pl.slides.length ? 0 : -1;
   let selItem = null;   // id of the widget box being edited on the current slide
@@ -31,16 +35,23 @@ export async function editorPage({ main, params: [id], go }) {
   let saveTimer = null, saving = false, dirty = false, player = null, previewTimer = null;
 
   // ------------------------------------------------ saving
-  const status = h('span', { class: 'tiny' }, 'All changes saved');
+  const status = h('span', { class: 'tiny' }, editable ? 'All changes saved' : 'View only · shared with other sites');
+  let warnedViewOnly = false;
   let savingP = null;
   const save = async () => {
     clearTimeout(saveTimer);
     while (savingP) await savingP.catch(() => {});   // let a save in progress finish first
     if (!dirty) return;
+    if (!editable) {   // view only: don't keep trying (the database would refuse anyway)
+      dirty = false; status.textContent = 'View only · changes not saved';
+      if (!warnedViewOnly) { warnedViewOnly = true; toast('This playlist is shared with other sites, so only an owner or admin can change it. Duplicate it to make your own copy.', true); }
+      return;
+    }
     let done; savingP = new Promise((r) => (done = r));
     saving = true; dirty = false; status.textContent = 'Saving…';
     try {
-      await q(sb.from('playlists').update({ name: pl.name, slides: pl.slides, settings: pl.settings }).eq('id', id));
+      const rows = await q(sb.from('playlists').update({ name: pl.name, slides: pl.slides, settings: pl.settings }).eq('id', id).select('id'));
+      if (!rows?.length) throw new Error('You can’t change this playlist. Ask your owner or admin.');
       status.textContent = 'All changes saved';
     } catch (e) { dirty = true; status.textContent = 'Not saved'; toast(errMsg(e), true); }
     saving = false; savingP = null; done();
@@ -592,9 +603,26 @@ export async function editorPage({ main, params: [id], go }) {
         if (v) { pl.name = v; delete pl.settings.needs_name; nameInput.value = v; schedule(); }
       } });
     if (needsName()) setTimeout(() => nameField.focus(), 50);
+    // Sites: saved straight away (separately from the slides) so a bad choice never blocks the autosave.
+    const sitesPick = contentSitesPicker(pl, sites);
+    if (sitesPick && !sitesPick.readOnly) {
+      sitesPick.el.addEventListener('change', async () => {
+        let v;
+        try { v = sitesPick.value(); } catch (e) { toast(errMsg(e), true); return; }
+        if (JSON.stringify(v) === JSON.stringify(pl.site_ids ?? null)) return;
+        try {
+          const rows = await q(sb.from('playlists').update({ site_ids: v }).eq('id', id).select('site_ids'));
+          if (!rows?.length) throw new Error('You can’t change this playlist’s sites. Ask your owner or admin.');
+          pl.site_ids = rows[0].site_ids;
+          toast(v == null ? 'Shared with all sites' : 'Sites saved');
+        } catch (e) { toast(errMsg(e), true); }
+      });
+    }
     return h('div', { class: 'card pad stack' },
       h('h2', { style: { margin: 0 } }, 'Screen & layout'),
+      editable ? null : h('div', { class: 'notice warn' }, 'This playlist is shared with other sites, so you can view and publish it to your TVs but not change it. Use Duplicate on the Playlists page to make your own copy.'),
       field('Playlist name (required)', nameField),
+      sitesPick?.el,
       h('div', { class: 'small', style: { fontWeight: 600 } }, 'How is the TV mounted?'),
       h('div', { class: 'orient-grid' }, ...[['landscape', 'Landscape', 'Wide (16:9)'], ['portrait', 'Portrait', 'Tall (9:16)']].map(([v, l, d]) =>
         h('button', { type: 'button', class: 'orient-card' + ((pl.settings.orientation || 'landscape') === v ? ' on' : ''), onclick: () => { pl.settings.orientation = v; schedule(); paint(); } },

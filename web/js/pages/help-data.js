@@ -206,6 +206,7 @@ export const DASH = [
     'Go to **Users** and press invite. Enter their email, choose a role, tick the sites they can see and the features they can use.',
     '**Owner / Admin**: every site and feature, adds TVs and sites, manages users. **Manager**: only their sites and features, publishes without approval. **Staff**: only their sites and features.',
     'Press **Edit access** next to a person to change their role, sites or features. Nobody can change their own access.',
+    'Playlists and media are shared with all sites unless you pick **Sites** for them (on the playlist’s **Screen & layout** step, or in a file’s details). Managers and Staff only see shared items and items for their sites; what they create is kept to their sites, and shared items are view-only for them (they can duplicate a playlist to make their own copy).',
     'Send the invite email, or copy the link and send it yourself (WhatsApp, text…).',
     'Forgotten password? An administrator can press **Reset password**: the person signs in with 123456 and must choose a new password straight away.',
   ]],

@@ -248,6 +248,17 @@ export function hasFeature(f) {
 }
 /** Site ids this person is limited to, or null for every site. */
 export const mySiteIds = () => (canManage() ? null : currentClient()?.site_ids ?? null);
+/**
+ * Playlists and media carry site_ids (null = shared with every site). People limited to some sites can
+ * change an item only if every site it covers is one of theirs (shared items are read-only to them).
+ * Mirrors can_edit_sites in supabase/migrations/031_content_sites.sql (the database enforces it).
+ */
+export function canEditContent(item) {
+  const mine = mySiteIds();
+  if (!mine) return true;
+  const s = item?.site_ids;
+  return Array.isArray(s) && s.length > 0 && s.every((x) => mine.includes(x));
+}
 const PAGE_FEATURE = { playlists: 'playlists', media: 'media', reports: 'reports', activity: 'activity' };
 export function canView(section) {
   if (section === 'team') return canManage();

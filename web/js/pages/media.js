@@ -1,4 +1,5 @@
-import { sb, state, h, icon, q, fetchAll, toast, modal, field, confirmBox, promptBox, mediaUrls, fmtBytes, fmtDuration, timeAgo, errMsg, BUCKET } from '../core.js';
+import { sb, state, h, icon, q, fetchAll, toast, modal, field, confirmBox, promptBox, mediaUrls, fmtBytes, fmtDuration, timeAgo, errMsg, BUCKET, canEditContent } from '../core.js';
+import { loadSites, contentSitesPicker, contentSitesLabel } from './sites-ui.js';
 
 import { shrinkImage } from '../imgfit.js';
 
@@ -203,6 +204,7 @@ const QUOTA_BYTES = 1024 ** 3;   // shown as a guide; your Supabase plan sets th
 export async function mediaPage({ main }) {
   let items = await listMedia();
   const playlists = await q(sb.from('playlists').select('id,name,slides').eq('client_id', state.clientId));
+  const sites = await loadSites(state.clientId).catch(() => []);
   let filter = 'all', search = '', folder = localStorage.getItem('signage.folder.' + state.clientId) || '';
   const grid = h('div', { class: 'media-grid' });
   const folderBar = h('div', { class: 'chips' });
@@ -238,12 +240,14 @@ export async function mediaPage({ main }) {
     const urls = await mediaUrls(shown.map((m) => m.path));
     grid.replaceChildren(...shown.map((m) => h('div', { class: 'card media-item', onclick: () => details(m, urls[m.path]) },
       mediaThumb(m, urls[m.path]),
-      h('div', { class: 'info' }, h('div', {}, m.name), h('div', { class: 'tiny' }, [m.folder && !folder ? `📁 ${m.folder}` : null, m.width && `${m.width}×${m.height}`, fmtBytes(m.size_bytes)].filter(Boolean).join(' · '))))));
+      h('div', { class: 'info' }, h('div', {}, m.name), h('div', { class: 'tiny' }, [m.folder && !folder ? `📁 ${m.folder}` : null, m.site_ids != null && sites.length ? `📍 ${contentSitesLabel(m.site_ids, sites)}` : null, m.width && `${m.width}×${m.height}`, fmtBytes(m.size_bytes)].filter(Boolean).join(' · '))))));
   }
   const paintAll = () => { paintFolders(); paintUsage(); paintGrid(); headCount.textContent = `${items.length} file${items.length === 1 ? '' : 's'}`; };
 
   function details(m, url) {
     const used = usage(m, playlists);
+    const editable = canEditContent(m);
+    const sitesPick = contentSitesPicker(m, sites);
     const name = h('input', { type: 'text', value: m.name });
     const fold = h('input', { type: 'text', value: m.folder || '', placeholder: 'No folder', list: 'folder-list' });
     const dl = h('datalist', { id: 'folder-list' }, folders().map((f) => h('option', { value: f })));
@@ -251,8 +255,10 @@ export async function mediaPage({ main }) {
       : h('video', { src: url, controls: true, playsInline: true, style: { width: '100%', borderRadius: '10px', maxHeight: '50vh', background: '#111' } });
     modal({ title: 'Media details', body: [preview, h('div', { class: 'grid2' }, field('Name', name), field('Folder', h('div', {}, fold, dl), 'Type a new name to create a folder.')),
       h('div', { class: 'small muted' }, [m.kind === 'video' ? 'Video' : 'Image', m.width && `${m.width}×${m.height}`, m.duration_s && fmtDuration(m.duration_s), fmtBytes(m.size_bytes), 'Uploaded ' + timeAgo(m.created_at)].filter(Boolean).join(' · ')),
-      used.length ? h('div', { class: 'notice info' }, `Used in: ${used.map((p) => p.name).join(', ')}`) : null],
-    actions: [
+      sitesPick?.el,
+      used.length ? h('div', { class: 'notice info' }, `Used in: ${used.map((p) => p.name).join(', ')}`) : null,
+      editable ? null : h('div', { class: 'notice warn' }, 'This file is shared with other sites, so you can use it in your playlists but not change or delete it.')],
+    actions: !editable ? [{ label: 'Close', class: 'primary' }] : [
       { label: 'Delete', class: 'danger', onClick: async () => {
         if (!(await confirmBox('Delete this file?', used.length ? `It's used in ${used.length} playlist(s). Those slides will be skipped on TVs.` : 'This can’t be undone.'))) return false;
         await sb.storage.from(BUCKET).remove([m.path]);
@@ -261,7 +267,13 @@ export async function mediaPage({ main }) {
       } },
       { label: 'Save', class: 'primary', onClick: async () => {
         const upd = { name: name.value.trim() || m.name, folder: fold.value.trim() || null };
-        await q(sb.from('media').update(upd).eq('id', m.id));
+        if (sitesPick && !sitesPick.readOnly) {
+          const v = sitesPick.value();
+          if (JSON.stringify(v) !== JSON.stringify(m.site_ids ?? null)) upd.site_ids = v;
+        }
+        const rows = await q(sb.from('media').update(upd).eq('id', m.id).select('site_ids'));
+        if (!rows?.length) throw new Error('You can’t change this file. Ask your owner or admin.');
+        if (rows[0].site_ids !== undefined) upd.site_ids = rows[0].site_ids;
         Object.assign(m, upd); paintAll();
       } }] });
   }
