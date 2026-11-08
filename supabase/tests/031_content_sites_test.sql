@@ -21,7 +21,7 @@ do $t$
 declare
   r text := '';
   master uuid := 'bcaa724e-f587-4d77-b24b-a38e5cd247b0';
-  o1 uuid := gen_random_uuid(); ma uuid := gen_random_uuid(); sb uuid := gen_random_uuid(); o2 uuid := gen_random_uuid();
+  o1 uuid := gen_random_uuid(); mgr uuid := gen_random_uuid(); stf uuid := gen_random_uuid(); o2 uuid := gen_random_uuid();
   dev uuid := gen_random_uuid(); devA uuid := gen_random_uuid();
   c1 uuid := gen_random_uuid(); c2 uuid := gen_random_uuid();
   sA uuid := gen_random_uuid(); sB uuid := gen_random_uuid(); sC uuid := gen_random_uuid(); sZ uuid := gen_random_uuid();
@@ -33,16 +33,16 @@ begin
   -- ---------------- setup (as postgres)
   insert into auth.users (instance_id, id, aud, role, email, is_anonymous, created_at, updated_at) values
     ('00000000-0000-0000-0000-000000000000', o1, 'authenticated', 'authenticated', 'o1-031@test.invalid', false, now(), now()),
-    ('00000000-0000-0000-0000-000000000000', ma, 'authenticated', 'authenticated', 'ma-031@test.invalid', false, now(), now()),
-    ('00000000-0000-0000-0000-000000000000', sb, 'authenticated', 'authenticated', 'sb-031@test.invalid', false, now(), now()),
+    ('00000000-0000-0000-0000-000000000000', mgr, 'authenticated', 'authenticated', 'mgr-031@test.invalid', false, now(), now()),
+    ('00000000-0000-0000-0000-000000000000', stf, 'authenticated', 'authenticated', 'stf-031@test.invalid', false, now(), now()),
     ('00000000-0000-0000-0000-000000000000', o2, 'authenticated', 'authenticated', 'o2-031@test.invalid', false, now(), now()),
     ('00000000-0000-0000-0000-000000000000', dev, 'authenticated', 'authenticated', null, true, now(), now()),
     ('00000000-0000-0000-0000-000000000000', devA, 'authenticated', 'authenticated', null, true, now(), now());
   insert into clients (id, name) values (c1, 'TEST031 Burger'), (c2, 'TEST031 Other');
   insert into sites (id, client_id, name) values (sA, c1, 'A'), (sB, c1, 'B'), (sC, c1, 'C'), (sZ, c2, 'Z');
   insert into client_members (client_id, user_id, role, site_ids, features) values
-    (c1, o1, 'manager', null, '{}'), (c1, ma, 'site_manager', array[sA], '{}'),
-    (c1, sb, 'editor', array[sB], '{"playlists":false}'), (c2, o2, 'manager', null, '{}');
+    (c1, o1, 'manager', null, '{}'), (c1, mgr, 'site_manager', array[sA], '{}'),
+    (c1, stf, 'editor', array[sB], '{"playlists":false}'), (c2, o2, 'manager', null, '{}');
   insert into playlists (id, client_id, name, slides, settings, site_ids) values
     (pS, c1, 'shared', '[]', '{}', null), (pA, c1, 'A', '[]', '{}', array[sA]), (pB, c1, 'B', '[]', '{}', array[sB]),
     (pAB, c1, 'AB', '[]', '{}', array[sA, sB]), (pZ, c2, 'Z', '[]', '{}', null);
@@ -73,13 +73,14 @@ begin
   r := r || format(E'%s owner can set sites (deduped: %s)\n', case when cardinality(arr) = 2 then 'PASS' else 'FAIL' end, cardinality(arr));
   update playlists set site_ids = array[sA] where id = pA;
   begin
-    update playlists set site_ids = array[sZ] where id = pA;
-    r := r || E'FAIL owner tagged a playlist with another business''s site\n';
+    update playlists set site_ids = array[sZ] where id = pA returning site_ids into arr;
+    r := r || format(E'%s owner can''t tag with another business''s site (it was dropped, sites now: %s)\n', case when not (sZ = any(coalesce(arr,'{}'))) then 'PASS' else 'FAIL' end, arr);
+    update playlists set site_ids = array[sA] where id = pA;
   exception when others then r := r || format(E'PASS owner blocked from other business''s site (%s)\n', sqlerrm); end;
   perform pg_temp.act(null);
 
   -- ---------------- manager limited to site A
-  perform pg_temp.act(ma);
+  perform pg_temp.act(mgr);
   select count(*) into n from playlists where id = any(allp);
   ok := n = 3 and exists (select 1 from playlists where id = pS) and exists (select 1 from playlists where id = pAB) and not exists (select 1 from playlists where id = pB);
   r := r || format(E'%s site-A manager sees shared + A + AB, not B (%s)\n', case when ok then 'PASS' else 'FAIL' end, n);
@@ -89,21 +90,21 @@ begin
   select count(*) into n from storage.objects where bucket_id = 'media' and name like c1 || '/t031-%';
   ok := n = 2 and not exists (select 1 from storage.objects where bucket_id = 'media' and name = c1 || '/t031-b.jpg');
   r := r || format(E'%s site-A manager storage files: shared + A only (%s)\n', case when ok then 'PASS' else 'FAIL' end, n);
-  insert into playlists (client_id, name, slides, settings) values (c1, 'ma new', '[]', '{}') returning site_ids into arr;
+  insert into playlists (client_id, name, slides, settings) values (c1, 'mgr new', '[]', '{}') returning site_ids into arr;
   r := r || format(E'%s new playlist auto-tagged with their sites (%s)\n', case when arr = array[sA] then 'PASS' else 'FAIL' end, arr);
-  insert into media (client_id, name, path, kind) values (c1, 'ma media', c1 || '/t031-new.jpg', 'image') returning site_ids into arr;
+  insert into media (client_id, name, path, kind) values (c1, 'mgr media', c1 || '/t031-new.jpg', 'image') returning site_ids into arr;
   r := r || format(E'%s new media auto-tagged with their sites (%s)\n', case when arr = array[sA] then 'PASS' else 'FAIL' end, arr);
   begin
-    insert into playlists (client_id, name, slides, settings, site_ids) values (c1, 'ma wide', '[]', '{}', array[sA, sB]);
-    r := r || E'FAIL created a playlist for a site they don''t have\n';
+    insert into playlists (client_id, name, slides, settings, site_ids) values (c1, 'mgr wide', '[]', '{}', array[sA, sB]) returning site_ids into arr;
+    r := r || format(E'%s create for other site: site B removed (saved with %s)\n', case when not (sB = any(coalesce(arr,'{}'))) and arr is not null then 'PASS' else 'FAIL' end, arr);
   exception when others then r := r || format(E'PASS create for other site blocked (%s)\n', sqlerrm); end;
   begin
     update playlists set site_ids = null where id = pA;
     r := r || E'FAIL widened playlist to all sites\n';
   exception when others then r := r || format(E'PASS widen to all sites blocked (%s)\n', sqlerrm); end;
   begin
-    update playlists set site_ids = array[sA, sC] where id = pA;
-    r := r || E'FAIL widened playlist to site C\n';
+    update playlists set site_ids = array[sA, sC] where id = pA returning site_ids into arr;
+    r := r || format(E'%s widen to site C: site C removed (sites now %s)\n', case when not (sC = any(coalesce(arr,'{}'))) then 'PASS' else 'FAIL' end, arr);
   exception when others then r := r || format(E'PASS widen to site C blocked (%s)\n', sqlerrm); end;
   update playlists set name = 'A edited' where id = pA; get diagnostics n = row_count;
   r := r || format(E'%s can edit own-site playlist (%s row)\n', case when n = 1 then 'PASS' else 'FAIL' end, n);
@@ -127,7 +128,7 @@ begin
   r := r || format(E'%s storage: can update own-site file (%s row)\n', case when n = 1 then 'PASS' else 'FAIL' end, n);
   select public.media_file_editable(c1 || '/t031-s.jpg') or public.media_file_editable(c1 || '/t031-b.jpg') into ok;
   r := r || format(E'%s storage delete check refuses shared / other-site files\n', case when not ok then 'PASS' else 'FAIL' end);
-  insert into storage.objects (bucket_id, name, owner_id) values ('media', c1 || '/t031-up.jpg', ma::text);
+  insert into storage.objects (bucket_id, name, owner_id) values ('media', c1 || '/t031-up.jpg', mgr::text);
   r := r || E'PASS storage: can upload a new file in own business folder\n';
   begin
     insert into schedule_items (screen_id, client_id, playlist_id, label) values (scrA, c1, pB, 'x');
@@ -148,20 +149,20 @@ begin
   select count(*) into n from playlist_pauses where client_id = c1;
   r := r || format(E'%s pauses: sees shared playlist pause only (%s)\n', case when n = 1 then 'PASS' else 'FAIL' end, n);
   begin
-    update client_members set features = '{"media":true,"billing":true}', site_ids = array[sA, sB] where user_id = ma and client_id = c1;
-    r := r || E'FAIL changed own access\n';
+    update client_members set features = '{"media":true,"billing":true}', site_ids = array[sA, sB] where user_id = mgr and client_id = c1; get diagnostics n = row_count;
+    r := r || format(E'%s can''t edit own sites/features (%s rows changed; sites now %s)\n', case when n = 0 then 'PASS' else 'FAIL' end, n, public.my_site_ids(c1));
   exception when others then r := r || format(E'PASS can''t edit own sites/features (%s)\n', sqlerrm); end;
   perform pg_temp.act(null);
 
   -- ---------------- staff limited to site B, playlists off
-  perform pg_temp.act(sb);
+  perform pg_temp.act(stf);
   select count(*) into n from playlists where id = any(allp);
   r := r || format(E'%s site-B staff sees shared + B + AB (%s)\n', case when n = 3 then 'PASS' else 'FAIL' end, n);
   begin
-    insert into playlists (client_id, name, slides, settings) values (c1, 'sb new', '[]', '{}');
+    insert into playlists (client_id, name, slides, settings) values (c1, 'stf new', '[]', '{}');
     r := r || E'FAIL playlists feature off but insert worked\n';
   exception when others then r := r || format(E'PASS feature off -> write blocked (%s)\n', sqlerrm); end;
-  update playlists set name = 'x' where id = pB; get diagnostics n = row_count;
+  begin update playlists set name = 'x' where id = pB; get diagnostics n = row_count; exception when others then n := 0; end;
   r := r || format(E'%s feature off -> edit own-site playlist blocked (%s rows)\n', case when n = 0 then 'PASS' else 'FAIL' end, n);
   perform pg_temp.act(null);
 
