@@ -63,7 +63,7 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
     site = clientId === fixedClient ? site : '';
     if (!clientId) return siteWrap.replaceChildren();
     const sites = await loadSites(clientId).catch(() => []);
-    siteWrap.replaceChildren(sites.length ? field('Site', siteSelect(sites, site, (v) => (site = v), { noneLabel: '— Choose later —' })) : h('div', { class: 'tiny' }, 'This client has no sites yet. You can add them under Sites.'));
+    siteWrap.replaceChildren(sites.length ? field('Location', siteSelect(sites, site, (v) => (site = v), { noneLabel: '— Choose later —' })) : h('div', { class: 'tiny' }, 'This client has no locations yet. You can add them under Locations.'));
   };
   const pick = clients ? select([['', '— Assign later —'], ...clients.map((c) => [c.id, clientLabel(c)])], clientId, (v) => { clientId = v; paintSites(); }) : null;
   paintSites();
@@ -75,7 +75,7 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
       field('Screen name', name),
       pick ? field('Client', pick, 'Which client will manage this TV?') : null,
       siteWrap,
-      field('Position at the site', loc),
+      field('Position at the location', loc),
     ],
     actions: [
       { label: 'Cancel' },
@@ -110,9 +110,9 @@ export function siteScheduleDialog({ site, tvs, playlists, onDone, go }) {
   ], mode, (v) => { mode = v; ruleWrap.classList.toggle('hidden', !['add', 'replace'].includes(v)); });
 
   modal({
-    title: `Site schedule — ${site.name}`,
+    title: `Location schedule — ${site.name}`,
     body: [
-      h('p', { class: 'muted small', style: { margin: 0 } }, `Applies to all ${tvs.length} TV${tvs.length === 1 ? '' : 's'} at this site: ${tvs.map((t) => t.name).join(', ')}.`),
+      h('p', { class: 'muted small', style: { margin: 0 } }, `Applies to all ${tvs.length} TV${tvs.length === 1 ? '' : 's'} at this location: ${tvs.map((t) => t.name).join(', ')}.`),
       field('Default playlist', select([['keep', '— Keep each TV’s own —'], ['', 'Nothing (blank screen)'], ...playlists.map((p) => [p.id, p.name])], def, (v) => (def = v)),
         'Plays whenever no schedule rule applies.'),
       field('Schedule rules', modeSel),
@@ -122,7 +122,7 @@ export function siteScheduleDialog({ site, tvs, playlists, onDone, go }) {
     ],
     actions: [
       { label: 'Cancel' },
-      { label: 'Apply to site', class: 'primary', onClick: async () => {
+      { label: 'Apply to location', class: 'primary', onClick: async () => {
         const rule = ['add', 'replace'].includes(mode) ? form.read() : null;
         if (def === 'keep' && mode === 'none' && !publish) return;
         const ids = tvs.map((t) => t.id);
@@ -241,16 +241,16 @@ export async function screensPage({ main, go }) {
           screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.');
 
     const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); window.dispatchEvent(new Event('signage:sitefilter')); paint(); } },
-      h('option', { value: 'all', selected: filter === 'all' }, `All sites · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),
+      h('option', { value: 'all', selected: filter === 'all' }, `All locations · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),
       sites.map((x) => h('option', { value: x.id, selected: filter === x.id }, `${x.name} · ${screens.filter((s) => s.site_id === x.id).length} TV${screens.filter((s) => s.site_id === x.id).length === 1 ? '' : 's'}`)),
-      screens.some((s) => !s.site_id) ? h('option', { value: 'none', selected: filter === 'none' }, `No site · ${screens.filter((s) => !s.site_id).length}`) : null) : null;
+      screens.some((s) => !s.site_id) ? h('option', { value: 'none', selected: filter === 'none' }, `No location · ${screens.filter((s) => !s.site_id).length}`) : null) : null;
 
     const head = h('div', { class: 'page-head' },
       h('div', {}, h('h1', {}, 'Screens'),
-        h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} site${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
+        h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} location${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
       h('div', { class: 'row' }, filterSel,
         hasFeature('emergency') && (canManage() || currentClient()?.role === 'site_manager' || !currentClient()?.require_approval) ? h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message') : null,
-        canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Sites') : null,
+        canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Locations') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() && screens.some((s) => installedApp(s)) ? (() => {
           const n = screens.filter((s) => appBehind(s, latest)).length;
@@ -262,9 +262,9 @@ export async function screensPage({ main, go }) {
     if (!screens.length) {
       return main.replaceChildren(head, trialNote || '', h('div', { class: 'card empty' },
         h('h2', {}, 'No TVs yet'),
-        h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Add your sites first so you can put each TV in the right place.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
+        h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Add your locations first so you can put each TV in the right place.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
         canManage() ? h('div', { class: 'row', style: { justifyContent: 'center' } },
-          sites.length ? null : h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Add sites'),
+          sites.length ? null : h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Add location'),
           h('button', { class: 'btn primary', onclick: () => addTv() }, icon('plus'), 'Add a TV')) : null));
     }
 
@@ -274,7 +274,7 @@ export async function screensPage({ main, go }) {
     // Groups: one per site (alphabetical), then TVs with no site.
     let groups = sites.map((x) => ({ id: x.id, title: x.name, items: screens.filter((s) => s.site_id === x.id) }));
     const noSite = screens.filter((s) => !s.site_id);
-    if (noSite.length) groups.push({ id: 'none', title: sites.length ? 'No site' : null, items: noSite });
+    if (noSite.length) groups.push({ id: 'none', title: sites.length ? 'No location' : null, items: noSite });
     if (filter !== 'all') groups = groups.filter((g) => g.id === filter);
 
     const walls = wallsOf(screens);
@@ -291,10 +291,10 @@ export async function screensPage({ main, go }) {
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },
-          g.id !== 'none' && g.items.length ? h('button', { class: 'btn sm', onclick: () => siteScheduleDialog({ site: sites.find((x) => x.id === g.id), tvs: g.items, playlists: data.playlists, onDone: refresh, go }) }, icon('calendar'), 'Site schedule') : null,
+          g.id !== 'none' && g.items.length ? h('button', { class: 'btn sm', onclick: () => siteScheduleDialog({ site: sites.find((x) => x.id === g.id), tvs: g.items, playlists: data.playlists, onDone: refresh, go }) }, icon('calendar'), 'Location schedule') : null,
           canManage() && g.id !== 'none' ? h('button', { class: 'btn sm ghost', onclick: () => addTv(g.id) }, icon('plus'), 'Add TV here') : null)) : null,
       g.items.length ? h('div', { class: 'cards' }, g.items.map((s) => card(s, data.rules, data.byId)))
-        : h('div', { class: 'card pad muted small' }, 'No TVs at this site yet.'))));
+        : h('div', { class: 'card pad muted small' }, 'No TVs at this location yet.'))));
   };
   const refresh = async () => { data = await loadClientData(state.clientId); paint(); };
   paint();

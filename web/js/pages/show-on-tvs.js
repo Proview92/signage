@@ -64,7 +64,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
   let mode = 'always';
 
   const list = h('div', { class: 'stack', style: { gap: '4px', maxHeight: '42vh', overflow: 'auto' } });
-  const groups = [...sites.map((x) => ({ id: x.id, name: x.name })), { id: null, name: sites.length ? 'No site' : null }];
+  const groups = [...sites.map((x) => ({ id: x.id, name: x.name })), { id: null, name: sites.length ? 'No location' : null }];
   const paint = () => list.replaceChildren(...groups.map((g) => {
     const tvs = screens.filter((s) => (s.site_id || null) === g.id);
     if (!tvs.length) return null;
@@ -91,7 +91,7 @@ export async function showOnTvsDialog(playlist, { onDone } = {}) {
     title: `Publish “${playlist.name}”`,
     wide: true,
     body: [
-      h('div', { class: 'row between' }, h('div', { class: 'tiny' }, 'Tick the TVs (or a whole site). It goes live straight away.'),
+      h('div', { class: 'row between' }, h('div', { class: 'tiny' }, 'Tick the TVs (or a whole location). It goes live straight away.'),
         h('div', { class: 'row', style: { gap: '6px' } },
           h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { screens.forEach((s) => { const L = licenseState(s); if (L.state !== 'expired' && L.state !== 'none') chosen.add(s.id); }); paint(); } }, 'Select all'),
           h('button', { class: 'btn sm ghost', type: 'button', onclick: () => { chosen.clear(); paint(); } }, 'Clear'))),

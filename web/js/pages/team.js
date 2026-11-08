@@ -7,9 +7,9 @@ import { loadSites } from './sites-ui.js';
 export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
 
 const ROLE_OPTIONS = [
-  ['manager', 'Owner / Admin — every site, every feature, manages users'],
-  ['site_manager', 'Manager — chosen sites and features, publishes without approval'],
-  ['editor', 'Staff — chosen sites and features'],
+  ['manager', 'Owner / Admin — every location, every feature, manages users'],
+  ['site_manager', 'Manager — chosen locations and features, publishes without approval'],
+  ['editor', 'Staff — chosen locations and features'],
 ];
 
 /** Invite dialog: emails the invite from PROVIEW SIGNAGE (autoSend), with Copy link as a fallback. */
@@ -55,15 +55,15 @@ function accessEditor(a, sites) {
 
   const siteBox = h('div', {});
   const paintSites = () => siteBox.replaceChildren(
-    checkRow(all, 'All sites (including sites added later)', (v) => { all = v; paintSites(); }),
+    checkRow(all, 'All locations (including locations added later)', (v) => { all = v; paintSites(); }),
     sites.length
       ? h('div', { style: { paddingLeft: '22px', opacity: all ? 0.5 : 1 } }, sites.map((s) => checkRow(all || chosen.has(s.id), s.name, (v) => { v ? chosen.add(s.id) : chosen.delete(s.id); }, { disabled: all })))
-      : h('div', { class: 'tiny' }, 'This business has no sites yet. Add them on the Screens page (Sites button).'));
+      : h('div', { class: 'tiny' }, 'This business has no locations yet. Add them on the Screens page (Locations button).'));
   paintSites();
 
   const featBox = h('div', {}, FEATURES.map(([k, label]) => checkRow(on(k), label, (v) => { feats[k] = v; })));
   const scoped = h('div', { class: 'stack' },
-    field('Sites they can see', siteBox),
+    field('Locations they can use', siteBox),
     field('What they can use', featBox, 'Everything not ticked is hidden and blocked for them.'));
   const paintRole = () => scoped.classList.toggle('hidden', role === 'manager');
   paintRole();
@@ -73,7 +73,7 @@ function accessEditor(a, sites) {
     scoped);
   const value = () => {
     if (role === 'manager') return { role, site_ids: null, features: {} };
-    if (!all && !chosen.size && sites.length) throw new Error('Pick at least one site, or tick All sites');
+    if (!all && !chosen.size && sites.length) throw new Error('Pick at least one location, or tick All locations');
     const features = {};
     for (const [k] of FEATURES) features[k] = on(k);
     return { role, site_ids: all ? null : [...chosen], features };
@@ -82,8 +82,8 @@ function accessEditor(a, sites) {
 }
 
 function accessSummary(m, sites) {
-  if (m.role === 'manager') return 'All sites · all features';
-  const siteTxt = m.site_ids == null ? 'All sites' : (m.site_ids.map((id) => sites.find((s) => s.id === id)?.name).filter(Boolean).join(', ') || 'No sites');
+  if (m.role === 'manager') return 'All locations · all features';
+  const siteTxt = m.site_ids == null ? 'All locations' : (m.site_ids.map((id) => sites.find((s) => s.id === id)?.name).filter(Boolean).join(', ') || 'No locations');
   const off = FEATURES.filter(([k]) => !(typeof (m.features || {})[k] === 'boolean' ? m.features[k] : featureDefault(k)));
   return `${siteTxt} · ${off.length ? 'No access to: ' + off.map(([, l]) => l.split(' (')[0]).join(', ') : 'all features'}`;
 }
@@ -138,7 +138,7 @@ export async function teamPage({ main }) {
   const paint = () => {
     main.replaceChildren(
       h('div', { class: 'page-head' },
-        h('div', {}, h('h1', {}, 'Users'), h('p', { class: 'muted' }, `People who can manage ${clientTitle(client)}'s screens, which sites they see and what they can use.`)),
+        h('div', {}, h('h1', {}, 'Users'), h('p', { class: 'muted' }, `People who can manage ${clientTitle(client)}'s screens, which locations they see and what they can use.`)),
         manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Invite someone') : null),
       h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),
@@ -163,7 +163,7 @@ export async function teamPage({ main }) {
             h('button', { class: 'btn sm', onclick: () => showInviteLink(i, clientTitle(client)) }, icon('send'), 'Resend'),
             h('button', { class: 'btn sm danger', onclick: async () => { await q(sb.from('invites').delete().eq('id', i.id)); refresh(); } }, 'Revoke')))
             : h('div', { class: 'list-row muted small' }, 'No pending invites.'))) : null,
-        h('div', { class: 'notice info' }, 'Owners / Admins see every site and feature. Managers and Staff only see the sites and features you tick. Nobody can change their own access.')));
+        h('div', { class: 'notice info' }, 'Owners / Admins see every location and feature. Managers and Staff only see the locations and features you tick. Nobody can change their own access.')));
   };
   const refresh = async () => { [members, invites, sites] = await load(); paint(); };
   paint();

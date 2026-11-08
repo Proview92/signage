@@ -54,8 +54,8 @@ export async function screenPage({ main, params: [id], go, rerender }) {
     let rotation = String(screen.rotation || 0);
     const shown = screen.device_info?.display;
     modal({ title: 'Screen details', body: [field('Name', name),
-      sites.length ? field('Site', siteSelect(sites, site, (v) => (site = v))) : h('div', { class: 'tiny' }, 'No sites yet: managers can add them on the Screens page.'),
-      field('Position at the site', loc),
+      sites.length ? field('Location', siteSelect(sites, site, (v) => (site = v))) : h('div', { class: 'tiny' }, 'No locations yet: managers can add them on the Screens page.'),
+      field('Position at the location', loc),
       field('Screen rotation', select([['0', 'Automatic (use the TV’s own setting)'], ['90', 'Turn 90° clockwise'], ['270', 'Turn 90° anticlockwise'], ['180', 'Upside down (180°)']], rotation, (v) => (rotation = v)),
         `Leave on Automatic unless the TV is mounted on its side and the picture comes out sideways.${shown ? ` The TV currently reports a ${shown} screen.` : ''}`)], actions: [
       { label: 'Cancel' },

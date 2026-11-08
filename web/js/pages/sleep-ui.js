@@ -80,7 +80,7 @@ export async function sleepDialog({ screen, onDone }) {
   const siteTvs = screen.site_id ? all.filter((x) => x.site_id === screen.site_id) : [];
   const scope = h('select', {},
     h('option', { value: 'one' }, `Just this TV (${screen.name})`),
-    siteTvs.length > 1 ? h('option', { value: 'site' }, `All ${siteTvs.length} TVs at this site`) : null,
+    siteTvs.length > 1 ? h('option', { value: 'site' }, `All ${siteTvs.length} TVs at this location`) : null,
     all.length > 1 ? h('option', { value: 'all' }, `All ${all.length} TVs`) : null);
   const settings = h('div', { class: 'stack' },
     h('div', { class: 'row', style: { gap: '12px' } }, field('Switch off at', from), field('Switch on at', to)),

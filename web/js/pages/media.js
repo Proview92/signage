@@ -257,7 +257,7 @@ export async function mediaPage({ main }) {
       h('div', { class: 'small muted' }, [m.kind === 'video' ? 'Video' : 'Image', m.width && `${m.width}×${m.height}`, m.duration_s && fmtDuration(m.duration_s), fmtBytes(m.size_bytes), 'Uploaded ' + timeAgo(m.created_at)].filter(Boolean).join(' · ')),
       sitesPick?.el,
       used.length ? h('div', { class: 'notice info' }, `Used in: ${used.map((p) => p.name).join(', ')}`) : null,
-      editable ? null : h('div', { class: 'notice warn' }, 'This file is shared with other sites, so you can use it in your playlists but not change or delete it.')],
+      editable ? null : h('div', { class: 'notice warn' }, 'This file is shared with other locations, so you can use it in your playlists but not change or delete it.')],
     actions: !editable ? [{ label: 'Close', class: 'primary' }] : [
       { label: 'Delete', class: 'danger', onClick: async () => {
         if (!(await confirmBox('Delete this file?', used.length ? `It's used in ${used.length} playlist(s). Those slides will be skipped on TVs.` : 'This can’t be undone.'))) return false;

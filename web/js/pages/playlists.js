@@ -61,7 +61,7 @@ export async function playlistsPage({ main, go }) {
             await q(sb.from('playlists').update({ name: v }).eq('id', p.id)); toast('Renamed'); window.dispatchEvent(new HashChangeEvent('hashchange'));
           }) }, icon('edit'))),
           h('div', { class: 'row', style: { gap: '4px' } },
-            h('a', { class: 'btn sm', href: '#/playlist/' + p.id, title: editable ? 'Edit slides, timings and layout' : 'View (shared with other sites, so only an owner or admin can change it)' }, icon(editable ? 'edit' : 'play'), editable ? 'Edit' : 'View'),
+            h('a', { class: 'btn sm', href: '#/playlist/' + p.id, title: editable ? 'Edit slides, timings and layout' : 'View (shared with other locations, so only an owner or admin can change it)' }, icon(editable ? 'edit' : 'play'), editable ? 'Edit' : 'View'),
             h('button', { class: 'btn sm', title: 'Choose which TVs show this playlist', onclick: () => showOnTvsDialog(p, { onDone: () => window.dispatchEvent(new HashChangeEvent('hashchange')) }) }, 'Publish'),
             h('button', { class: 'btn ghost icon sm', title: 'Duplicate', onclick: async () => {
               // The copy keeps the original's sites where allowed; otherwise it gets the person's own sites.
@@ -78,7 +78,7 @@ export async function playlistsPage({ main, go }) {
         h('div', { class: 'row', style: { gap: '6px', flexWrap: 'wrap' } },
           pauseBadge(pauses[p.id]),
           h('span', { class: 'badge plain' }, n ? `On ${n} TV${n > 1 ? 's' : ''}` : 'Not scheduled'),
-          p.site_ids != null && sites.length ? h('span', { class: 'badge plain', title: 'Only these sites see this playlist' }, '📍 ' + contentSitesLabel(p.site_ids, sites)) : null,
+          p.site_ids != null && sites.length ? h('span', { class: 'badge plain', title: 'Only these locations see this playlist' }, '📍 ' + contentSitesLabel(p.site_ids, sites)) : null,
           h('span', { class: 'tiny' }, 'Edited ' + timeAgo(p.updated_at))),
         n ? h('div', { class: 'row pl-play', style: { gap: '6px', flexWrap: 'wrap' } }, ...pauseControls(p, pauses[p.id], refresh)) : null));
   })));

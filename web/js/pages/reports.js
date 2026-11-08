@@ -44,7 +44,7 @@ export async function reportsPage({ main }) {
     const totalPlays = rows.reduce((t, r) => t + r.plays, 0), totalSec = rows.reduce((t, r) => t + r.seconds, 0);
 
     const csv = () => {
-      const lines = [['Hour', 'TV', 'Site', 'Playlist', 'Slide', 'Type', 'Plays', 'Seconds']];
+      const lines = [['Hour', 'TV', 'Location', 'Playlist', 'Slide', 'Type', 'Plays', 'Seconds']];
       for (const r of rows) lines.push([r.hour, sname[r.screen_id] || '', siteName[r.site_id] || '', r.playlist_name || '', r.slide_name || '', r.slide_type || '', r.plays, r.seconds]);
       const blob = new Blob([lines.map((l) => l.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')], { type: 'text/csv' });
       const a = h('a', { href: URL.createObjectURL(blob), download: `proof-of-play_${clientTitle(client)}_${from}_${to}.csv` });
@@ -72,7 +72,7 @@ export async function reportsPage({ main }) {
     h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Reports'), h('p', { class: 'muted' }, 'Proof of play: what was shown, where and for how long.'))),
     h('div', { class: 'card pad row', style: { marginBottom: '16px' } },
       'From', input(from, (v) => (from = v)), 'to', input(to, (v) => (to = v)),
-      sites.length ? sel([['', 'All sites'], ...sites.map((s) => [s.id, s.name])], site, (v) => (site = v)) : null,
+      sites.length ? sel([['', 'All locations'], ...sites.map((s) => [s.id, s.name])], site, (v) => (site = v)) : null,
       sel([['', 'All TVs'], ...screens.map((s) => [s.id, s.name])], screenId, (v) => (screenId = v)),
       sel([['slide', 'Group by slide'], ['screen', 'Group by TV'], ['playlist', 'Group by playlist'], ['day', 'Group by day']], group, (v) => (group = v))),
     out);

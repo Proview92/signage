@@ -35,7 +35,7 @@ export async function editorPage({ main, params: [id], go }) {
   let saveTimer = null, saving = false, dirty = false, player = null, previewTimer = null;
 
   // ------------------------------------------------ saving
-  const status = h('span', { class: 'tiny' }, editable ? 'All changes saved' : 'View only · shared with other sites');
+  const status = h('span', { class: 'tiny' }, editable ? 'All changes saved' : 'View only · shared with other locations');
   let warnedViewOnly = false;
   let savingP = null;
   const save = async () => {
@@ -44,7 +44,7 @@ export async function editorPage({ main, params: [id], go }) {
     if (!dirty) return;
     if (!editable) {   // view only: don't keep trying (the database would refuse anyway)
       dirty = false; status.textContent = 'View only · changes not saved';
-      if (!warnedViewOnly) { warnedViewOnly = true; toast('This playlist is shared with other sites, so only an owner or admin can change it. Duplicate it to make your own copy.', true); }
+      if (!warnedViewOnly) { warnedViewOnly = true; toast('This playlist is shared with other locations, so only an owner or admin can change it. Duplicate it to make your own copy.', true); }
       return;
     }
     let done; savingP = new Promise((r) => (done = r));
@@ -612,15 +612,15 @@ export async function editorPage({ main, params: [id], go }) {
         if (JSON.stringify(v) === JSON.stringify(pl.site_ids ?? null)) return;
         try {
           const rows = await q(sb.from('playlists').update({ site_ids: v }).eq('id', id).select('site_ids'));
-          if (!rows?.length) throw new Error('You can’t change this playlist’s sites. Ask your owner or admin.');
+          if (!rows?.length) throw new Error('You can’t change this playlist’s locations. Ask your owner or admin.');
           pl.site_ids = rows[0].site_ids;
-          toast(v == null ? 'Shared with all sites' : 'Sites saved');
+          toast(v == null ? 'Shared with all locations' : 'Locations saved');
         } catch (e) { toast(errMsg(e), true); }
       });
     }
     return h('div', { class: 'card pad stack' },
       h('h2', { style: { margin: 0 } }, 'Screen & layout'),
-      editable ? null : h('div', { class: 'notice warn' }, 'This playlist is shared with other sites, so you can view and publish it to your TVs but not change it. Use Duplicate on the Playlists page to make your own copy.'),
+      editable ? null : h('div', { class: 'notice warn' }, 'This playlist is shared with other locations, so you can view and publish it to your TVs but not change it. Use Duplicate on the Playlists page to make your own copy.'),
       field('Playlist name (required)', nameField),
       sitesPick?.el,
       h('div', { class: 'small', style: { fontWeight: 600 } }, 'How is the TV mounted?'),

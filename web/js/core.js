@@ -96,7 +96,8 @@ export function toast(msg, bad = false) {
 export function errMsg(e) {
   const m = e?.message || String(e);
   if (/exceeded the maximum allowed size|Payload too large|413/i.test(m)) return 'File is too large for your Supabase storage limit (raise it under Storage → Settings).';
-  return m.replace(/^.*?ERROR:\s*/, '');
+  // database messages still say "site" (UI wording is "location"; the database is unchanged)
+  return m.replace(/^.*?ERROR:\s*/, '').replace(/\bThat site belongs to\b/, 'That location belongs to');
 }
 
 export function modal({ title, body, actions = [], wide = false, compact = false, onClose }) {
@@ -225,7 +226,7 @@ export const canManage = () => ['admin', 'manager'].includes(role());
 // 'editor' = Staff. Managers and Staff have site_ids (null = all sites) and features ({key:false} = off).
 // Keep FEATURES in step with supabase/migrations/030_access_model.sql (the database enforces them).
 export const FEATURES = [
-  ['screens', 'TV settings (name, site, sleep, reload, video wall)'],
+  ['screens', 'TV settings (name, location, sleep, reload, video wall)'],
   ['schedule', 'Schedules (what plays on each TV, publish a TV)'],
   ['playlists', 'Playlists & templates'],
   ['media', 'Media library (upload, edit, delete)'],

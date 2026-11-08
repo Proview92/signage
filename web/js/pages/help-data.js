@@ -10,7 +10,7 @@ export const TV = [
     'Open Downloader, type **app.proviewsignage.co.uk/tv.apk**, press **Go**, then **Install** and **Open**.',
     'Open the app. It goes full screen and shows **Pair this screen** with a 6-character code.',
     'On your phone or computer, sign in to the dashboard and go to **Screens → Add a TV**.',
-    'Type the code from the TV, give the TV a name (e.g. “Counter TV”), pick the site, then press **Pair TV**.',
+    'Type the code from the TV, give the TV a name (e.g. “Counter TV”), pick the location, then press **Pair TV**.',
     'Within a few seconds the TV shows “paired”. It plays as soon as you publish a playlist to it.',
   ], ['A brand-new TV gets a free 3-day trial licence when it is first paired.', 'The code changes every hour while the TV is waiting, so always use the one on screen now.']],
 
@@ -145,7 +145,7 @@ export const DASH = [
     'Each card shows what the TV is playing, whether it is online, its licence, and **Unpublished changes** if you edited something but didn’t publish.',
     'Change the playlist straight from the card using the **Playing** drop-down.',
     'Press the pencil next to a TV’s name to rename it.',
-    'Filter by site, and use **Sites** to add or rename your locations.',
+    'Filter by location, and use **Locations** to add or rename your locations.',
     'Click a TV to open its own page.',
   ]],
 
@@ -156,7 +156,7 @@ export const DASH = [
     '**Schedule**: the default playlist, add-on playlists that play after it, and rules for certain days and times. Rules marked Override or High win over others.',
     '**Licence**: plan, start and expiry, with **Renew online**.',
     '**Device**: model, app version, resolution, last seen.',
-    'Top buttons: **Reload TV**, **Update app**, **Re-send to TV**. The pencil edits the name, site, position and screen rotation.',
+    'Top buttons: **Reload TV**, **Update app**, **Re-send to TV**. The pencil edits the name, location, position and screen rotation.',
   ]],
 
   ['Pause, stop and play a playlist', 'Take one playlist off your TVs for a while without changing any schedules.', [
@@ -171,7 +171,7 @@ export const DASH = [
     'Open a TV from **Screens**. Find the **Sleep hours** card and press **Edit**.',
     'Tick **Switch this TV off out of hours**, then choose **Switch off at** and **Switch on at** (the TV’s local time), and the nights it applies.',
     'Choose **Switch the TV off** (best: saves power; needs a one-off Allow on each TV) or **Black screen only** (works on every TV).',
-    'Under **Apply to**, choose this TV, every TV at the same site, or all your TVs, then press **Save**. TVs pick it up within seconds.',
+    'Under **Apply to**, choose this TV, every TV at the same location, or all your TVs, then press **Save**. TVs pick it up within seconds.',
     'Need it on outside its hours? Press **Wake now** on the TV’s page (stays on until the next switch-off). **Sleep now** switches it off early. **Back to normal hours** cancels either.',
     'On the Screens page a TV in its sleep hours shows **Sleeping until …** instead of Offline.',
   ], ['A TV that is fully switched off can’t receive Wake now until it wakes at its set time: press OK on its remote to wake it straight away.']],
@@ -185,7 +185,7 @@ export const DASH = [
 
   ['Emergency message', 'Take over screens instantly.', [
     'On **Screens**, press **Emergency message**.',
-    'Type the message, pick a colour, choose how long it shows, and which screens: all, one site, or the whole client.',
+    'Type the message, pick a colour, choose how long it shows, and which screens: all, one location, or the whole client.',
     'It replaces what the TVs are showing straight away. End it from the banner at the top of Screens.',
   ]],
 
@@ -203,10 +203,10 @@ export const DASH = [
   ]],
 
   ['Users and roles', 'Invite people and control what they can do.', [
-    'Go to **Users** and press invite. Enter their email, choose a role, tick the sites they can see and the features they can use.',
-    '**Owner / Admin**: every site and feature, adds TVs and sites, manages users. **Manager**: only their sites and features, publishes without approval. **Staff**: only their sites and features.',
-    'Press **Edit access** next to a person to change their role, sites or features. Nobody can change their own access.',
-    'Playlists and media are shared with all sites unless you pick **Sites** for them (on the playlist’s **Screen & layout** step, or in a file’s details). Managers and Staff only see shared items and items for their sites; what they create is kept to their sites, and shared items are view-only for them (they can duplicate a playlist to make their own copy).',
+    'Go to **Users** and press invite. Enter their email, choose a role, tick the locations they can see and the features they can use.',
+    '**Owner / Admin**: every location and feature, adds TVs and locations, manages users. **Manager**: only their locations and features, publishes without approval. **Staff**: only their locations and features.',
+    'Press **Edit access** next to a person to change their role, locations or features. Nobody can change their own access.',
+    'Playlists and media are shared with all locations unless you pick **Locations** for them (on the playlist’s **Screen & layout** step, or in a file’s details). Managers and Staff only see shared items and items for their locations; what they create is kept to their locations, and shared items are view-only for them (they can duplicate a playlist to make their own copy).',
     'Send the invite email, or copy the link and send it yourself (WhatsApp, text…).',
     'Forgotten password? An administrator can press **Reset password**: the person signs in with 123456 and must choose a new password straight away.',
   ]],
@@ -223,7 +223,7 @@ export const DASH = [
   ]],
 
   ['Administrators: Clients & TVs', 'For Proview staff who manage several businesses.', [
-    'Go to **Clients & TVs** to add a client with its sites and a manager invite.',
+    'Go to **Clients & TVs** to add a client with its locations and a manager invite.',
     'Assign TVs that are waiting for a client, and manage licences that need attention.',
     'Set the TV menu options for all screens, such as how long before the player reopens.',
   ]],

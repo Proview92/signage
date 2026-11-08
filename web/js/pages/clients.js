@@ -33,7 +33,7 @@ export async function clientsPage({ main, go, rerender }) {
       const { data, error } = await sb.from('clients').insert({ name: name.trim() }).select('id').single();
       if (error) throw error;
       await refreshMe();
-      toast('Client added. Add its sites from Screens, and licences in the licence portal.');
+      toast('Client added. Add its locations from Screens, and licences in the licence portal.');
       open(data.id);
     } catch (e) { toast(errMsg(e), true); }
   };
@@ -54,7 +54,7 @@ export async function clientsPage({ main, go, rerender }) {
     const mine = sites.filter((s) => s.client_id === c.id);
     const rows = [h('tr', { class: 'ov-client' },
       h('td', {}, h('b', {}, clientTitle(c)), trialBadge(c)),
-      h('td', { class: 'muted' }, mine.length ? `${mine.length} site${mine.length === 1 ? '' : 's'}` : 'No sites yet'),
+      h('td', { class: 'muted' }, mine.length ? `${mine.length} location${mine.length === 1 ? '' : 's'}` : 'No locations yet'),
       h('td', {}, tvCell(list)), h('td', {}, licCell(list)),
       h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn sm primary', onclick: () => open(c.id) }, 'Open')))];
     const siteRow = (label, tvs, siteId) => h('tr', { class: 'ov-site' },
@@ -63,7 +63,7 @@ export async function clientsPage({ main, go, rerender }) {
     if (mine.length) {
       for (const s of mine) rows.push(siteRow(s.name, list.filter((x) => x.site_id === s.id), s.id));
       const none = list.filter((x) => !x.site_id || !mine.some((s) => s.id === x.site_id));
-      if (none.length) rows.push(siteRow(h('span', { class: 'muted' }, 'No site'), none, 'none'));
+      if (none.length) rows.push(siteRow(h('span', { class: 'muted' }, 'No location'), none, 'none'));
     }
     const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
     return { rows, text };
@@ -77,11 +77,11 @@ export async function clientsPage({ main, go, rerender }) {
     h('td', {}), h('td', {}, tvCell(loose)), h('td', {}, licCell(loose)), h('td', {})) : null;
 
   const tbody = h('tbody');
-  const search = h('input', { type: 'search', placeholder: 'Search clients and sites', 'aria-label': 'Search clients and sites', style: { maxWidth: '320px' }, oninput: () => paint() });
+  const search = h('input', { type: 'search', placeholder: 'Search clients and locations', 'aria-label': 'Search clients and locations', style: { maxWidth: '320px' }, oninput: () => paint() });
   const emptyState = () => h('tr', {}, h('td', { colspan: 5 },
     h('div', { class: 'stack', style: { alignItems: 'center', textAlign: 'center', padding: '28px 12px', gap: '10px' } },
       h('h3', { style: { margin: 0 } }, 'No clients yet'),
-      h('p', { class: 'muted', style: { margin: 0 } }, 'Add a client here, or add clients, sites and licences in the Proview licence portal.'),
+      h('p', { class: 'muted', style: { margin: 0 } }, 'Add a client here, or add clients, locations and licences in the Proview licence portal.'),
       h('div', { class: 'row', style: { justifyContent: 'center', gap: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add client'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Open licence portal ↗'),
@@ -90,7 +90,7 @@ export async function clientsPage({ main, go, rerender }) {
     const t = search.value.trim().toLowerCase();
     const shown = blocks.filter((b) => !t || b.text.includes(t));
     if (!clients.length) tbody.replaceChildren(emptyState(), ...(looseRow ? [looseRow] : []));
-    else if (!shown.length) tbody.replaceChildren(h('tr', {}, h('td', { colspan: 5, class: 'muted', style: { padding: '18px' } }, `No clients or sites match “${search.value.trim()}”.`)));
+    else if (!shown.length) tbody.replaceChildren(h('tr', {}, h('td', { colspan: 5, class: 'muted', style: { padding: '18px' } }, `No clients or locations match “${search.value.trim()}”.`)));
     else tbody.replaceChildren(...shown.flatMap((b) => b.rows), ...(looseRow && !t ? [looseRow] : []));
   }
   paint();
@@ -98,17 +98,17 @@ export async function clientsPage({ main, go, rerender }) {
   const stat = (k, v) => h('div', { class: 'card ov-stat' }, h('div', { class: 'tiny' }, k), h('div', { class: 'ov-v' }, String(v)));
   main.replaceChildren(
     h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'All sites'), h('p', { class: 'muted' }, 'Every client and site on the platform, with their TVs and licences. Open one to see it as its team does.')),
+      h('div', {}, h('h1', {}, 'Locations'), h('p', { class: 'muted' }, 'Every client and location on the platform, with their TVs and licences. Open one to see it as its team does.')),
       h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn', onclick: refresh, title: 'Refresh' }, icon('refresh'), 'Refresh'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add client'))),
     h('div', { class: 'ov-stats' },
-      stat('Clients', clients.length), stat('Sites', sites.length), stat('Screens', screens.length),
+      stat('Clients', clients.length), stat('Locations', sites.length), stat('Screens', screens.length),
       stat('Online now', screens.filter(isOnline).length), stat('Licences needing attention', needs(screens))),
     h('div', { style: { marginBottom: '12px', display: clients.length > 5 ? '' : 'none' } }, search),
     h('div', { class: 'card ov-card' },
       h('table', { class: 'ov-table' },
-        h('thead', {}, h('tr', {}, ...['Client', 'Site', 'TVs', 'Licences', ''].map((t) => h('th', {}, t)))),
+        h('thead', {}, h('tr', {}, ...['Client', 'Location', 'TVs', 'Licences', ''].map((t) => h('th', {}, t)))),
         tbody)));
 }

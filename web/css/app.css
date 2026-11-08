@@ -860,6 +860,7 @@ body{font-size:15px;line-height:1.45}
 .top-me{display:flex;align-items:center;gap:4px;margin-left:6px;padding-left:10px;border-left:1px solid var(--line,#e4e2dc);flex:none}
 .top-av{width:34px;height:34px;border-radius:50%;border:0;padding:0;flex:none;display:grid;place-items:center;background:linear-gradient(135deg,#2f84d4 0%,#5a5fbb 100%);color:#fff;font-family:inherit;font-weight:700;font-size:12.5px;line-height:1;cursor:pointer;text-decoration:none}
 .top-av:hover{filter:brightness(1.08)}
+.top-av:focus-visible,.top-me .top-out:focus-visible{outline:2px solid #5a8dee;outline-offset:2px}
 .top-me .top-out svg{width:18px;height:18px}
 html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .side .side-foot [data-act=signOut],html .side .side-foot [title="Sign out"]{display:none!important}
 @media (max-width:900px){html .app .side .side-foot{display:none!important}}

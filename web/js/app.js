@@ -147,20 +147,20 @@ function fillPicker(s) {
     const all = groups.flatMap(({ c, sites }) => sites.map((x) => ({ c, x })))
       .sort((a, b) => String(a.x.name).localeCompare(String(b.x.name)) || clientTitle(a.c).localeCompare(clientTitle(b.c)));
     const dup = (x) => all.filter((y) => String(y.x.name).toLowerCase() === String(x.name).toLowerCase()).length > 1;
-    out.push(opt('__all', pickSites ? `All sites (${all.length})` : 'All sites'));
+    out.push(opt('__all', pickSites ? `All locations (${all.length})` : 'All locations'));
     for (const { c, x } of all) out.push(opt(c.id + '|' + x.id, dup(x) ? `${x.name} · ${clientTitle(c)}` : x.name));
     // A whole business opened from the All sites page ("Open" on its row) isn't in the list: the box reads
     // "<Business> (all sites)" from a hidden selected option, so it still says where you are.
     const cur = groups.find((g) => g.c.id === state.clientId);
     if (cur && !/^#\/?clients/.test(location.hash) && !all.some((y) => y.c.id === cur.c.id && y.x.id === siteFilterOf(cur.c.id)))
-      out.push(h('option', { value: cur.c.id + '|all', hidden: true, disabled: true }, `${clientTitle(cur.c)} (all sites)`));
+      out.push(h('option', { value: cur.c.id + '|all', hidden: true, disabled: true }, `${clientTitle(cur.c)} (all locations)`));
   } else if (groups.length === 1) {
     const { c, sites } = groups[0];
     if (sites.length === 1) out.push(opt(c.id + '|' + sites[0].id, sites[0].name));
-    else { out.push(opt(c.id + '|all', sites.length ? `All my sites (${sites.length})` : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
+    else { out.push(opt(c.id + '|all', sites.length ? `All my locations (${sites.length})` : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
   } else {
     for (const { c, sites } of groups) out.push(h('optgroup', { label: clientTitle(c) },
-      opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All my sites` : clientTitle(c)),
+      opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All my locations` : clientTitle(c)),
       sites.map((x) => opt(c.id + '|' + x.id, `${clientTitle(c)} ▸ ${x.name}`))));
   }
   s.replaceChildren(...out);
@@ -180,7 +180,7 @@ window.addEventListener('signage:sitefilter', () => syncPicker());
 
 /** A greyed page was clicked on All sites: ask for a site, focus the header dropdown and pulse it. */
 function chooseSiteFirst() {
-  toast('Choose a site in the dropdown first');
+  toast('Choose a location in the dropdown first');
   const box = document.querySelector('.hdr-pick'), s = box?.querySelector('select');
   if (!box || !s) return;
   s.focus();
@@ -191,7 +191,7 @@ function chooseSiteFirst() {
 function sitePicker() {
   if (!state.me.clients.length && !state.me.is_admin) return null;
   const s = h('select', {
-    id: 'hdr-site', 'aria-label': 'Choose site',
+    id: 'hdr-site', 'aria-label': 'Choose location',
     onchange: (e) => {
       // Proview master: "All sites" opens the overview of every client and site
       if (e.target.value === '__all') return go('clients');
@@ -205,7 +205,7 @@ function sitePicker() {
   // Refresh the site list (new or renamed sites) and repaint if it changed.
   const before = JSON.stringify(pickSites);
   loadPickSites().then(() => { if (s.isConnected && JSON.stringify(pickSites) !== before) fillPicker(s); }).catch(() => {});
-  return h('div', { class: 'hdr-pick' }, h('label', { class: 'sr', for: 'hdr-site' }, 'Site'), s);
+  return h('div', { class: 'hdr-pick' }, h('label', { class: 'sr', for: 'hdr-site' }, 'Location'), s);
 }
 
 // sidebar footer (same as Proview Employee and Bookings): who's signed in, then COLLAPSE and SIGN OUT
@@ -227,14 +227,14 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
-const PAGE_TITLES = { clients: 'All sites', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
+const PAGE_TITLES = { clients: 'Locations', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
   // Master on All sites (no business/site picked): usual pages stay in place but greyed out; a click asks
   // for a site in the header dropdown instead of opening the page (same in all Proview apps).
   const onAll = n.admin && section === 'clients';
   const link = (key, label, ic) => onAll
-    ? h('a', { class: 'disabled', role: 'link', tabindex: '0', 'aria-disabled': 'true', title: label + ' – choose a site first',
+    ? h('a', { class: 'disabled', role: 'link', tabindex: '0', 'aria-disabled': 'true', title: label + ' – choose a location first',
         onclick: (e) => { e.preventDefault(); chooseSiteFirst(); },
         onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseSiteFirst(); } } }, icon(ic), h('span', {}, label))
     : h('a', { href: '#/' + key, class: section === key ? 'active' : '', title: label }, icon(ic), h('span', {}, label));
@@ -244,7 +244,7 @@ function shell(section, main) {
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
     h('nav', { class: 'nav' },
       // master only: All sites, always first (highlighted while the All sites page is showing)
-      n.admin ? h('a', { href: '#/clients', class: 'nav-allsites' + (section === 'clients' ? ' active' : ''), title: 'All sites', 'aria-current': section === 'clients' ? 'page' : null }, icon('clients'), h('span', {}, 'All sites')) : null,
+      n.admin ? h('a', { href: '#/clients', class: 'nav-allsites' + (section === 'clients' ? ' active' : ''), title: 'Locations', 'aria-current': section === 'clients' ? 'page' : null }, icon('clients'), h('span', {}, 'Locations')) : null,
       // group headers, same style as Proview Bookings (Service / Grow / Team / Manage)
       n.items.length ? h('div', { class: 'nav-sep' }, 'Content') : null,
       n.items.filter(([k]) => ['screens', 'playlists', 'media'].includes(k)).map(([k, l, i]) => link(k, l, i)),
@@ -262,8 +262,14 @@ function shell(section, main) {
   const avTxt = meEl.querySelector('.side-av')?.textContent || '?';
   const meTitle = [meEl.querySelector('.side-me-t b')?.textContent, meEl.querySelector('.side-me-t span')?.textContent].filter(Boolean).join(' · ');
   const topMe = h('div', { class: 'top-me' },
-    h('button', { class: 'top-av', title: meTitle, 'aria-label': 'My account', onclick: () => meEl.click() }, avTxt),
+    h('button', { class: 'top-av', title: meTitle, 'aria-label': 'My account', 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: (e) => openAccount(e.currentTarget, e.detail === 0) }, avTxt),
     h('button', { class: 'icon-btn top-out', title: 'Sign out', 'aria-label': 'Sign out', onclick: signOut }, icon('logout')));
+  // the avatar's account menu: who's signed in, then Users & access (owners/admins/managers), Help, Sign out
+  const canTeam = !!meEl.getAttribute('href');
+  const openAccount = (btn, kb) => window.PVHub ? window.PVHub.accountMenu(btn, {
+    initials: avTxt, name: meEl.querySelector('.side-me-t b')?.textContent, email: state.me.email || '', sub: meEl.querySelector('.side-me-t span')?.textContent, focusFirst: kb,
+    items: [canTeam ? { label: 'Users & access', icon: 'users', href: '#/team' } : null, { label: 'Help', icon: 'help', href: '#/help' }, { label: 'Sign out', icon: 'logout', run: signOut, sep: true }].filter(Boolean),
+  }) : meEl.click();
   const top = h('header', { class: 'top' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', title: 'Menu', onclick: toggleNav }, icon('menu')),
     h('h2', {}, PAGE_TITLES[section] || ''),
@@ -665,7 +671,7 @@ function setupBusiness(trialOn = true) {
     h('p', { class: 'tiny', style: { margin: 0 } }, `Signed in as ${state.me.email}.${trialOn ? ' The trial includes 1 screen and every feature.' : ''}`),
     msg,
     ...(trialOn
-      ? [field('Business name', name), field('First site', site), field('Phone number', phone), submit,
+      ? [field('Business name', name), field('First location', site), field('Phone number', phone), submit,
          h('p', { class: 'tiny', style: { margin: 0 } }, 'Were you invited to someone else’s account? Open the invite link from your email instead.')]
       : [usedMsg('Free trials can’t be started here right now. Ask your owner for an invite, or contact Proview.')]),
     h('div', { class: 'row between' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out'), h('span')));

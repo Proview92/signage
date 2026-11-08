@@ -108,7 +108,8 @@ export function startHub(go) {
 /** the status dot: green online, amber offline */
 export function statusDot() {
   const d = document.createElement('span');
-  const paint = () => { d.className = 'hdr-dot' + (navigator.onLine ? '' : ' offline'); d.title = navigator.onLine ? 'Online' : 'Offline — changes will be sent when you’re back online'; };
+  d.setAttribute('role', 'img');
+  const paint = () => { d.className = 'hdr-dot' + (navigator.onLine ? '' : ' offline'); d.title = navigator.onLine ? 'Online' : 'Offline — changes will be sent when you’re back online'; d.setAttribute('aria-label', navigator.onLine ? 'Online' : 'Offline'); };
   paint(); addEventListener('online', paint); addEventListener('offline', paint);
   return d;
 }
