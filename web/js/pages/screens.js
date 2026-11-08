@@ -2,10 +2,10 @@ import { clientLabel, clientTitle } from '../core.js';
 import { publishOrRequest, renameDialog } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, hasFeature, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet } from '../renderer.js';
-import { licenseBadge } from './license-ui.js';
+import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
 import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
-import { licenseState } from '../license.js';
+import { licenseState, businessTrial, fmtDate } from '../license.js';
 import { emergencyDialog, overridesBanner } from './emergency.js';
 import { publishSummary } from './show-on-tvs.js';
 import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
@@ -227,8 +227,18 @@ export async function screensPage({ main, go }) {
         actions: [{ label: 'Close' }, { label: 'Open my TV', class: 'primary', onClick: () => go('screen/' + screens[0].id) }] });
       return pairDialog({ fixedClient: state.clientId, siteId, onDone: (s) => go('screen/' + s.id) });
     };
-    const trialNote = trial ? h('div', { class: 'notice info', style: { marginBottom: '14px' } }, h('b', {}, 'Free trial · 1 screen for 3 days. '),
-      screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.') : null;
+    const bt = trial ? businessTrial(currentClient()) : null;
+    const trialNote = !trial ? null : bt?.state === 'expired'
+      ? h('div', { class: 'notice bad stack', style: { marginBottom: '14px', gap: '8px' } },
+          h('div', {}, h('b', {}, `Your free trial ended on ${fmtDate(bt.ends)}. `),
+            screens.length ? 'Your TV has stopped playing. Buy a licence for it (open it and press “Buy licence online”) to turn it back on.' : 'Buy a licence to start using your screens.'),
+          h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+            screens.length ? h('button', { class: 'btn sm primary', onclick: () => go('screen/' + screens[0].id) }, 'Open my TV') : null,
+            h('a', { class: 'btn sm', href: LICENCE_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
+            h('a', { class: 'btn sm', href: 'tel:02089355495' }, 'Call 020 8935 5495')))
+      : h('div', { class: 'notice info', style: { marginBottom: '14px' } },
+          h('b', {}, bt?.state === 'active' ? `Free trial · 1 screen · ends ${fmtDate(bt.ends)}. ` : 'Free trial · 1 screen for 3 days. '),
+          screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.');
 
     const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); paint(); } },
       h('option', { value: 'all', selected: filter === 'all' }, `All sites · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),

@@ -352,6 +352,13 @@ export async function refreshMe() {
   const me = await rpc('whoami');
   // No signed-in user (the session ended in the background): don't carry on with an empty account.
   if (!me?.user_id) { await sb.auth.signOut().catch(() => {}); throw new Error('Your sign-in has ended. Please sign in again.'); }
+  // A Manager/Staff given an empty site list can't see anything in that business: leave it out
+  // (with none left they're signed out with "ask your owner or Proview", never offered a trial).
+  if (!me.is_admin) {
+    const all = me.clients || [];
+    me.clients = all.filter((c) => !(c.role !== 'manager' && Array.isArray(c.site_ids) && c.site_ids.length === 0));
+    me.no_site_clients = all.length - me.clients.length;
+  }
   pruneBusinessCache(me);
   state.me = me;
   const ids = state.me.clients.map((c) => c.id);

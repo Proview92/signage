@@ -72,7 +72,15 @@ async function render() {
   }
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
-  if (!state.me.is_admin && !state.me.clients.length) return root.replaceChildren(setupBusiness());
+  if (!state.me.is_admin && !state.me.clients.length) {
+    // Added to a business but given no sites: not linked to anything yet (never the trial screen).
+    if (state.me.no_site_clients) return signOut(NOT_LINKED);
+    // Invited by email (no link opened): join those businesses instead of starting a trial.
+    const joined = await joinMyInvites();
+    if (my !== renderSeq) return;
+    if (joined > 0) { try { await refreshMe(); } catch (e) { return root.replaceChildren(errorPage(e)); } return render(); }
+    return root.replaceChildren(setupBusiness(joined !== null));
+  }
   // Always have a valid business selected (never "none" for someone who belongs to one).
   if (state.me.clients.length && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
   // Proview master: lands on All sites (every client and site). With no clients yet, All sites is the only page.
@@ -239,10 +247,22 @@ function bell(variant = 'row') {
   return el;
 }
 
-async function signOut() {
+const NOT_LINKED = 'Your login isn’t linked to a business yet. Ask your owner or Proview.';
+const SIGNIN_MSG = 'signage.signinMsg';
+/** Joins businesses this person was invited to by email. null = not available on this server yet (032). */
+async function joinMyInvites() {
+  const { data, error } = await sb.rpc('join_my_invites');
+  if (!error) return Number(data) || 0;
+  return error.code === 'PGRST202' || /could not find the function|does not exist/i.test(error.message || '') ? null : 0;
+}
+
+async function signOut(message) {
+  const why = typeof message === 'string' ? message : '';
   await sb.auth.signOut();
   state.me = null;
   clearBusinessCache();   // nothing of this person's businesses stays on the device
+  // Reason shown on the sign-in page after the reload below (e.g. "isn't linked to a business yet").
+  if (why) { try { sessionStorage.setItem(SIGNIN_MSG, why); } catch {} }
   // Fresh page load, so nothing from this session is left in memory either (lands on the sign-in page).
   location.replace(location.pathname);
 }
@@ -398,6 +418,10 @@ async function authPage(inviteToken, startSignup = false) {
   if (cameBack && linkError) msg.replaceChildren(h('div', { class: 'notice bad' }, `That link didn't work: ${linkError}. Sign in below, or use “Forgot password?”.`));
   else if (cameBack) msg.replaceChildren(h('div', { class: 'notice ok' }, '✓ Email confirmed. Sign in with your password to continue.'));
   if (pvErr) { msg.replaceChildren(h('div', { class: 'notice' }, pvErr)); pvErr = ''; }
+  try {
+    const why = sessionStorage.getItem(SIGNIN_MSG);
+    if (why) { sessionStorage.removeItem(SIGNIN_MSG); msg.replaceChildren(h('div', { class: 'notice' }, why)); }
+  } catch {}
 
   // Unknown email on the sign-in form: offer to create an account instead of failing silently.
   let prompting = false, lastChecked = '';
@@ -472,6 +496,11 @@ async function authPage(inviteToken, startSignup = false) {
     title, sub, msg, field('Email', email), passField, pass2Field, submit, pvRow,
     h('div', { class: 'row between' }, swap, forgot));
 
+  return authLayout(form);
+}
+
+/** The sign-in page look (art panel + form panel), also used by "Set up your business". */
+function authLayout(form) {
   // Sign-in page design: 'glow' | 'wall' | 'hero' (?look=… to preview another)
   const look = new URLSearchParams(location.search).get('look') || AUTH_LOOK;
   return h('div', { class: 'auth look-' + look },
@@ -522,29 +551,49 @@ function changePasswordPage() {
   return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
 }
 
-// New sign-up with no business yet: create one and start the free trial.
-function setupBusiness() {
+// Signed in, no business and no invite: create one (business + first site, you as Owner) on a 3-day trial.
+// trialOn = false when the server doesn't have the trial RPCs yet (migration 032): no button, just who to ask.
+const LIC_PORTAL = 'https://license.proviewcrm.co.uk';
+function setupBusiness(trialOn = true) {
   const name = h('input', { type: 'text', required: true, maxLength: 80, autocomplete: 'organization', placeholder: 'e.g. Station Road Café' });
+  const site = h('input', { type: 'text', maxLength: 80, placeholder: 'Same as your business name' });
   const phone = h('input', { type: 'tel', maxLength: 30, autocomplete: 'tel', placeholder: 'Optional, so we can help you get set up' });
+  // first site defaults to the business name until they type their own
+  let siteTouched = false;
+  site.addEventListener('input', () => { siteTouched = !!site.value; });
+  name.addEventListener('input', () => { if (!siteTouched) site.value = name.value; });
   const msg = h('div');
-  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Start my free trial');
-  const form = h('form', { class: 'stack', style: { maxWidth: '440px', width: '100%' }, onsubmit: async (e) => {
+  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Start free trial');
+  const usedMsg = (text) => h('div', { class: 'notice bad stack', style: { gap: '8px' } }, h('div', {}, text),
+    h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+      h('a', { class: 'btn sm primary', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
+      h('a', { class: 'btn sm', href: 'tel:02089355495' }, 'Call Proview · 020 8935 5495')));
+  const form = h('form', { onsubmit: async (e) => {
     e.preventDefault(); msg.replaceChildren(); submit.disabled = true;
     try {
-      await rpc('create_my_business', { p_name: name.value, p_phone: phone.value || null });
+      const cid = await rpc('create_my_business', { p_name: name.value, p_phone: phone.value || null, p_site: site.value || name.value });
       await refreshMe();
-      toast('Welcome! Now pair your TV to start your 3-day trial.');
-      location.hash = '#/screens'; render();
-    } catch (err) { msg.replaceChildren(h('div', { class: 'notice bad' }, errMsg(err))); submit.disabled = false; }
+      if (cid) setClient(cid);
+      toast('Welcome! Your 3-day free trial has started. Now pair your TV.');
+      if (location.hash === '#/screens') render(); else location.hash = '#/screens';
+    } catch (err) {
+      const t = errMsg(err);
+      msg.replaceChildren(/already been used/i.test(t) ? usedMsg(t) : h('div', { class: 'notice bad' }, t));
+      submit.disabled = false;
+    }
   } },
-    h('img', { src: 'logo.png', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
-    h('h1', { style: { textAlign: 'center', margin: '6px 0 0' } }, 'Set up your business'),
-    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Signed in as ${state.me.email}. Your free trial includes 1 screen for 3 days, with every feature.`),
-    msg, field('Business name', name), field('Phone number', phone), submit,
-    h('p', { class: 'tiny', style: { textAlign: 'center', margin: 0 } }, 'Were you invited to someone else’s account? Open the invite link from your email instead.'),
-    h('div', { style: { textAlign: 'center' } }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out')));
-  setTimeout(() => name.focus(), 50);
-  return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
+    h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'logo.png', alt: '' }), wordmark(APP)),
+    h('h1', {}, 'Set up your business'),
+    h('p', { class: 'muted', style: { margin: 0 } }, trialOn ? 'Start your free 3-day trial' : 'Your login isn’t linked to a business yet.'),
+    h('p', { class: 'tiny', style: { margin: 0 } }, `Signed in as ${state.me.email}.${trialOn ? ' The trial includes 1 screen and every feature.' : ''}`),
+    msg,
+    ...(trialOn
+      ? [field('Business name', name), field('First site', site), field('Phone number', phone), submit,
+         h('p', { class: 'tiny', style: { margin: 0 } }, 'Were you invited to someone else’s account? Open the invite link from your email instead.')]
+      : [usedMsg('Free trials can’t be started here right now. Ask your owner for an invite, or contact Proview.')]),
+    h('div', { class: 'row between' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out'), h('span')));
+  if (trialOn) setTimeout(() => name.focus(), 50);
+  return authLayout(form);
 }
 
 function noAccess() {

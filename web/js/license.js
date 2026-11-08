@@ -66,3 +66,20 @@ export function licenseSummary(screen) {
     default: return { text: 'Licence expired', tone: 'bad', L };
   }
 }
+
+/**
+ * Business-level free trial (online sign-ups, migration 032). c = a client from whoami.
+ * null = not on a trial (added by Proview, or has bought a TV licence).
+ * state: 'active' | 'expired' | 'unknown' (older server without trial_ends_at).
+ */
+export function businessTrial(c, now = Date.now()) {
+  if (!c?.trial_only) return null;
+  if (!c.trial_ends_at) return c.self_signup ? { state: 'unknown' } : null;
+  const ends = new Date(c.trial_ends_at).getTime();
+  return { state: now < ends ? 'active' : 'expired', ends };
+}
+export function businessTrialText(t) {
+  if (!t) return '';
+  if (t.state === 'unknown') return 'Free trial';
+  return t.state === 'active' ? `Trial – ends ${fmtDate(t.ends)}` : 'Trial expired';
+}

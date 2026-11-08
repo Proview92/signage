@@ -1,7 +1,7 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
 import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox } from '../core.js';
-import { licenseState } from '../license.js';
+import { licenseState, businessTrial, businessTrialText } from '../license.js';
 
 const LIC_PORTAL = 'https://license.proviewcrm.co.uk';
 const NEEDS = ['none', 'expiring', 'grace', 'expired'];
@@ -41,12 +41,19 @@ export async function clientsPage({ main, go, rerender }) {
   const tvCell = (list) => list.length ? h('span', { class: 'badge ' + (list.every(isOnline) ? 'ok' : list.some(isOnline) ? 'warn' : 'bad') }, `${list.filter(isOnline).length} of ${list.length} online`) : h('span', { class: 'muted' }, '0');
   const licCell = (list) => { const bad = needs(list); return bad ? h('span', { class: 'badge bad' }, `${bad} need${bad === 1 ? 's' : ''} attention`) : list.length ? h('span', { class: 'badge ok' }, 'All OK') : '—'; };
 
+  // Online sign-ups on their 3-day trial: "Trial – ends <date>" / "Trial expired" (gone once a TV licence is bought).
+  const trialBadge = (c) => {
+    const t = businessTrial(c);
+    return t ? h('span', { class: 'badge ' + (t.state === 'expired' ? 'bad' : 'warn'), style: { marginLeft: '8px' },
+      title: t.ends ? new Date(t.ends).toLocaleString() : 'Signed up online' }, businessTrialText(t)) : null;
+  };
+
   // One block of rows per client: the client itself, then each site, then TVs with no site.
   const blocks = clients.map((c) => {
     const list = screens.filter((s) => s.client_id === c.id);
     const mine = sites.filter((s) => s.client_id === c.id);
     const rows = [h('tr', { class: 'ov-client' },
-      h('td', {}, h('b', {}, clientTitle(c))),
+      h('td', {}, h('b', {}, clientTitle(c)), trialBadge(c)),
       h('td', { class: 'muted' }, mine.length ? `${mine.length} site${mine.length === 1 ? '' : 's'}` : 'No sites yet'),
       h('td', {}, tvCell(list)), h('td', {}, licCell(list)),
       h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn sm primary', onclick: () => open(c.id) }, 'Open')))];
@@ -58,7 +65,7 @@ export async function clientsPage({ main, go, rerender }) {
       const none = list.filter((x) => !x.site_id || !mine.some((s) => s.id === x.site_id));
       if (none.length) rows.push(siteRow(h('span', { class: 'muted' }, 'No site'), none, 'none'));
     }
-    const text = [clientTitle(c), c.name, c.contact_email, ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
+    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
     return { rows, text };
   });
 
