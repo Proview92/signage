@@ -239,15 +239,11 @@ export async function screensPage({ main, go }) {
           h('b', {}, bt?.state === 'active' ? `Free trial · 1 screen · ends ${fmtDate(bt.ends)}. ` : 'Free trial · 1 screen for 3 days. '),
           screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.');
 
-    const filterSel = sites.length ? h('select', { style: { width: 'auto' }, onchange: (e) => { filter = e.target.value; localStorage.setItem('signage.siteFilter.' + state.clientId, filter); window.dispatchEvent(new Event('signage:sitefilter')); paint(); } },
-      h('option', { value: 'all', selected: filter === 'all' }, `All locations · ${screens.length} TV${screens.length === 1 ? '' : 's'}`),
-      sites.map((x) => h('option', { value: x.id, selected: filter === x.id }, `${x.name} · ${screens.filter((s) => s.site_id === x.id).length} TV${screens.filter((s) => s.site_id === x.id).length === 1 ? '' : 's'}`)),
-      screens.some((s) => !s.site_id) ? h('option', { value: 'none', selected: filter === 'none' }, `No location · ${screens.filter((s) => !s.site_id).length}`) : null) : null;
-
+    // The location is picked in the top header dropdown (no second picker here).
     const head = h('div', { class: 'page-head' },
       h('div', {}, h('h1', {}, 'Screens'),
         h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} location${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
-      h('div', { class: 'row' }, filterSel,
+      h('div', { class: 'row' },
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Locations') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() && screens.some((s) => installedApp(s)) ? (() => {
@@ -288,7 +284,6 @@ export async function screensPage({ main, go }) {
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },
-          g.id !== 'none' && g.items.length ? h('button', { class: 'btn sm', onclick: () => siteScheduleDialog({ site: sites.find((x) => x.id === g.id), tvs: g.items, playlists: data.playlists, onDone: refresh, go }) }, icon('calendar'), 'Location schedule') : null,
           canManage() && g.id !== 'none' ? h('button', { class: 'btn sm ghost', onclick: () => addTv(g.id) }, icon('plus'), 'Add TV here') : null)) : null,
       g.items.length ? h('div', { class: 'cards' }, g.items.map((s) => card(s, data.rules, data.byId)))
         : h('div', { class: 'card pad muted small' }, 'No TVs at this location yet.'))));

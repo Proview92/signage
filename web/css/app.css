@@ -862,6 +862,9 @@ body{font-size:15px;line-height:1.45}
 .top-av:hover{filter:brightness(1.08)}
 .top-av:focus-visible,.top-me .top-out:focus-visible{outline:2px solid #5a8dee;outline-offset:2px}
 .top-me .top-out svg{width:18px;height:18px}
+/* sign out: red button, white icon */
+.top-me .top-out{background:#d92d20;border-color:#d92d20;color:#fff}
+.top-me .top-out:hover{background:#b42318;border-color:#b42318;color:#fff}
 html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .side .side-foot [data-act=signOut],html .side .side-foot [title="Sign out"]{display:none!important}
 @media (max-width:900px){html .app .side .side-foot{display:none!important}}
 @media (max-width:700px){.top-me{margin-left:2px;padding-left:6px;gap:2px}.top-av{width:32px;height:32px;font-size:12px}}
