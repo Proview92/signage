@@ -1,6 +1,6 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
-import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal } from '../core.js';
+import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
 import { integrationsCards } from './integrations.js';
 
@@ -94,7 +94,7 @@ export async function clientsPage({ main, go, rerender }) {
     const inBiz = s.client_id && ids.has(s.client_id);
     return h(inBiz ? 'button' : 'div', { type: inBiz ? 'button' : undefined, class: 'ov-li', onclick: inBiz ? () => openTv(s) : undefined },
       dot(isOnline(s) ? 'ok' : 'bad'),
-      h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [bizName(s.client_id), siteName(s.site_id)].filter(Boolean).join(' · '))),
+      h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [bizName(s.client_id), siteName(s.site_id), !isOnline(s) && (s.last_seen ? 'last seen ' + timeAgo(s.last_seen) : 'never connected')].filter(Boolean).join(' · '))),
       extra || h('span', { class: 'muted small' }, isOnline(s) ? 'Online' : 'Offline'),
       inBiz ? chev() : h('a', { class: 'btn sm', href: LIC_PORTAL, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation() }, 'Licence portal ↗'));
   };
