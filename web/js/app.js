@@ -291,7 +291,7 @@ let bellItems = [];
 function bellKey() { return 'signage.notif.read.' + state.me.user_id; }
 function paintBells() {
   const last = localStorage.getItem(bellKey()) || '';
-  const unread = bellItems.filter((n) => n.created_at > last).length;
+  const unread = bellItems.filter((n) => n.created_at > last && !n.resolved).length;
   for (const dot of bellViews) {
     dot.textContent = unread > 9 ? '9+' : String(unread);
     dot.classList.toggle('hidden', !unread);
@@ -302,6 +302,18 @@ async function loadBells() {
     let qry = sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
     if (!state.me.is_admin && state.clientId) qry = qry.eq('client_id', state.clientId);
     bellItems = await q(qry);
+    // A licence reminder whose TV has been renewed since (lifetime, or a new end date) is marked done
+    const ids = [...new Set(bellItems.filter((n) => /^licence_/.test(n.kind) && n.screen_id).map((n) => n.screen_id))];
+    if (ids.length) {
+      const scr = await q(sb.from('screens').select('id, license_type, license_expires_at').in('id', ids)).catch(() => []);
+      const by = Object.fromEntries(scr.map((x) => [x.id, x]));
+      for (const n of bellItems) {
+        const x = /^licence_/.test(n.kind) && by[n.screen_id];
+        if (!x) continue;
+        const ends = x.license_expires_at ? new Date(x.license_expires_at).getTime() : null;
+        n.resolved = x.license_type === 'lifetime' || (ends && ends - new Date(n.created_at).getTime() > 15 * 864e5);
+      }
+    }
     paintBells();
   } catch {}
 }
@@ -313,7 +325,7 @@ function openNotifications() {
   modal({ title: 'Notifications', body: [bellItems.length ? h('div', { class: 'list' }, bellItems.map((n) => h('div', { class: 'list-row', style: { cursor: n.screen_id ? 'pointer' : 'default' },
     onclick: () => { if (n.screen_id && n.client_id) { setClient(n.client_id); document.querySelector('.modal-back')?.remove(); go('screen/' + n.screen_id); } } },
     h('div', { style: { width: '22px' } }, ico[n.kind] || '•'),
-    h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, n.title), h('div', { class: 'tiny' }, [n.body, state.me.is_admin && names[n.client_id]].filter(Boolean).join(' · '))),
+    h('div', { class: 'grow', style: n.resolved ? { opacity: 0.55 } : {} }, h('div', { style: { fontWeight: 600 } }, n.title, n.resolved ? h('span', { class: 'badge ok', style: { marginLeft: '8px' } }, '✓ Renewed since') : null), h('div', { class: 'tiny' }, [n.body, state.me.is_admin && names[n.client_id]].filter(Boolean).join(' · '))),
     h('span', { class: 'tiny' }, timeAgo(n.created_at)))))
     : h('p', { class: 'muted' }, 'No notifications yet. You’ll see offline TVs, licence reminders and payments here.')] });
 }
