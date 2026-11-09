@@ -73,15 +73,20 @@ export async function clientsPage({ main, go, rerender }) {
     const none = list.filter((x) => !x.site_id || !mine.some((s) => s.id === x.site_id));
     if (mine.length && none.length) rows.push(locRow(h('span', { class: 'muted' }, 'No location'), none, 'none'));
     if (!mine.length) rows.push(h('div', { class: 'ov-loc muted' }, 'No locations yet. Open the business to add one.'));
+    // Only one location (and no TVs outside it): the card already says it all, so no location list
+    const single = mine.length === 1 && rows.length === 1;
+    if (single) rows.length = 0;
     const lic = list.length && list.every((s) => licenseState(s).state === 'lifetime') ? 'Licences: lifetime'
       : businessTrial(c) ? 'Free trial · signed up online' : list.length ? `${list.length} licence${list.length === 1 ? '' : 's'}` : 'Pair a TV to get started';
     const el = h('article', { class: 'card ov-biz' },
       h('div', { class: 'ov-bh' },
         h('div', { class: 'grow' }, h('h3', {}, clientTitle(c)),
-          h('div', { class: 'muted small' }, `${mine.length} location${mine.length === 1 ? '' : 's'} · ${list.length ? list.length + ' TV' + (list.length === 1 ? '' : 's') : 'no TVs yet'}`)),
+          h('div', { class: 'muted small' }, single
+            ? [mine[0].name !== clientTitle(c) && mine[0].name, tvLine(list)].filter(Boolean).join(' · ')
+            : `${mine.length} location${mine.length === 1 ? '' : 's'} · ${list.length ? list.length + ' TV' + (list.length === 1 ? '' : 's') : 'no TVs yet'}`)),
         status(c, list)),
       ...rows,
-      h('div', { class: 'ov-bf' }, h('span', { class: 'muted small' }, lic), h('button', { class: 'btn sm primary', onclick: () => open(c.id) }, 'Open business')));
+      h('div', { class: 'ov-bf' }, h('span', { class: 'muted small' }, lic), h('button', { class: 'btn sm primary', onclick: () => open(c.id, single ? mine[0].id : undefined) }, 'Open business')));
     const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
     return { el, text };
   });

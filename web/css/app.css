@@ -890,7 +890,7 @@ html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .s
 .ov-tools { display: flex; justify-content: flex-end; margin-bottom: 12px; }
 .ov-warnbox { display: flex; align-items: center; gap: 14px; padding: 14px 18px; margin-bottom: 18px; border-color: #f0c9a0; background: #fffaf3; flex-wrap: wrap; }
 .ov-warnicon { width: 34px; height: 34px; border-radius: 10px; background: #fdf1dc; color: #a35f00; display: grid; place-items: center; font-weight: 800; flex: none; }
-.ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; }
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; align-items: start; }
 .ov-biz { display: flex; flex-direction: column; overflow: hidden; }
 .ov-bh { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 12px; }
 .ov-bh h3 { font-size: 17px; font-weight: 700; margin: 0 0 2px; }

@@ -183,12 +183,6 @@ export const DASH = [
     'Remove a wall at any time: each TV goes back to its own picture and nothing is deleted.',
   ]],
 
-  ['Emergency message', 'Take over screens instantly.', [
-    'On **Screens**, press **Emergency message**.',
-    'Type the message, pick a colour, choose how long it shows, and which screens: all, one location, or the whole business.',
-    'It replaces what the TVs are showing straight away. End it from the banner at the top of Screens.',
-  ]],
-
   ['Users and roles', 'Invite people and control what they can do.', [
     'Go to **Users** and press invite. Enter their email, choose a role, tick the locations they can see and the features they can use.',
     '**Owner / Admin**: every location and feature, adds TVs and locations, manages users. **Manager**: only their locations and features, publishes without approval. **Staff**: only their locations and features.',

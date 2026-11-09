@@ -6,7 +6,6 @@ import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
 import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
 import { licenseState, businessTrial, fmtDate } from '../license.js';
-import { emergencyDialog, overridesBanner } from './emergency.js';
 import { publishSummary } from './show-on-tvs.js';
 import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
 import { validWall } from '../renderer.js';
@@ -249,7 +248,6 @@ export async function screensPage({ main, go }) {
       h('div', {}, h('h1', {}, 'Screens'),
         h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} location${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
       h('div', { class: 'row' }, filterSel,
-        hasFeature('emergency') && (canManage() || currentClient()?.role === 'site_manager' || !currentClient()?.require_approval) ? h('button', { class: 'btn danger', onclick: () => emergencyDialog({ onDone: refresh }) }, 'Emergency message') : null,
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Locations') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() && screens.some((s) => installedApp(s)) ? (() => {
@@ -269,7 +267,6 @@ export async function screensPage({ main, go }) {
     }
 
     const bannerBox = h('div');
-    overridesBanner(refresh).then((b) => b && bannerBox.replaceChildren(b));
 
     // Groups: one per site (alphabetical), then TVs with no site.
     let groups = sites.map((x) => ({ id: x.id, title: x.name, items: screens.filter((s) => s.site_id === x.id) }));

@@ -230,7 +230,6 @@ export const FEATURES = [
   ['schedule', 'Schedules (what plays on each TV, publish a TV)'],
   ['playlists', 'Playlists & templates'],
   ['media', 'Media library (upload, edit, delete)'],
-  ['emergency', 'Emergency messages'],
   ['billing', 'Licence payments (buy / renew online)'],
 ];
 const FEATURE_OFF_BY_DEFAULT = ['billing'];
