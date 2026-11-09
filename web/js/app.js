@@ -204,7 +204,7 @@ function sitePicker() {
   fillPicker(s);
   // Refresh the site list (new or renamed sites) and repaint if it changed.
   const before = JSON.stringify(pickSites);
-  loadPickSites().then(() => { if (s.isConnected && JSON.stringify(pickSites) !== before) fillPicker(s); }).catch(() => {});
+  loadPickSites().then(() => { if (s.isConnected && JSON.stringify(pickSites) !== before) { fillPicker(s); refreshLocNames(); } }).catch(() => {});
   return h('div', { class: 'hdr-pick' }, h('label', { class: 'sr', for: 'hdr-site' }, 'Location'), s);
 }
 
@@ -227,6 +227,42 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
+// Navy theme switches (shared by every Proview app): pv.theme = dark|light, pv.menu = side|bottom.
+// index.html applies both before first paint; these only flip the attribute/class (pure CSS, no re-render).
+function toggleTheme() {
+  const light = document.documentElement.getAttribute('data-theme') !== 'light';
+  document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+  try { localStorage.setItem('pv.theme', light ? 'light' : 'dark'); } catch {}
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', light ? '#f2f4f9' : '#171c29');
+}
+function toggleMenuPos() {
+  const bottom = !document.documentElement.classList.contains('menu-bottom');
+  document.documentElement.classList.toggle('menu-bottom', bottom);
+  try { localStorage.setItem('pv.menu', bottom ? 'bottom' : 'side'); } catch {}
+}
+/** Where we are: the chosen site, else the business, else (master on All locations) "All locations". */
+function locName(onAll) {
+  if (onAll || !state.clientId) return state.me.is_admin ? 'All locations' : 'Proview';
+  const c = state.me.clients.find((x) => x.id === state.clientId);
+  const sid = siteFilterOf(state.clientId);
+  const site = sid !== 'all' && (pickSites || []).find((x) => x.id === sid);
+  return site ? site.name : clientTitle(c) || 'Proview';
+}
+/** Sidebar location card: where we are + who (role). Opens Users & access for those who manage people. */
+function pvCard(r, onAll) {
+  const first = (state.me.email || '').split('@')[0].split(/[._-]+/)[0] || '';
+  const who = (first ? first[0].toUpperCase() + first.slice(1) + ' · ' : '') + (state.me.is_admin ? 'Proview admin' : roleLabel(r) || 'Staff');
+  const canTeam = state.clientId && (state.me.is_admin || r === 'admin' || r === 'manager');
+  return h(canTeam ? 'a' : 'div', { class: 'pv-card', href: canTeam ? '#/team' : undefined, title: state.me.email || '' },
+    h('b', { class: 'pv-loc-name' }, locName(onAll)), h('span', {}, h('i'), who));
+}
+function refreshLocNames() {
+  if (!state.me) return;
+  const n = locName(!!state.me.is_admin && /^#\/?clients/.test(location.hash));
+  document.querySelectorAll('.pv-loc-name').forEach((e) => { e.textContent = n; });
+}
+window.addEventListener('signage:sitefilter', refreshLocNames);
+
 const PAGE_TITLES = { clients: 'Locations', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
@@ -241,7 +277,7 @@ function shell(section, main) {
 
   const meEl = sideMe(n.r);
   const side = h('aside', { class: 'side' },
-    h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
+    h('div', { class: 'brand' }, brandMark(), wordmark(APP), h('span', { class: 'pv-brand' }, 'Proview ', h('i', {}, 'Signage'))),
     h('nav', { class: 'nav' },
       // master only: All sites, always first (highlighted while the All sites page is showing)
       n.admin ? h('a', { href: '#/clients', class: 'nav-allsites' + (section === 'clients' ? ' active' : ''), title: 'Locations', 'aria-current': section === 'clients' ? 'page' : null }, icon('clients'), h('span', {}, 'Locations')) : null,
@@ -253,6 +289,13 @@ function shell(section, main) {
       n.items.some(([k]) => k === 'team') ? h('div', { class: 'nav-sep' }, 'Manage') : null,
       n.items.filter(([k]) => ['team'].includes(k)).map(([k, l, i]) => link(k, l, i))),
     meEl,
+    pvCard(n.r, onAll),
+    h('button', { class: 'pv-sbtn pv-menu-btn', type: 'button', onclick: toggleMenuPos, title: 'Move the menu', 'aria-label': 'Move the menu' },
+      h('span', { class: 'when-side' }, icon('panelBottom')), h('span', { class: 'when-bottom' }, icon('panelLeft')),
+      h('span', { class: 'lbl when-side' }, 'Menu at bottom'), h('span', { class: 'lbl when-bottom' }, 'Menu at side')),
+    h('button', { class: 'pv-sbtn pv-theme-btn', type: 'button', onclick: toggleTheme, title: 'Light or dark', 'aria-label': 'Switch light or dark mode' },
+      h('span', { class: 'when-dark' }, icon('sun')), h('span', { class: 'when-light' }, icon('moon')),
+      h('span', { class: 'lbl when-dark' }, 'Light mode'), h('span', { class: 'lbl when-light' }, 'Dark mode')),
     h('div', { class: 'side-foot' },
       h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
       h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
@@ -272,7 +315,7 @@ function shell(section, main) {
   }) : meEl.click();
   const top = h('header', { class: 'top' },
     h('button', { class: 'icon-btn menu-btn', 'aria-label': 'Open menu', title: 'Menu', onclick: toggleNav }, icon('menu')),
-    h('h2', {}, PAGE_TITLES[section] || ''),
+    h('div', { class: 'top-title' }, h('div', { class: 'top-eyebrow' }, h('i'), h('span', { class: 'pv-loc-name' }, locName(onAll))), h('h2', {}, PAGE_TITLES[section] || '')),
     sitePicker(),
     h('div', { class: 'sp' }),
     window.PVHub ? window.PVHub.tray({ dot: statusDot(), bell: bell('icon') }) : bell('icon'),
