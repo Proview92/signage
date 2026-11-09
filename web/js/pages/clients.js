@@ -2,6 +2,7 @@
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
 import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
+import { integrationsCards } from './integrations.js';
 
 const LIC_PORTAL = 'https://license.proviewcrm.co.uk';
 const NEEDS = ['none', 'expiring', 'grace', 'expired'];
@@ -104,11 +105,14 @@ export async function clientsPage({ main, go, rerender }) {
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'))),
     h('div', { class: 'ov-stats' },
-      stat('Clients', clients.length), stat('Locations', sites.length), stat('Screens', screens.length),
+      stat('Businesses', clients.length), stat('Locations', sites.length), stat('Screens', screens.length),
       stat('Online now', screens.filter(isOnline).length), stat('Licences needing attention', needs(screens))),
     h('div', { style: { marginBottom: '12px', display: clients.length > 5 ? '' : 'none' } }, search),
     h('div', { class: 'card ov-card' },
       h('table', { class: 'ov-table' },
         h('thead', {}, h('tr', {}, ...['Business', 'Location', 'TVs', 'Licences', ''].map((t) => h('th', {}, t)))),
-        tbody)));
+        tbody)),
+    // Alerts & email (Resend key, offline alerts) - master only; it lived on the old Clients & TVs page
+    h('h2', { style: { margin: '24px 0 10px' } }, 'Platform settings'),
+    await integrationsCards(rerender).catch(() => h('div', { class: 'notice' }, 'Could not load alerts & email settings.')));
 }
