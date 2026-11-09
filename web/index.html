@@ -3,31 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#171c29" />
-  <script>
-    // Proview Navy theme: light/dark and menu position, shared by every Proview app. Runs before first paint.
-    (function () { var d = document.documentElement, t = 'dark', m = 'side';
-      try { t = localStorage.getItem('pv.theme') === 'light' ? 'light' : 'dark'; m = localStorage.getItem('pv.menu') === 'bottom' ? 'bottom' : 'side'; } catch (e) {}
-      d.setAttribute('data-theme', t); if (m === 'bottom') d.classList.add('menu-bottom');
-      var mc = document.querySelector('meta[name=theme-color]'); if (mc) mc.setAttribute('content', t === 'light' ? '#f2f4f9' : '#171c29'); })();
-  </script>
+  <meta name="theme-color" content="#141418" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon-32.png?v=2" type="image/png" />
   <link rel="apple-touch-icon" href="icon-180.png?v=2" />
   <title>Proview Signage</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,700..900&amp;family=Instrument+Sans:wght@500;600;700&amp;family=JetBrains+Mono:wght@700;800&amp;display=swap" />
   <link rel="stylesheet" href="css/stage.css" />
   <link rel="stylesheet" href="css/app.css" />
-  <!-- Proview "Navy" theme: loaded last, re-points the app's variables and restyles the back office -->
-  <link rel="stylesheet" href="css/navy.css" />
   <style>
     /* Loading splash (the Proview standard, as Proview Bookings): only the 72px app icon, centred on the page
        background, with a 1.2s pulse, until the sign-in state is known (js/app.js replaces it). */
-    .pv-splash{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg,#171c29);z-index:2147483000}
+    .pv-splash{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg,#f4f3ef);z-index:2147483000}
     .pv-splash .pv-splash-icon{width:72px;height:72px;border-radius:22%;background:url(icon-app.svg) center/contain no-repeat;opacity:.9;animation:pvsplash 1.2s ease-in-out infinite}
     @keyframes pvsplash{50%{opacity:.35}}
     @media (prefers-reduced-motion:reduce){.pv-splash .pv-splash-icon{animation:none}}
@@ -41,9 +30,9 @@
     setTimeout(function () {
       var r = document.getElementById('root');
       if (window.__pvApp || !r.querySelector('.pv-splash')) return;
-      r.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;font:14px/1.45 system-ui,sans-serif;color:var(--ink,#f2f4fa);text-align:center">'
+      r.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;padding:24px;font:15px/1.45 system-ui,sans-serif;color:#17171c;text-align:center">'
         + '<div><p style="margin:0 0 14px">Proview Signage couldn\u2019t load. Check your internet connection and try again.</p>'
-        + '<button onclick="location.reload()" style="font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;border:1px solid var(--line,#3a4560);background:var(--panel,#212839);color:inherit;cursor:pointer">Try again</button></div></div>';
+        + '<button onclick="location.reload()" style="font:inherit;font-weight:600;padding:9px 16px;border-radius:10px;border:1px solid #e4e2dc;background:#fff;cursor:pointer">Try again</button></div></div>';
     }, 8000);
   </script>
   <script src="config.js"></script>
