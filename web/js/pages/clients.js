@@ -1,6 +1,6 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
-import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox } from '../core.js';
+import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
 import { integrationsCards } from './integrations.js';
 
@@ -13,7 +13,7 @@ export async function clientsPage({ main, go, rerender }) {
   // Screens and sites across the platform (the master can read all of them). Sites are optional:
   // if that query fails the list still shows each client, just without the per-site rows.
   const [scr, st] = await Promise.all([
-    sb.from('screens').select('id, client_id, site_id, last_seen, license_type, license_expires_at'),
+    sb.from('screens').select('id, name, client_id, site_id, last_seen, license_type, license_expires_at'),
     sb.from('sites').select('id, client_id, name'),
   ]);
   if (scr.error) throw scr.error;
@@ -39,79 +39,129 @@ export async function clientsPage({ main, go, rerender }) {
     } catch (e) { toast(errMsg(e), true); }
   };
 
-  const tvCell = (list) => list.length ? h('span', { class: 'badge ' + (list.every(isOnline) ? 'ok' : list.some(isOnline) ? 'warn' : 'bad') }, `${list.filter(isOnline).length} of ${list.length} online`) : h('span', { class: 'muted' }, '0');
-  const licCell = (list) => { const bad = needs(list); return bad ? h('span', { class: 'badge bad' }, `${bad} need${bad === 1 ? 's' : ''} attention`) : list.length ? h('span', { class: 'badge ok' }, 'All OK') : '—'; };
-
-  // Online sign-ups on their 3-day trial: "Trial – ends <date>" / "Trial expired" (gone once a TV licence is bought).
-  const trialBadge = (c) => {
-    const t = businessTrial(c);
-    return t ? h('span', { class: 'badge ' + (t.state === 'expired' ? 'bad' : 'warn'), style: { marginLeft: '8px' },
-      title: t.ends ? new Date(t.ends).toLocaleString() : 'Signed up online' }, businessTrialText(t)) : null;
-  };
-
-  // One block of rows per client: the client itself, then each site, then TVs with no site.
-  const blocks = clients.map((c) => {
-    const list = screens.filter((s) => s.client_id === c.id);
-    const mine = sites.filter((s) => s.client_id === c.id);
-    const rows = [h('tr', { class: 'ov-client' },
-      h('td', {}, h('b', {}, clientTitle(c)), trialBadge(c)),
-      h('td', { class: 'muted' }, mine.length ? `${mine.length} location${mine.length === 1 ? '' : 's'}` : 'No locations yet'),
-      h('td', {}, tvCell(list)), h('td', {}, licCell(list)),
-      h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn sm primary', onclick: () => open(c.id) }, 'Open')))];
-    const siteRow = (label, tvs, siteId) => h('tr', { class: 'ov-site' },
-      h('td', {}), h('td', {}, label), h('td', {}, tvCell(tvs)), h('td', {}, licCell(tvs)),
-      h('td', { style: { textAlign: 'right' } }, h('button', { class: 'btn sm', onclick: () => open(c.id, siteId) }, 'Open')));
-    if (mine.length) {
-      for (const s of mine) rows.push(siteRow(s.name, list.filter((x) => x.site_id === s.id), s.id));
-      const none = list.filter((x) => !x.site_id || !mine.some((s) => s.id === x.site_id));
-      if (none.length) rows.push(siteRow(h('span', { class: 'muted' }, 'No location'), none, 'none'));
-    }
-    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
-    return { rows, text };
-  });
-
-  // TVs that aren't assigned to any client (e.g. paired but not handed over yet), so the totals add up
+  const online = screens.filter(isOnline);
   const ids = new Set(clients.map((c) => c.id));
   const loose = screens.filter((s) => !s.client_id || !ids.has(s.client_id));
-  const looseRow = loose.length ? h('tr', { class: 'ov-loose' },
-    h('td', {}, h('b', {}, 'Not assigned to a business'), h('div', { class: 'tiny' }, 'TVs paired but not given to a business yet. Move them to a business in the licence portal.')),
-    h('td', {}), h('td', {}, tvCell(loose)), h('td', {}, licCell(loose)), h('td', {})) : null;
+  const attention = screens.filter((s) => NEEDS.includes(licenseState(s).state));
+  const bizName = (cid) => { const c = clients.find((x) => x.id === cid); return c ? clientTitle(c) : 'Not in a business'; };
+  const siteName = (sid) => sites.find((x) => x.id === sid)?.name || '';
+  const dot = (tone) => h('span', { class: 'ov-dot ' + tone });
+  const chev = () => h('span', { class: 'ov-chev', 'aria-hidden': 'true' }, '›');
+  const openTv = (s) => { setClient(s.client_id); document.querySelector('.modal-back')?._close?.(); go('screen/' + s.id); };
+  const licText = (s) => { const L = licenseState(s); return { none: 'No licence', expiring: `Ends in ${L.daysLeft} day${L.daysLeft === 1 ? '' : 's'}`, grace: 'Expired, in grace period', expired: 'Expired', lifetime: 'Lifetime', active: 'Active' }[L.state]; };
 
-  const tbody = h('tbody');
-  const search = h('input', { type: 'search', placeholder: 'Search businesses and locations', 'aria-label': 'Search businesses and locations', style: { maxWidth: '320px' }, oninput: () => paint() });
-  const emptyState = () => h('tr', {}, h('td', { colspan: 5 },
+  // Online sign-ups on their 3-day trial: "Trial – ends <date>" / "Trial expired" (gone once a TV licence is bought).
+  const status = (c, list) => {
+    const t = businessTrial(c);
+    if (t) return h('span', { class: 'badge ' + (t.state === 'expired' ? 'bad' : 'warn'), title: t.ends ? new Date(t.ends).toLocaleString() : 'Signed up online' }, businessTrialText(t));
+    if (!list.length) return h('span', { class: 'badge' }, 'No TVs yet');
+    const bad = needs(list);
+    if (bad) return h('span', { class: 'badge bad' }, `${bad} licence${bad === 1 ? '' : 's'} need${bad === 1 ? 's' : ''} attention`);
+    if (!list.every(isOnline)) return h('span', { class: 'badge warn' }, `${list.filter((x) => !isOnline(x)).length} offline`);
+    return h('span', { class: 'badge ok' }, 'All good');
+  };
+  const tvLine = (tvs) => tvs.length ? `${tvs.filter(isOnline).length} of ${tvs.length} TV${tvs.length === 1 ? '' : 's'} online` : 'No TVs';
+  const tvTone = (tvs) => !tvs.length ? 'none' : tvs.every(isOnline) ? 'ok' : tvs.some(isOnline) ? 'warn' : 'bad';
+
+  // ---- one card per business; its locations inside (click one = open the business on that location)
+  const cards = clients.map((c) => {
+    const list = screens.filter((s) => s.client_id === c.id);
+    const mine = sites.filter((s) => s.client_id === c.id);
+    const locRow = (label, tvs, siteId) => h('button', { type: 'button', class: 'ov-loc', onclick: () => open(c.id, siteId), title: 'Open on this location' },
+      dot(tvTone(tvs)), h('span', { class: 'grow' }, label), h('span', { class: 'muted small' }, tvLine(tvs)), chev());
+    const rows = mine.map((s) => locRow(s.name, list.filter((x) => x.site_id === s.id), s.id));
+    const none = list.filter((x) => !x.site_id || !mine.some((s) => s.id === x.site_id));
+    if (mine.length && none.length) rows.push(locRow(h('span', { class: 'muted' }, 'No location'), none, 'none'));
+    if (!mine.length) rows.push(h('div', { class: 'ov-loc muted' }, 'No locations yet. Open the business to add one.'));
+    const lic = list.length && list.every((s) => licenseState(s).state === 'lifetime') ? 'Licences: lifetime'
+      : businessTrial(c) ? 'Free trial · signed up online' : list.length ? `${list.length} licence${list.length === 1 ? '' : 's'}` : 'Pair a TV to get started';
+    const el = h('article', { class: 'card ov-biz' },
+      h('div', { class: 'ov-bh' },
+        h('div', { class: 'grow' }, h('h3', {}, clientTitle(c)),
+          h('div', { class: 'muted small' }, `${mine.length} location${mine.length === 1 ? '' : 's'} · ${list.length ? list.length + ' TV' + (list.length === 1 ? '' : 's') : 'no TVs yet'}`)),
+        status(c, list)),
+      ...rows,
+      h('div', { class: 'ov-bf' }, h('span', { class: 'muted small' }, lic), h('button', { class: 'btn sm primary', onclick: () => open(c.id) }, 'Open business')));
+    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
+    return { el, text };
+  });
+
+  // ---- the summary boxes: each opens the list behind its number
+  const listModal = (title, items, empty) => modal({ title, wide: true, body: items.length
+    ? h('div', { class: 'list ov-list' }, items)
+    : h('p', { class: 'muted' }, empty) });
+  const tvItem = (s, extra) => {
+    const inBiz = s.client_id && ids.has(s.client_id);
+    return h(inBiz ? 'button' : 'div', { type: inBiz ? 'button' : undefined, class: 'ov-li', onclick: inBiz ? () => openTv(s) : undefined },
+      dot(isOnline(s) ? 'ok' : 'bad'),
+      h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [bizName(s.client_id), siteName(s.site_id)].filter(Boolean).join(' · '))),
+      extra || h('span', { class: 'muted small' }, isOnline(s) ? 'Online' : 'Offline'),
+      inBiz ? chev() : h('a', { class: 'btn sm', href: LIC_PORTAL, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation() }, 'Licence portal ↗'));
+  };
+  const byName = (a, b) => (bizName(a.client_id) + (a.name || '')).localeCompare(bizName(b.client_id) + (b.name || ''));
+  const showBusinesses = () => listModal('Businesses', clients.map((c) => {
+    const list = screens.filter((s) => s.client_id === c.id);
+    return h('button', { type: 'button', class: 'ov-li', onclick: () => { document.querySelector('.modal-back')?._close?.(); open(c.id); } },
+      dot(tvTone(list)), h('span', { class: 'grow' }, h('b', {}, clientTitle(c)), h('span', { class: 'tiny', style: { display: 'block' } }, `${sites.filter((s) => s.client_id === c.id).length} location(s) · ${tvLine(list)}`)),
+      status(c, list), chev());
+  }), 'No businesses yet.');
+  const showLocations = () => listModal('Locations', sites.filter((s) => ids.has(s.client_id)).sort((a, b) => (bizName(a.client_id) + a.name).localeCompare(bizName(b.client_id) + b.name)).map((s) => {
+    const tvs = screens.filter((x) => x.site_id === s.id);
+    return h('button', { type: 'button', class: 'ov-li', onclick: () => { document.querySelector('.modal-back')?._close?.(); open(s.client_id, s.id); } },
+      dot(tvTone(tvs)), h('span', { class: 'grow' }, h('b', {}, s.name), h('span', { class: 'tiny', style: { display: 'block' } }, bizName(s.client_id))),
+      h('span', { class: 'muted small' }, tvLine(tvs)), chev());
+  }), 'No locations yet.');
+  const showTvs = (title, list, empty, extra) => listModal(title, list.slice().sort(byName).map((s) => tvItem(s, extra?.(s))), empty);
+
+  const offline = screens.filter((s) => !isOnline(s));
+  const stat = (k, v, onclick, tone) => h('button', { type: 'button', class: 'card ov-stat' + (tone ? ' ' + tone : ''), onclick, title: 'Show the list' },
+    h('div', { class: 'tiny' }, k), h('div', { class: 'ov-v' }, String(v)));
+  const stats = h('div', { class: 'ov-stats' },
+    stat('Businesses', clients.length, showBusinesses),
+    stat('Locations', sites.filter((s) => ids.has(s.client_id)).length, showLocations),
+    stat('Screens', screens.length, () => showTvs('Screens', screens, 'No TVs yet.')),
+    stat('Online', online.length, () => showTvs('Online now', online, 'No TVs are online right now.'), online.length ? 'ok' : ''),
+    stat('Offline', offline.length, () => showTvs('Offline', offline, 'Every TV is online.'), offline.length ? 'warn' : ''),
+    stat('Licences need attention', attention.length, () => showTvs('Licences needing attention', attention, 'Every licence is fine.',
+      (s) => h('span', { class: 'badge ' + (licenseState(s).state === 'expiring' ? 'warn' : 'bad') }, licText(s))), attention.length ? 'bad' : ''));
+
+  // TVs paired but not given to a business yet: one clear warning instead of a table row
+  const looseBox = loose.length ? h('div', { class: 'card ov-warnbox' },
+    h('span', { class: 'ov-warnicon', 'aria-hidden': 'true' }, '!'),
+    h('div', { class: 'grow', style: { minWidth: '200px' } }, h('b', {}, `${loose.length} TV${loose.length === 1 ? '' : 's'} ${loose.length === 1 ? "isn't" : "aren't"} in a business yet`),
+      h('div', { class: 'muted small' }, `Paired but not handed over${loose.some(isOnline) ? `, ${loose.filter(isOnline).length} of them online` : ''}. Give them to a business in the licence portal.`)),
+    h('button', { class: 'btn sm', onclick: () => showTvs('TVs not in a business', loose, '') }, 'See them'),
+    h('a', { class: 'btn sm', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Sort them ↗')) : null;
+
+  const grid = h('div', { class: 'ov-grid' });
+  const search = h('input', { type: 'search', placeholder: 'Search businesses or locations', 'aria-label': 'Search businesses or locations', class: 'ov-search', oninput: () => paint() });
+  const emptyState = () => h('div', { class: 'card', style: { gridColumn: '1 / -1' } },
     h('div', { class: 'stack', style: { alignItems: 'center', textAlign: 'center', padding: '28px 12px', gap: '10px' } },
       h('h3', { style: { margin: 0 } }, 'No businesses yet'),
       h('p', { class: 'muted', style: { margin: 0 } }, 'Add a business here, or add businesses, locations and licences in the Proview licence portal.'),
       h('div', { class: 'row', style: { justifyContent: 'center', gap: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Open licence portal ↗'),
-        h('button', { class: 'btn', onclick: refresh }, icon('refresh'), 'Refresh')))));
+        h('button', { class: 'btn', onclick: refresh }, icon('refresh'), 'Refresh'))));
   function paint() {
     const t = search.value.trim().toLowerCase();
-    const shown = blocks.filter((b) => !t || b.text.includes(t));
-    if (!clients.length) tbody.replaceChildren(emptyState(), ...(looseRow ? [looseRow] : []));
-    else if (!shown.length) tbody.replaceChildren(h('tr', {}, h('td', { colspan: 5, class: 'muted', style: { padding: '18px' } }, `No clients or locations match “${search.value.trim()}”.`)));
-    else tbody.replaceChildren(...shown.flatMap((b) => b.rows), ...(looseRow && !t ? [looseRow] : []));
+    const shown = cards.filter((b) => !t || b.text.includes(t));
+    if (!clients.length) grid.replaceChildren(emptyState());
+    else if (!shown.length) grid.replaceChildren(h('p', { class: 'muted', style: { gridColumn: '1 / -1' } }, `No businesses or locations match “${search.value.trim()}”.`));
+    else grid.replaceChildren(...shown.map((b) => b.el));
   }
   paint();
 
-  const stat = (k, v) => h('div', { class: 'card ov-stat' }, h('div', { class: 'tiny' }, k), h('div', { class: 'ov-v' }, String(v)));
   main.replaceChildren(
     h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Locations'), h('p', { class: 'muted' }, 'Every business and location on the platform, with their TVs and licences. Open one to see it as its team does.')),
+      h('div', {}, h('h1', {}, 'Businesses'), h('p', { class: 'muted' }, 'Every business on the platform with its locations. Open one to see it as its team does.')),
       h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn', onclick: refresh, title: 'Refresh' }, icon('refresh'), 'Refresh'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'))),
-    h('div', { class: 'ov-stats' },
-      stat('Businesses', clients.length), stat('Locations', sites.length), stat('Screens', screens.length),
-      stat('Online now', screens.filter(isOnline).length), stat('Licences needing attention', needs(screens))),
-    h('div', { style: { marginBottom: '12px', display: clients.length > 5 ? '' : 'none' } }, search),
-    h('div', { class: 'card ov-card' },
-      h('table', { class: 'ov-table' },
-        h('thead', {}, h('tr', {}, ...['Business', 'Location', 'TVs', 'Licences', ''].map((t) => h('th', {}, t)))),
-        tbody)),
+    stats,
+    ...[looseBox, clients.length > 3 ? h('div', { class: 'ov-tools' }, search) : null].filter(Boolean),
+    grid,
     // Alerts & email (Resend key, offline alerts) - master only; it lived on the old Clients & TVs page
     h('h2', { style: { margin: '24px 0 10px' } }, 'Platform settings'),
     await integrationsCards(rerender).catch(() => h('div', { class: 'notice' }, 'Could not load alerts & email settings.')));
