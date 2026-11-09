@@ -456,6 +456,58 @@ async function heartbeat() {
 }
 
 // ------------------------------------------------------------ screenshots
+// Older TVs (Android 7 and below) can only capture the page itself, so playing videos came out black.
+// Blend each visible video's current frame into the capture where it sits (videos are local blob:
+// URLs, so the canvas stays readable). Frames that read back all black are skipped, so a TV whose
+// own capture already shows the video is never made worse.
+async function withVideoFrames(dataUrl) {
+  const vids = [...document.querySelectorAll('video')].filter((v) => v.readyState >= 2 && v.videoWidth && v.getClientRects().length);
+  if (!vids.length) return null;
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+  const cv = document.createElement('canvas');
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  const g = cv.getContext('2d');
+  g.drawImage(img, 0, 0);
+  const k = cv.width / (window.innerWidth || cv.width);
+  const probe = document.createElement('canvas'); probe.width = probe.height = 8;
+  const pg = probe.getContext('2d', { willReadFrequently: true });
+  let drew = false;
+  for (const v of vids) {
+    const st = getComputedStyle(v);
+    if (st.visibility === 'hidden' || st.display === 'none') continue;
+    let op = 1;
+    for (let e = v; e && e !== document.documentElement; e = e.parentElement) op *= Number(getComputedStyle(e).opacity) || 0;
+    if (op < 0.05) continue;
+    try {
+      pg.drawImage(v, 0, 0, 8, 8);
+      const px = pg.getImageData(0, 0, 8, 8).data;
+      let lit = false; for (let i = 0; i < px.length; i += 4) if (px[i] + px[i + 1] + px[i + 2] > 24) { lit = true; break; }
+      if (!lit) continue;
+    } catch { continue; }
+    const r = v.getBoundingClientRect(), vw = v.videoWidth, vh = v.videoHeight;
+    const fit = st.objectFit;
+    let dx = r.left, dy = r.top, dw = r.width, dh = r.height, sx = 0, sy = 0, sw = vw, sh = vh;
+    if (fit === 'contain') {
+      const s = Math.min(r.width / vw, r.height / vh); dw = vw * s; dh = vh * s; dx += (r.width - dw) / 2; dy += (r.height - dh) / 2;
+    } else if (fit !== 'fill') {   // cover (the default for slides)
+      const s = Math.max(r.width / vw, r.height / vh); sw = r.width / s; sh = r.height / s; sx = (vw - sw) / 2; sy = (vh - sh) / 2;
+    }
+    g.save();
+    // "lighten" keeps whatever is brighter: the video shows through the black hole the TV left,
+    // while text and pictures drawn over the video (tickers, overlays) stay on top.
+    g.globalCompositeOperation = 'lighten';
+    g.globalAlpha = Math.min(1, op);
+    // keep inside its own area (layout zones clip their slides)
+    const clip = v.closest('.sg-slide')?.parentElement?.getBoundingClientRect() || r;
+    g.beginPath(); g.rect(clip.left * k, clip.top * k, clip.width * k, clip.height * k); g.clip();
+    g.drawImage(v, sx, sy, sw, sh, dx * k, dy * k, dw * k, dh * k);
+    g.restore();
+    drew = true;
+  }
+  if (!drew) return null;
+  return await new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.72));
+}
+
 let shooting = false;
 async function takeScreenshot() {
   if (shooting) return;
@@ -469,7 +521,7 @@ async function takeScreenshot() {
       window.__onScreenshot = (d, err) => { clearTimeout(t); d ? resolve(d) : reject(new Error(err || 'Capture failed')); };
       nat.captureScreen();
     });
-    const blob = await (await fetch(dataUrl)).blob();
+    const blob = await withVideoFrames(dataUrl).catch(() => null) || await (await fetch(dataUrl)).blob();
     const { error } = await sb.storage.from('screenshots').upload(`${screen.id}.jpg`, blob, { upsert: true, contentType: 'image/jpeg', cacheControl: '0' });
     if (error) throw error;
     await done(true);
