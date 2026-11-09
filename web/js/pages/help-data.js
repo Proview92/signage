@@ -72,7 +72,7 @@ export const TV = [
 export const DASH = [
   ['Getting around', 'The dashboard works on a computer, tablet or phone.', [
     'The menu on the left (or the bar at the bottom on a phone) has **Screens**, **Playlists**, **Media**, **Reports**, **Activity**, **Team** and **Notifications**.',
-    'If you manage more than one business, pick it in the drop-down at the top. Everything you see belongs to that client.',
+    'If you manage more than one business, pick it in the drop-down at the top. Everything you see belongs to that business.',
     'Your role is shown under your email: Administrator, Manager or Editor.',
   ]],
 
@@ -185,7 +185,7 @@ export const DASH = [
 
   ['Emergency message', 'Take over screens instantly.', [
     'On **Screens**, press **Emergency message**.',
-    'Type the message, pick a colour, choose how long it shows, and which screens: all, one location, or the whole client.',
+    'Type the message, pick a colour, choose how long it shows, and which screens: all, one location, or the whole business.',
     'It replaces what the TVs are showing straight away. End it from the banner at the top of Screens.',
   ]],
 
@@ -222,9 +222,9 @@ export const DASH = [
     'Renew on the TV’s page with **Renew online**, or contact Proview.',
   ]],
 
-  ['Administrators: Clients & TVs', 'For Proview staff who manage several businesses.', [
-    'Go to **Clients & TVs** to add a client with its locations and a manager invite.',
-    'Assign TVs that are waiting for a client, and manage licences that need attention.',
+  ['Administrators: Locations', 'For Proview staff who manage several businesses.', [
+    'Go to **Locations** to add a business, then add its locations and invite its owner.',
+    'Assign TVs that are waiting for a business, and manage licences that need attention.',
     'Set the TV menu options for all screens, such as how long before the player reopens.',
   ]],
 ];

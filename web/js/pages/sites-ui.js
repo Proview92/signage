@@ -32,7 +32,7 @@ export async function manageSitesDialog(clientId, clientName, onDone) {
         try { await q(sb.from('sites').delete().eq('id', s.id)); sites = sites.filter((x) => x !== s); changed = true; paint(); }
         catch (e) { toast(errMsg(e), true); }
       } }, icon('trash')));
-  }) : [h('div', { class: 'muted small' }, 'No locations yet. Add the client’s locations below.')]));
+  }) : [h('div', { class: 'muted small' }, 'No locations yet. Add the business’s locations below.')]));
   paint();
 
   const addSite = async () => {

@@ -27,13 +27,13 @@ export async function clientsPage({ main, go, rerender }) {
   };
   const refresh = async () => { try { await refreshMe(); } catch {} rerender(); };
   const addClient = async () => {
-    const name = await promptBox('Add client', 'Business name', { okLabel: 'Add client' });
+    const name = await promptBox('Add business', 'Business name', { okLabel: 'Add business' });
     if (!name || !name.trim()) return;
     try {
       const { data, error } = await sb.from('clients').insert({ name: name.trim() }).select('id').single();
       if (error) throw error;
       await refreshMe();
-      toast('Client added. Add its locations from Screens, and licences in the licence portal.');
+      toast('Business added. Add its locations from Screens, and licences in the licence portal.');
       open(data.id);
     } catch (e) { toast(errMsg(e), true); }
   };
@@ -73,17 +73,17 @@ export async function clientsPage({ main, go, rerender }) {
   const ids = new Set(clients.map((c) => c.id));
   const loose = screens.filter((s) => !s.client_id || !ids.has(s.client_id));
   const looseRow = loose.length ? h('tr', { class: 'ov-loose' },
-    h('td', {}, h('b', {}, 'Not assigned to a client'), h('div', { class: 'tiny' }, 'TVs paired but not given to a client yet. Move them to a client in the licence portal.')),
+    h('td', {}, h('b', {}, 'Not assigned to a business'), h('div', { class: 'tiny' }, 'TVs paired but not given to a business yet. Move them to a business in the licence portal.')),
     h('td', {}), h('td', {}, tvCell(loose)), h('td', {}, licCell(loose)), h('td', {})) : null;
 
   const tbody = h('tbody');
-  const search = h('input', { type: 'search', placeholder: 'Search clients and locations', 'aria-label': 'Search clients and locations', style: { maxWidth: '320px' }, oninput: () => paint() });
+  const search = h('input', { type: 'search', placeholder: 'Search businesses and locations', 'aria-label': 'Search businesses and locations', style: { maxWidth: '320px' }, oninput: () => paint() });
   const emptyState = () => h('tr', {}, h('td', { colspan: 5 },
     h('div', { class: 'stack', style: { alignItems: 'center', textAlign: 'center', padding: '28px 12px', gap: '10px' } },
-      h('h3', { style: { margin: 0 } }, 'No clients yet'),
-      h('p', { class: 'muted', style: { margin: 0 } }, 'Add a client here, or add clients, locations and licences in the Proview licence portal.'),
+      h('h3', { style: { margin: 0 } }, 'No businesses yet'),
+      h('p', { class: 'muted', style: { margin: 0 } }, 'Add a business here, or add businesses, locations and licences in the Proview licence portal.'),
       h('div', { class: 'row', style: { justifyContent: 'center', gap: '8px', flexWrap: 'wrap' } },
-        h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add client'),
+        h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Open licence portal ↗'),
         h('button', { class: 'btn', onclick: refresh }, icon('refresh'), 'Refresh')))));
   function paint() {
@@ -98,17 +98,17 @@ export async function clientsPage({ main, go, rerender }) {
   const stat = (k, v) => h('div', { class: 'card ov-stat' }, h('div', { class: 'tiny' }, k), h('div', { class: 'ov-v' }, String(v)));
   main.replaceChildren(
     h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Locations'), h('p', { class: 'muted' }, 'Every client and location on the platform, with their TVs and licences. Open one to see it as its team does.')),
+      h('div', {}, h('h1', {}, 'Locations'), h('p', { class: 'muted' }, 'Every business and location on the platform, with their TVs and licences. Open one to see it as its team does.')),
       h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn', onclick: refresh, title: 'Refresh' }, icon('refresh'), 'Refresh'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
-        h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add client'))),
+        h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'))),
     h('div', { class: 'ov-stats' },
       stat('Clients', clients.length), stat('Locations', sites.length), stat('Screens', screens.length),
       stat('Online now', screens.filter(isOnline).length), stat('Licences needing attention', needs(screens))),
     h('div', { style: { marginBottom: '12px', display: clients.length > 5 ? '' : 'none' } }, search),
     h('div', { class: 'card ov-card' },
       h('table', { class: 'ov-table' },
-        h('thead', {}, h('tr', {}, ...['Client', 'Location', 'TVs', 'Licences', ''].map((t) => h('th', {}, t)))),
+        h('thead', {}, h('tr', {}, ...['Business', 'Location', 'TVs', 'Licences', ''].map((t) => h('th', {}, t)))),
         tbody)));
 }

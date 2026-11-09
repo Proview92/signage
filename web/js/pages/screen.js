@@ -68,9 +68,9 @@ export async function screenPage({ main, params: [id], go, rerender }) {
   async function assignDialog() {
     const clients = state.me.clients;
     let target = screen.client_id;
-    modal({ title: 'Move to another client', body: [
-      h('div', { class: 'notice' }, 'Moving a TV clears its schedule and stops what it is playing. The new client will need to publish content to it.'),
-      field('Client', select(clients.map((c) => [c.id, clientLabel(c)]), target, (v) => (target = v)))],
+    modal({ title: 'Move to another business', body: [
+      h('div', { class: 'notice' }, 'Moving a TV clears its schedule and stops what it is playing. The new business will need to publish content to it.'),
+      field('Business', select(clients.map((c) => [c.id, clientLabel(c)]), target, (v) => (target = v)))],
     actions: [{ label: 'Cancel' }, { label: 'Move TV', class: 'primary', onClick: async () => {
       if (target === screen.client_id) return;
       await rpc('assign_screen', { p_screen: id, p_client: target });
@@ -294,7 +294,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         dinfo.app ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'App'), dinfo.app) : null,
         dinfo.playing ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Reported playing'), dinfo.playing) : null,
         h('div', { class: 'row', style: { marginTop: '6px' } },
-          state.me.is_admin ? h('button', { class: 'btn sm', onclick: assignDialog }, 'Move to client…') : null,
+          state.me.is_admin ? h('button', { class: 'btn sm', onclick: assignDialog }, 'Move to business…') : null,
           canManage() ? h('button', { class: 'btn sm danger', onclick: unpair }, icon('trash'), 'Remove TV') : null)));
 
     const banner = licenseBanner(screen);

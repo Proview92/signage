@@ -15,7 +15,7 @@ export async function integrationsCards(rerender) {
       h('p', { class: 'muted small', style: { margin: 0 } }, 'Every 5 minutes PROVIEW SIGNAGE checks for TVs that go offline, come back online, or whose licence ends in 14 or 3 days or has expired. Alerts always appear under 🔔. Email is optional.'),
       field('Count a TV as offline after', select([['5', '5 minutes'], ['10', '10 minutes'], ['15', '15 minutes'], ['30', '30 minutes'], ['60', '1 hour']], mins, (v) => (mins = v))),
       h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: on, onchange: (e) => (on = e.target.checked) }), 'Also send alerts by email'),
-      h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: toClients, onchange: (e) => (toClients = e.target.checked) }), 'Email the client’s managers and contact email too (otherwise only you)'),
+      h('label', { class: 'row small', style: { fontWeight: 600 } }, h('input', { type: 'checkbox', checked: toClients, onchange: (e) => (toClients = e.target.checked) }), 'Email the business’s managers and contact email too (otherwise only you)'),
       field('Resend API key', key, h('span', {}, 'Create a free account at resend.com → API Keys → Create. Paste it here yourself. It is stored encrypted.')),
       field('Send from', from, 'The address alerts come from. It must be on a domain verified in Resend (proviewsignage.co.uk is).'),
       field('Extra alert address', extra)],

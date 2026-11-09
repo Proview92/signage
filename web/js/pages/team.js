@@ -156,7 +156,7 @@ export async function teamPage({ main }) {
                 refresh();
               } }, 'Remove') : null);
           })
-            : h('div', { class: 'list-row muted small' }, state.me.is_admin ? 'No client users yet. Invite the client’s staff so they can manage their own screens.' : 'No members.'))),
+            : h('div', { class: 'list-row muted small' }, state.me.is_admin ? 'No users yet. Invite the business’s staff so they can manage their own screens.' : 'No members.'))),
         manage ? h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Pending invites')),
           h('div', { class: 'list' }, invites.length ? invites.map((i) => h('div', { class: 'list-row' },
             h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, i.email), h('div', { class: 'tiny' }, `${roleLabel(i.role)} · ${accessSummary(i, sites)} · created ${timeAgo(i.created_at)}`)),

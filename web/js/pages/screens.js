@@ -63,7 +63,7 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
     site = clientId === fixedClient ? site : '';
     if (!clientId) return siteWrap.replaceChildren();
     const sites = await loadSites(clientId).catch(() => []);
-    siteWrap.replaceChildren(sites.length ? field('Location', siteSelect(sites, site, (v) => (site = v), { noneLabel: '— Choose later —' })) : h('div', { class: 'tiny' }, 'This client has no locations yet. You can add them under Locations.'));
+    siteWrap.replaceChildren(sites.length ? field('Location', siteSelect(sites, site, (v) => (site = v), { noneLabel: '— Choose later —' })) : h('div', { class: 'tiny' }, 'This business has no locations yet. You can add them under Locations.'));
   };
   const pick = clients ? select([['', '— Assign later —'], ...clients.map((c) => [c.id, clientLabel(c)])], clientId, (v) => { clientId = v; paintSites(); }) : null;
   paintSites();
@@ -73,7 +73,7 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
       h('div', { class: 'notice info' }, 'Open the PROVIEW SIGNAGE app on the TV. It shows a 6-character code — type it below.'),
       field('Pairing code', code),
       field('Screen name', name),
-      pick ? field('Client', pick, 'Which client will manage this TV?') : null,
+      pick ? field('Business', pick, 'Which business will manage this TV?') : null,
       siteWrap,
       field('Position at the location', loc),
     ],

@@ -17,7 +17,7 @@ export async function activeOverrides() {
 }
 
 export function scopeText(o, clients = [], sites = []) {
-  if (o.scope === 'all') return 'All screens, all clients';
+  if (o.scope === 'all') return 'All screens, all businesses';
   const c = clients.find((x) => x.id === o.client_id);
   if (o.scope === 'client') return `All screens · ${c ? clientTitle(c) : 'client'}`;
   return `${sites.find((x) => x.id === o.site_id)?.name || 'One location'}${c ? ' · ' + clientTitle(c) : ''}`;
@@ -35,7 +35,7 @@ export async function emergencyDialog({ onDone } = {}) {
   const scopes = [
     ...(state.clientId && allSites ? [['client', `All screens for ${clientTitle(state.me.clients.find((c) => c.id === state.clientId))}`]] : []),
     ...(state.clientId && sites.length ? [['site', 'One location…']] : []),
-    ...(isAdmin ? [['all', 'Every screen, all clients']] : []),
+    ...(isAdmin ? [['all', 'Every screen, all businesses']] : []),
   ];
   const siteWrap = h('div', { class: scope === 'site' ? '' : 'hidden' }, sites.length ? field('Location', select(sites.map((s) => [s.id, s.name]), site, (v) => (site = v))) : null);
   const preview = h('div', { style: { borderRadius: '10px', padding: '22px', textAlign: 'center' } });
