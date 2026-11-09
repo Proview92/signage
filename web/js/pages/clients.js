@@ -3,6 +3,8 @@
 import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
 import { integrationsCards } from './integrations.js';
+import { takePendingPair } from './qr-scan.js';
+import { pairDialog } from './screens.js';
 
 const LIC_PORTAL = 'https://license.proviewcrm.co.uk';
 const NEEDS = ['none', 'expiring', 'grace', 'expired'];
@@ -156,6 +158,10 @@ export async function clientsPage({ main, go, rerender }) {
     else grid.replaceChildren(...shown.map((b) => b.el));
   }
   paint();
+
+  // A TV's QR code was scanned and no business is open: pick the business in Add a TV.
+  const pendingCode = takePendingPair();
+  if (pendingCode) setTimeout(() => pairDialog({ clients, code: pendingCode, onDone: (s) => { if (s?.client_id) { setClient(s.client_id); go('screen/' + s.id); } else refresh(); } }), 50);
 
   main.replaceChildren(
     h('div', { class: 'page-head' },

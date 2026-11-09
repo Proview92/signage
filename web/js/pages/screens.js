@@ -11,6 +11,7 @@ import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
 import { validWall } from '../renderer.js';
 import { latestApp, appBehind, installedApp, newestFor } from '../app-version.js';
 import { sleepBadge, isAsleep } from './sleep-ui.js';
+import { scanDialog, takePendingPair } from './qr-scan.js';
 
 export async function loadClientData(clientId) {
   const [screens, playlists, rules, sites] = await Promise.all([
@@ -51,8 +52,9 @@ export function statusBadges(screen, rules, byId) {
   return out;
 }
 
-export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) {
-  const code = h('input', { type: 'text', class: 'code-input', maxLength: 6, placeholder: 'ABC123', autocomplete: 'off', autocapitalize: 'characters' });
+export async function pairDialog({ fixedClient, clients, onDone, siteId = '', code: initialCode = '' }) {
+  const code = h('input', { type: 'text', class: 'code-input', maxLength: 6, placeholder: 'ABC123', autocomplete: 'off', autocapitalize: 'characters', value: initialCode });
+  const scanBtn = h('button', { type: 'button', class: 'btn', title: 'Scan the QR code on the TV', onclick: () => scanDialog((c) => { code.value = c; name.focus(); }) }, icon('qr'), 'Scan QR');
   const name = h('input', { type: 'text', placeholder: 'e.g. Reception TV' });
   const loc = h('input', { type: 'text', placeholder: 'e.g. Counter, Window (optional)' });
   let clientId = fixedClient || '';
@@ -69,8 +71,8 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '' }) 
   modal({
     title: 'Add a TV',
     body: [
-      h('div', { class: 'notice info' }, 'Open the PROVIEW SIGNAGE app on the TV. It shows a 6-character code — type it below.'),
-      field('Pairing code', code),
+      h('div', { class: 'notice info' }, initialCode ? `Code ${initialCode} from the TV’s QR code. Give the screen a name and press Pair TV.` : 'Open the PROVIEW SIGNAGE app on the TV. It shows a 6-character code: type it below, or scan the QR code next to it.'),
+      field('Pairing code', h('div', { class: 'row', style: { gap: '8px', flexWrap: 'nowrap' } }, code, scanBtn)),
       field('Screen name', name),
       pick ? field('Business', pick, 'Which business will manage this TV?') : null,
       siteWrap,
@@ -214,17 +216,18 @@ export async function screensPage({ main, go }) {
     });
   }
 
+  let pendingDone = false;
   const paint = () => {
     const { screens, rules, byId, sites } = data;
     if (filter !== 'all' && filter !== 'none' && !sites.some((x) => x.id === filter)) filter = 'all';
     const trial = !!currentClient()?.trial_only && !state.me.is_admin;
-    const addTv = (siteId = '') => {
+    const addTv = (siteId = '', pairCode = '') => {
       // Free trial: 1 screen. Explain instead of letting the pairing fail.
       if (trial && screens.length >= 1) return modal({ title: 'Your free trial includes 1 screen', body: [
         h('p', {}, 'To add more TVs, buy a licence for your first TV: open it and press “Buy licence online” under Licence.'),
         h('p', { class: 'muted' }, 'Want a price for several screens? Call us on 020 8935 5495.')],
         actions: [{ label: 'Close' }, { label: 'Open my TV', class: 'primary', onClick: () => go('screen/' + screens[0].id) }] });
-      return pairDialog({ fixedClient: state.clientId, siteId, onDone: (s) => go('screen/' + s.id) });
+      return pairDialog({ fixedClient: state.clientId, siteId, code: pairCode, onDone: (s) => go('screen/' + s.id) });
     };
     const bt = trial ? businessTrial(currentClient()) : null;
     const trialNote = !trial ? null : bt?.state === 'expired'
@@ -251,7 +254,17 @@ export async function screensPage({ main, go }) {
           return h('button', { class: 'btn', onclick: () => bulkUpdateDialog(screens), title: n ? `${n} TV${n === 1 ? '' : 's'} can be updated` : 'All TVs run the newest app' },
             icon('refresh'), n ? `Update TVs (${n})` : 'Update TVs');
         })() : null,
+        canManage() ? h('button', { class: 'btn', title: 'Scan the QR code on the TV’s pairing screen', onclick: () => scanDialog((c) => addTv(filter !== 'all' && filter !== 'none' ? filter : '', c)) }, icon('qr'), 'Scan QR') : null,
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
+    // Came from a TV's QR code (scanned with the phone camera): open Add a TV with the code filled in, once.
+    if (!pendingDone) {
+      pendingDone = true;
+      const pc = takePendingPair();
+      if (pc) {
+        if (canManage()) setTimeout(() => addTv(filter !== 'all' && filter !== 'none' ? filter : '', pc), 50);
+        else toast('Only an owner or admin of this business can add TVs. Ask them to scan the code.', true);
+      }
+    }
 
     if (!screens.length) {
       return main.replaceChildren(head, trialNote || '', h('div', { class: 'card empty' },

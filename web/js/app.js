@@ -1,3 +1,4 @@
+import { rememberPairLink, hasPendingPair } from './pages/qr-scan.js';
 import { configured } from './sb.js';
 import { startHub, statusDot } from './hub-app.js';
 import { sb, state, h, icon, brandMark, wordmark, clientTitle, toast, errMsg, field, refreshMe, setClient, clearBusinessCache, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
@@ -37,7 +38,9 @@ export function go(path) { location.hash = '#/' + path; }
 async function render() {
   const my = ++renderSeq;
   cleanup?.(); cleanup = null;
-  const path = location.hash.replace(/^#\/?/, '');
+  let path = location.hash.replace(/^#\/?/, '');
+  // QR on a TV's pairing screen: #/pair/<CODE>. Remember the code (through sign-in) and go to Screens.
+  if (rememberPairLink(location.hash)) { history.replaceState(null, '', location.pathname + location.search + '#/screens'); path = 'screens'; }
 
   if (!configured) return root.replaceChildren(setupNeeded());
 
@@ -85,6 +88,10 @@ async function render() {
   if (state.me.clients.length && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
   // Proview master: lands on All sites (every client and site). With no clients yet, All sites is the only page.
   if (state.me.is_admin && (!path || !state.me.clients.length) && !/^(clients|help)$/.test(path)) return go('clients');
+
+  // A scanned TV code is waiting: Screens of the open business opens Add a TV with it (master with no business open: Locations).
+  if (hasPendingPair() && !/^(screens|clients)$/.test(path)) return go(state.clientId ? 'screens' : (state.me.is_admin ? 'clients' : 'screens'));
+  if (hasPendingPair() && path === 'screens' && !state.clientId && state.me.is_admin) return go('clients');
 
   let match = null, page = null, section = null;
   for (const [re, fn, sec] of routes) { const m = path.match(re); if (m) { match = m; page = fn; section = sec; break; } }

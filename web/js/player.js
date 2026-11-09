@@ -351,6 +351,7 @@ function apply(row) {
   if (!row.claimed) {
     content = null; currentKey = null; pendingVersion = null; prepGen++; player?.clear(); $('upd').classList.remove('on');
     $('code').textContent = row.pairing_code || '······';
+    paintPairQr(row.pairing_code);
     return show('pair');
   }
   if (isExpired()) return evaluate();
@@ -695,6 +696,26 @@ async function boot() {
     return;
   }
   booting = false;
+}
+
+// QR on the pairing screen: opens the dashboard's Add a TV with this code filled in.
+let qrFor = null;
+function pairUrl(code) {
+  const base = /^https?:$/.test(location.protocol) ? new URL('index.html', location.href).href.replace(/index\.html$/, '') : 'https://app.proviewsignage.co.uk/';
+  return base + '#/pair/' + encodeURIComponent(code);
+}
+function paintPairQr(code) {
+  const box = $('qr');
+  if (!box || code === qrFor) return;
+  qrFor = code;
+  box.replaceChildren();
+  if (!code || typeof window.qrcode !== 'function') return;
+  try {
+    const qr = window.qrcode(0, 'M');
+    qr.addData(pairUrl(code));
+    qr.make();
+    box.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  } catch { box.replaceChildren(); }
 }
 
 // ------------------------------------------------------------ start
