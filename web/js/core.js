@@ -235,8 +235,6 @@ export const FEATURES = [
   ['playlists', 'Playlists & templates'],
   ['media', 'Media library (upload, edit, delete)'],
   ['emergency', 'Emergency messages'],
-  ['reports', 'Reports'],
-  ['activity', 'Activity log'],
   ['billing', 'Licence payments (buy / renew online)'],
 ];
 const FEATURE_OFF_BY_DEFAULT = ['billing'];
@@ -265,7 +263,11 @@ export function canEditContent(item) {
   return Array.isArray(s) && s.length > 0 && s.every((x) => mine.includes(x));
 }
 const PAGE_FEATURE = { playlists: 'playlists', media: 'media', reports: 'reports', activity: 'activity' };
+// Pages switched off for everyone (owner decision 9 Nov 2026). The pages and data are kept; remove a key to bring it back
+// (and put its line back in FEATURES above).
+export const HIDDEN_PAGES = ['reports', 'activity'];
 export function canView(section) {
+  if (HIDDEN_PAGES.includes(section)) return false;
   if (section === 'team') return canManage();
   if (section === 'screens') return true;           // TVs are listed for everyone (their own sites only)
   const f = PAGE_FEATURE[section];

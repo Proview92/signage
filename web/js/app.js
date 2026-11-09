@@ -284,7 +284,7 @@ function shell(section, main) {
       // group headers, same style as Proview Bookings (Service / Grow / Team / Manage)
       n.items.length ? h('div', { class: 'nav-sep' }, 'Content') : null,
       n.items.filter(([k]) => ['screens', 'playlists', 'media'].includes(k)).map(([k, l, i]) => link(k, l, i)),
-      n.items.length ? h('div', { class: 'nav-sep' }, 'Insights') : null,
+      n.items.some(([k]) => ['reports', 'activity'].includes(k)) ? h('div', { class: 'nav-sep' }, 'Insights') : null,
       n.items.filter(([k]) => ['reports', 'activity'].includes(k)).map(([k, l, i]) => link(k, l, i)),
       n.items.some(([k]) => k === 'team') ? h('div', { class: 'nav-sep' }, 'Manage') : null,
       n.items.filter(([k]) => ['team'].includes(k)).map(([k, l, i]) => link(k, l, i))),

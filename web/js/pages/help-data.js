@@ -20,7 +20,7 @@ export const TV = [
     'It keeps a copy of everything, so it carries on playing if the internet drops.',
     'It follows your schedule by itself: different playlists at different times and days.',
     'It picks up changes as soon as you press **Publish**. Small updates show an “Updating” badge in the corner while new files download.',
-    'It reports back every few minutes: online/offline, what is playing, and proof-of-play counts for Reports.',
+    'It reports back every few minutes: online or offline, and what is playing.',
   ]],
 
   ['Open the TV menu with the remote', 'The screen menu lets staff fix common problems without a computer.', [
@@ -71,7 +71,7 @@ export const TV = [
 
 export const DASH = [
   ['Getting around', 'The dashboard works on a computer, tablet or phone.', [
-    'The menu on the left (or the bar at the bottom on a phone) has **Screens**, **Playlists**, **Media**, **Reports**, **Activity**, **Team** and **Notifications**.',
+    'The menu on the left (or the bar at the bottom on a phone) has **Screens**, **Playlists**, **Media** and **Users**. Notifications, search, chat and your account are in the bar at the top.',
     'If you manage more than one business, pick it in the drop-down at the top. Everything you see belongs to that business.',
     'Your role is shown under your email: Administrator, Manager or Editor.',
   ]],
@@ -187,19 +187,6 @@ export const DASH = [
     'On **Screens**, press **Emergency message**.',
     'Type the message, pick a colour, choose how long it shows, and which screens: all, one location, or the whole business.',
     'It replaces what the TVs are showing straight away. End it from the banner at the top of Screens.',
-  ]],
-
-  ['Reports (proof of play)', 'What was shown, where, and for how long.', [
-    'Go to **Reports** and pick the dates.',
-    'Group by playlist, TV, slide or day.',
-    'Press **Download CSV** to open it in Excel.',
-    'TVs send their counts every 10 minutes.',
-  ]],
-
-  ['Activity', 'A log of who changed what.', [
-    'Go to **Activity** to see edits, publishes, pairings and more, with who did it and when.',
-    'Managers can turn on **Editors need a manager’s approval to publish** here, if changes should be checked first.',
-    'Publish requests from Editors appear here. Press **Approve & publish**, or **Reject** with a reason the editor will see.',
   ]],
 
   ['Users and roles', 'Invite people and control what they can do.', [
