@@ -280,10 +280,10 @@ export async function mediaPage({ main }) {
 
   const seg = h('div', { class: 'seg' }, [['all', 'All'], ['image', 'Pictures'], ['video', 'Videos']].map(([v, l]) =>
     h('button', { class: v === filter ? 'on' : '', onclick: (e) => { filter = v; [...seg.children].forEach((b) => b.classList.toggle('on', b === e.currentTarget)); paintGrid(); } }, l)));
-  const headCount = h('p', { class: 'muted' });
+  const headCount = h('span', { class: 'chip' });
 
   main.replaceChildren(
-    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Media'), headCount), usageEl),
+    h('div', { class: 'page-head' }, h('div', { class: 'head-chips' }, headCount), usageEl),
     h('div', { class: 'stack' },
       uploader((added) => { items = [...added, ...items]; paintAll(); }, () => (folder && folder !== '__none' ? folder : null)),
       folderBar,

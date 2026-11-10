@@ -103,7 +103,7 @@ export async function helpPage({ main }) {
   paint();
 
   main.replaceChildren(
-    h('div', { class: 'page-head' }, h('div', {}, h('h1', {}, 'Help'), h('p', { class: 'muted' }, 'Step-by-step guides for the TV app and the dashboard.'))),
+    h('div', { class: 'page-head' }, h('p', { class: 'muted', style: { margin: 0 } }, 'Step-by-step guides for the TV app and the dashboard.')),
     h('div', { class: 'help-downloads' },
       h('a', { class: 'btn', href: 'docs/PROVIEW-SIGNAGE-TV-App-Guide.pdf', download: '', target: '_blank', rel: 'noopener' }, icon('download'), 'TV app guide (PDF)'),
       h('a', { class: 'btn', href: 'docs/PROVIEW-SIGNAGE-Dashboard-Guide.pdf', download: '', target: '_blank', rel: 'noopener' }, icon('download'), 'Dashboard guide (PDF)')),

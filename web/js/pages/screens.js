@@ -1,5 +1,6 @@
 import { clientLabel, clientTitle } from '../core.js';
 import { publishOrRequest, renameDialog } from '../core.js';
+import { headChips } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, hasFeature, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet } from '../renderer.js';
 import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
@@ -244,8 +245,10 @@ export async function screensPage({ main, go }) {
 
     // The location is picked in the top header dropdown (no second picker here).
     const head = h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Screens'),
-        h('p', { class: 'muted' }, `${screens.length} TV${screens.length === 1 ? '' : 's'}${sites.length ? ` across ${sites.length} location${sites.length === 1 ? '' : 's'}` : ''} for ${clientTitle(client)}`)),
+      headChips(`${screens.length} TV${screens.length === 1 ? '' : 's'}`,
+        screens.length ? [`${screens.filter(isOnline).length} online`, 'ok'] : null,
+        sites.length > 1 ? `${sites.length} locations` : null,
+        clientTitle(client)),
       h('div', { class: 'row' },
         canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Locations') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,

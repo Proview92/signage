@@ -67,6 +67,13 @@ const P = {
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
   qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
 };
+/** Page summary tags (the page title lives in the top bar only). items: [text, tone?] */
+export function headChips(...items) {
+  return h('div', { class: 'head-chips' }, items.filter(Boolean).map((it) => {
+    const [text, tone] = Array.isArray(it) ? it : [it];
+    return h('span', { class: 'chip' + (tone ? ' ' + tone : '') }, tone === 'ok' ? h('span', { class: 'chip-dot' }) : null, text);
+  }));
+}
 export function icon(name) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', '0 0 24 24');

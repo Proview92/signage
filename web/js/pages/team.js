@@ -1,6 +1,6 @@
 // Users: Owner / Admin (and the Proview admin) invite people, set their role, pick their sites,
 // switch features on or off, and remove them. The database enforces all of this (migration 030).
-import { clientTitle } from '../core.js';
+import { clientTitle, headChips } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, errMsg, FEATURES, featureDefault, roleLabel } from '../core.js';
 import { loadSites } from './sites-ui.js';
 
@@ -138,7 +138,7 @@ export async function teamPage({ main }) {
   const paint = () => {
     main.replaceChildren(
       h('div', { class: 'page-head' },
-        h('div', {}, h('h1', {}, 'Users'), h('p', { class: 'muted' }, `People who can manage ${clientTitle(client)}'s screens, which locations they see and what they can use.`)),
+        headChips(`${members.length} ${members.length === 1 ? 'person' : 'people'}`, manage && invites.length ? `${invites.length} invite${invites.length === 1 ? '' : 's'} pending` : null, clientTitle(client)),
         manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Invite someone') : null),
       h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),

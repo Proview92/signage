@@ -1,4 +1,4 @@
-import { sb, state, h, icon, q, toast, confirmBox, timeAgo, fmtDuration, mediaUrl, canEditContent } from '../core.js';
+import { sb, state, h, icon, q, toast, confirmBox, timeAgo, fmtDuration, mediaUrl, canEditContent, headChips, clientTitle, currentClient } from '../core.js';
 import { loadSites, contentSitesLabel } from './sites-ui.js';
 import { renderStill, LAYOUTS, layoutLabel } from '../renderer.js';
 import { layoutDiagram } from './widget-editor.js';
@@ -32,7 +32,7 @@ export async function playlistsPage({ main, go }) {
   };
 
   const head = h('div', { class: 'page-head' },
-    h('div', {}, h('h1', {}, 'Playlists'), h('p', { class: 'muted' }, 'Build slideshows from your pictures, videos and text, then schedule them on your TVs.')),
+    headChips(`${playlists.length} playlist${playlists.length === 1 ? '' : 's'}`, clientTitle(currentClient()) || null),
     h('div', { class: 'row' },
       h('button', { class: 'btn', onclick: () => templateGallery(go) }, 'From template'),
       h('button', { class: 'btn primary', onclick: create }, icon('plus'), 'New playlist')));

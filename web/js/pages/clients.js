@@ -165,7 +165,7 @@ export async function clientsPage({ main, go, rerender }) {
 
   main.replaceChildren(
     h('div', { class: 'page-head' },
-      h('div', {}, h('h1', {}, 'Businesses'), h('p', { class: 'muted' }, 'Every business on the platform with its locations. Open one to see it as its team does.')),
+      h('p', { class: 'muted', style: { margin: 0 } }, 'Every business on the platform with its locations. Open one to see it as its team does.'),
       h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn', onclick: refresh, title: 'Refresh' }, icon('refresh'), 'Refresh'),
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
