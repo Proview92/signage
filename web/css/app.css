@@ -989,3 +989,8 @@ html .side .nav > a.disabled:hover { background: none; color: var(--side-ink, #c
 .ov-wh h2 { margin: 0; font-size: 17px; }
 .ov-wrow { display: flex; align-items: center; gap: 14px; padding: 11px 18px; border-top: 1px solid var(--line); }
 .ov-code { font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; padding: 8px 12px; border-radius: 10px; background: #eef2fd; color: #1f3f8f; }
+
+.ov-pick { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.ov-pick:has(input[type=radio]:checked) { border-color: #2f84d4; background: #f3f7fe; }
+.ov-pick b { display: block; margin-bottom: 8px; }
+.ov-pick select, .ov-pick input[type=text] { width: 100%; }
