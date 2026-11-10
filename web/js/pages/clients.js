@@ -14,10 +14,15 @@ export async function clientsPage({ main, go, rerender }) {
   const clients = state.me.clients.slice().sort((a, b) => clientTitle(a).localeCompare(clientTitle(b)));
   // Screens and sites across the platform (the master can read all of them). Sites are optional:
   // if that query fails the list still shows each client, just without the per-site rows.
-  const [scr, st] = await Promise.all([
+  const [scr, st, wt] = await Promise.all([
     sb.from('screens').select('id, name, client_id, site_id, last_seen, license_type, license_expires_at').eq('claimed', true),
     sb.from('sites').select('id, client_id, name'),
+    // TVs showing their "Pair this screen" code right now (seen in the last 15 minutes)
+    sb.from('screens').select('id, pairing_code, last_seen, created_at, device_info').eq('claimed', false)
+      .gt('last_seen', new Date(Date.now() - 15 * 60000).toISOString()).order('created_at', { ascending: false })
+      .then((r) => r, () => ({ data: [] })),
   ]);
+  const waiting = (wt.data || []).filter((w) => w.pairing_code);
   if (scr.error) throw scr.error;
   const screens = scr.data || [];
   const sites = (st.data || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -140,6 +145,17 @@ export async function clientsPage({ main, go, rerender }) {
     h('button', { class: 'btn sm', onclick: () => showTvs('TVs not in a business', loose, '') }, 'See them'),
     h('a', { class: 'btn sm', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Sort them ↗')) : null;
 
+  // TVs on their pairing screen: one row each, with Pair (opens Add a TV with the code and a business picker)
+  const waitingBox = waiting.length ? h('section', { class: 'card ov-waiting' },
+    h('div', { class: 'ov-wh' }, h('h2', {}, 'Waiting to be paired'), h('span', { class: 'chip' }, String(waiting.length)),
+      h('span', { class: 'muted small grow' }, 'These TVs are showing their pairing code right now.')),
+    ...waiting.map((w) => h('div', { class: 'ov-wrow' },
+      h('span', { class: 'ov-code' }, w.pairing_code),
+      h('span', { class: 'grow' }, h('b', {}, w.device_info?.model ? String(w.device_info.model).replace(/^rockchip /i, 'Android box ') : 'TV'),
+        h('span', { class: 'tiny', style: { display: 'block' } }, [w.device_info?.resolution, w.device_info?.app, 'on since ' + timeAgo(w.created_at)].filter(Boolean).join(' · '))),
+      h('button', { class: 'btn sm primary', onclick: () => pairDialog({ clients, code: w.pairing_code, onDone: (s) => { if (s?.client_id) { setClient(s.client_id); go('screen/' + s.id); } else refresh(); } }) }, 'Pair'))))
+    : null;
+
   const grid = h('div', { class: 'ov-grid' });
   const search = h('input', { type: 'search', placeholder: 'Search businesses or locations', 'aria-label': 'Search businesses or locations', class: 'ov-search', oninput: () => paint() });
   const emptyState = () => h('div', { class: 'card', style: { gridColumn: '1 / -1' } },
@@ -171,7 +187,7 @@ export async function clientsPage({ main, go, rerender }) {
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'))),
     stats,
-    ...[looseBox, clients.length > 3 ? h('div', { class: 'ov-tools' }, search) : null].filter(Boolean),
+    ...[waitingBox, looseBox, clients.length > 3 ? h('div', { class: 'ov-tools' }, search) : null].filter(Boolean),
     grid,
     // Alerts & email (Resend key, offline alerts) - master only; it lived on the old Clients & TVs page
     h('h2', { style: { margin: '24px 0 10px' } }, 'Platform settings'),

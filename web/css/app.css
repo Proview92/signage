@@ -982,3 +982,10 @@ html .side .nav > a.disabled:hover { background: none; color: var(--side-ink, #c
 .chip.ok { background: #e6f6ec; color: #0b6b35; }
 .chip.warn { background: #fdf1dc; color: #7a4d00; }
 .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* Locations page: TVs waiting to be paired */
+.ov-waiting { margin-bottom: 18px; padding: 6px 0; }
+.ov-wh { display: flex; align-items: center; gap: 10px; padding: 10px 18px; flex-wrap: wrap; }
+.ov-wh h2 { margin: 0; font-size: 17px; }
+.ov-wrow { display: flex; align-items: center; gap: 14px; padding: 11px 18px; border-top: 1px solid var(--line); }
+.ov-code { font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; padding: 8px 12px; border-radius: 10px; background: #eef2fd; color: #1f3f8f; }
