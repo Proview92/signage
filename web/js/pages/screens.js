@@ -195,6 +195,25 @@ export async function screensPage({ main, go }) {
   let latest = null;
   latestApp().then((v) => { if (v && v !== latest) { latest = v; try { paint(); } catch {} } });
 
+  // Reload every TV shown (same as Reload TV on each TV's page): each restarts its app within about a minute.
+  function reloadAllDialog(tvs) {
+    if (!tvs.length) return toast('No TVs here to reload', true);
+    const off = tvs.filter((s) => !isOnline(s)).length;
+    modal({
+      title: `Reload ${tvs.length} TV${tvs.length === 1 ? '' : 's'}`,
+      body: [
+        h('p', {}, 'Each TV restarts the PROVIEW SIGNAGE app and loads its content again. The screen goes blank for a few seconds.'),
+        off ? h('p', { class: 'muted small' }, `${off} of them ${off === 1 ? 'is' : 'are'} offline and will reload when ${off === 1 ? 'it comes' : 'they come'} back online.`) : null,
+        h('div', { class: 'list', style: { marginTop: '10px' } }, tvs.map((s) => h('div', { class: 'row between', style: { padding: '8px 0', borderBottom: '1px solid var(--line)' } },
+          h('b', {}, s.name), h('span', { class: 'tiny' }, isOnline(s) ? 'Online' : 'Offline')))),
+      ],
+      actions: [{ label: 'Cancel' }, { label: `Reload ${tvs.length} TV${tvs.length === 1 ? '' : 's'}`, class: 'primary', onClick: async () => {
+        await q(sb.from('screens').update({ reload_at: new Date().toISOString() }).in('id', tvs.map((s) => s.id)));
+        toast(`Reload sent to ${tvs.length} TV${tvs.length === 1 ? '' : 's'}`);
+      } }],
+    });
+  }
+
   function bulkUpdateDialog(screens) {
     const androidTvs = screens.filter((s) => installedApp(s));
     const behind = androidTvs.filter((s) => appBehind(s, latest));
@@ -257,6 +276,7 @@ export async function screensPage({ main, go }) {
           return h('button', { class: 'btn', onclick: () => bulkUpdateDialog(screens), title: n ? `${n} TV${n === 1 ? '' : 's'} can be updated` : 'All TVs run the newest app' },
             icon('refresh'), n ? `Update TVs (${n})` : 'Update TVs');
         })() : null,
+        canManage() && screens.length ? h('button', { class: 'btn', onclick: () => reloadAllDialog(filter !== 'all' && filter !== 'none' ? screens.filter((x) => x.site_id === filter) : filter === 'none' ? screens.filter((x) => !x.site_id) : screens), title: 'Restart the TV app on every TV here' }, icon('refresh'), 'Reload TVs') : null,
         canManage() ? h('button', { class: 'btn', title: 'Scan the QR code on the TV’s pairing screen', onclick: () => scanDialog((c) => addTv(filter !== 'all' && filter !== 'none' ? filter : '', c)) }, icon('qr'), 'Scan QR') : null,
         canManage() ? h('button', { class: 'btn primary', onclick: () => addTv(filter !== 'all' && filter !== 'none' ? filter : '') }, icon('plus'), 'Add a TV') : null));
     // Came from a TV's QR code (scanned with the phone camera): open Add a TV with the code filled in, once.
