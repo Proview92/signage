@@ -1,6 +1,6 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
-import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen } from '../core.js';
+import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen, field, copyText, passwordToggle } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
 import { integrationsCards } from './integrations.js';
 import { takePendingPair } from './qr-scan.js';
@@ -34,16 +34,43 @@ export async function clientsPage({ main, go, rerender }) {
     go('screens');
   };
   const refresh = async () => { try { await refreshMe(); } catch {} rerender(); };
-  const addClient = async () => {
-    const name = await promptBox('Add business', 'Business name', { okLabel: 'Add business' });
-    if (!name || !name.trim()) return;
-    try {
-      const { data, error } = await sb.from('clients').insert({ name: name.trim() }).select('id').single();
-      if (error) throw error;
-      await refreshMe();
-      toast('Business added, with its location. Add licences in the licence portal.');
-      open(data.id);
-    } catch (e) { toast(errMsg(e), true); }
+  // Add a business together with its Owner / Admin login (no invite email: they just sign in).
+  const addClient = () => {
+    const biz = h('input', { type: 'text', placeholder: 'e.g. Tolians', autocomplete: 'off' });
+    const name = h('input', { type: 'text', placeholder: 'e.g. Sam Taylor', autocomplete: 'off' });
+    const email = h('input', { type: 'email', placeholder: 'name@company.com', autocomplete: 'off' });
+    const mobile = h('input', { type: 'tel', placeholder: 'Optional', autocomplete: 'off' });
+    const pass = h('input', { type: 'password', placeholder: 'At least 6 characters', autocomplete: 'new-password' });
+    const suggest = () => { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint32Array(10)); pass.value = [...r].map((n) => a[n % a.length]).join(''); pass.type = 'text'; };
+    const req = (label) => h('span', {}, label, h('span', { style: { color: '#d92d20' } }, ' *'));
+    const need = (input, msg) => { toast(msg, true); input.focus(); return false; };
+    modal({ title: 'Add business', wide: true, body: [
+      field(req('Business name'), biz),
+      h('div', { class: 'tiny', style: { fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginTop: '4px' } }, 'Owner login'),
+      h('div', { class: 'form-2' }, field(req('Name'), name), field('Mobile', mobile), field(req('Email (they sign in with this)'), email),
+        field(req('Password'), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest')))),
+      h('p', { class: 'tiny', style: { margin: 0 } }, 'The business gets a location with the same name. This person becomes its Owner / Admin. No email is sent.')],
+      actions: [{ label: 'Cancel' }, { label: 'Add business', class: 'primary', onClick: async () => {
+        const e = email.value.trim().toLowerCase(), pw = pass.value;
+        if (biz.value.trim().length < 2) return need(biz, 'Enter the business name');
+        if (name.value.trim().length < 2) return need(name, 'Enter the owner’s name');
+        if (!/^\S+@\S+\.\S+$/.test(e)) return need(email, 'Enter a valid email address');
+        if (pw.length < 6) return need(pass, 'The password needs at least 6 characters');
+        let r;
+        try { r = await rpc('add_business', { p_business: biz.value.trim(), p_name: name.value.trim(), p_email: e, p_mobile: mobile.value.trim(), p_password: pw }); }
+        catch (err) { toast(errMsg(err), true); return false; }
+        await refresh();
+        const site = location.origin + location.pathname;
+        const details = `PROVIEW SIGNAGE login\n${site}\nEmail: ${e}\nPassword: ${pw}`;
+        setTimeout(() => modal({ title: `${biz.value.trim()} added`,
+          body: r?.existing
+            ? h('p', { style: { margin: 0 } }, `${e} already had a PROVIEW SIGNAGE login, so they were made Owner / Admin of this business and keep the password they already use. The password you typed was not applied.`)
+            : h('div', { class: 'stack' },
+              h('p', { class: 'muted', style: { margin: 0 } }, 'The owner can sign in now. No email was sent, so pass these on yourself:'),
+              h('div', { class: 'notice info login-card' }, h('div', {}, h('span', { class: 'muted' }, 'Sign in at'), h('b', {}, site.replace(/^https?:\/\//, ''))), h('div', {}, h('span', { class: 'muted' }, 'Email'), h('b', {}, e)), h('div', {}, h('span', { class: 'muted' }, 'Password'), h('b', {}, pw))),
+              h('button', { class: 'btn', type: 'button', onclick: () => copyText(details) }, icon('copy'), 'Copy login details')),
+          actions: [{ label: 'Stay here' }, { label: 'Open business', class: 'primary', onClick: () => open(r.client_id) }] }), 50);
+      } }] });
   };
 
   const online = screens.filter(isOnline);

@@ -148,3 +148,21 @@ end;
 $$;
 revoke all on function public.set_user_password(uuid, uuid, text) from public, anon;
 grant execute on function public.set_user_password(uuid, uuid, text) to authenticated;
+
+-- Proview admin: add a business together with its Owner / Admin login, in one go.
+create or replace function public.add_business(p_business text, p_name text, p_email text, p_mobile text, p_password text)
+returns jsonb
+language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare cid uuid; r jsonb;
+begin
+  if not public.is_admin() then raise exception 'admins only'; end if;
+  if length(trim(coalesce(p_business, ''))) < 2 then raise exception 'Enter the business name.'; end if;
+  insert into public.clients (name) values (trim(p_business)) returning id into cid;
+  r := public.add_user(cid, p_name, p_email, p_mobile, p_password, 'manager');   -- any error here undoes the business too
+  return r || jsonb_build_object('client_id', cid);
+end;
+$$;
+revoke all on function public.add_business(text, text, text, text, text) from public, anon;
+grant execute on function public.add_business(text, text, text, text, text) to authenticated;
