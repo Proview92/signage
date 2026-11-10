@@ -248,9 +248,14 @@ export async function teamPage({ main }) {
               'aria-label': active ? 'Active: switch off to deactivate' : 'Deactivated: switch on to activate',
               onchange: async (e) => {
                 const on = e.target.checked;
-                if (!on && !(await confirmBox('Deactivate this account?', `${m.full_name || m.email} won’t be able to use ${clientTitle(client)} until you switch them back on. Their role and access are kept.`, 'Deactivate'))) { e.target.checked = true; return; }
+                const owner = m.role === 'manager';
+                const others = members.filter((x) => x.role !== 'manager' && x.active !== false).length;
+                const msg = owner && others
+                  ? `${m.full_name || m.email} is an Owner / Admin, so the ${others} Manager and Staff account${others === 1 ? '' : 's'} in ${clientTitle(client)} will be deactivated too. Switching this Owner / Admin back on switches them back on as well.`
+                  : `${m.full_name || m.email} won’t be able to use ${clientTitle(client)} until you switch them back on. Their role and access are kept.`;
+                if (!on && !(await confirmBox('Deactivate this account?', msg, 'Deactivate'))) { e.target.checked = true; return; }
                 e.target.disabled = true;
-                try { await rpc('set_user_active', { p_client: state.clientId, p_user: m.user_id, p_active: on }); toast(on ? 'Account activated' : 'Account deactivated'); }
+                try { await rpc('set_user_active', { p_client: state.clientId, p_user: m.user_id, p_active: on }); toast(owner ? (on ? 'Owner / Admin activated, with their team' : 'Owner / Admin and their team deactivated') : (on ? 'Account activated' : 'Account deactivated')); }
                 catch (err) { toast(errMsg(err), true); }
                 refresh();
               } });
