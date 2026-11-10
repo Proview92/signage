@@ -994,3 +994,11 @@ html .side .nav > a.disabled:hover { background: none; color: var(--side-ink, #c
 .ov-pick:has(input[type=radio]:checked) { border-color: #2f84d4; background: #f3f7fe; }
 .ov-pick b { display: block; margin-bottom: 8px; }
 .ov-pick select, .ov-pick input[type=text] { width: 100%; }
+
+/* Add user pop-up */
+.form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 18px; }
+.login-card { display: grid; gap: 8px; }
+.login-card > div { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.login-card b { font-family: ui-monospace, monospace; word-break: break-all; }
+@media (max-width: 640px) { .form-2 { grid-template-columns: 1fr; } }

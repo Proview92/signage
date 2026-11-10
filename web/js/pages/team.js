@@ -1,7 +1,7 @@
 // Users: Owner / Admin (and the Proview admin) invite people, set their role, pick their sites,
 // switch features on or off, and remove them. The database enforces all of this (migration 030).
 import { clientTitle, headChips } from '../core.js';
-import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, errMsg, FEATURES, featureDefault, roleLabel } from '../core.js';
+import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, errMsg, FEATURES, featureDefault, roleLabel, passwordToggle } from '../core.js';
 import { loadSites } from './sites-ui.js';
 
 export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
@@ -50,8 +50,8 @@ function accessEditor(a, sites) {
   const feats = { ...(a.features || {}) };
   const on = (k) => (typeof feats[k] === 'boolean' ? feats[k] : featureDefault(k));
 
-  const checkRow = (checked, label, onchange, extra = {}) => h('label', { class: 'row small', style: { gap: '8px', alignItems: 'center', padding: '3px 0', cursor: 'pointer' } },
-    h('input', { type: 'checkbox', checked, onchange: (e) => onchange(e.target.checked), ...extra }), h('span', {}, label));
+  const checkRow = (checked, label, onchange, extra = {}) => h('label', { class: 'row small', style: { gap: '8px', alignItems: 'flex-start', flexWrap: 'nowrap', padding: '4px 0', cursor: 'pointer' } },
+    h('input', { type: 'checkbox', checked, style: { flex: 'none' }, onchange: (e) => onchange(e.target.checked), ...extra }), h('span', { style: { flex: 1, minWidth: 0 } }, label));
 
   const siteBox = h('div', {});
   const paintSites = () => siteBox.replaceChildren(
@@ -61,10 +61,10 @@ function accessEditor(a, sites) {
       : h('div', { class: 'tiny' }, 'This business has no locations yet. Add them on the Screens page (Locations button).'));
   paintSites();
 
-  const featBox = h('div', {}, FEATURES.map(([k, label]) => checkRow(on(k), label, (v) => { feats[k] = v; })));
+  const featBox = h('div', { class: 'check-grid' }, FEATURES.map(([k, label]) => checkRow(on(k), label, (v) => { feats[k] = v; })));
   const scoped = h('div', { class: 'stack' },
     field('Locations they can use', siteBox),
-    field('What they can use', featBox, 'Everything not ticked is hidden and blocked for them.'));
+    field('What they can see and use', featBox, 'Everything not ticked is hidden and blocked for them.'));
   const paintRole = () => scoped.classList.toggle('hidden', role === 'manager');
   paintRole();
 
@@ -86,6 +86,42 @@ function accessSummary(m, sites) {
   const siteTxt = m.site_ids == null ? 'All locations' : (m.site_ids.map((id) => sites.find((s) => s.id === id)?.name).filter(Boolean).join(', ') || 'No locations');
   const off = FEATURES.filter(([k]) => !(typeof (m.features || {})[k] === 'boolean' ? m.features[k] : featureDefault(k)));
   return `${siteTxt} · ${off.length ? 'No access to: ' + off.map(([, l]) => l.split(' (')[0]).join(', ') : 'all features'}`;
+}
+
+/** Add user: makes a ready-to-use login (no invite email). They sign in with the email and password set here. */
+export async function addUserDialog(clientId, clientName, onDone) {
+  const sites = await loadSites(clientId).catch(() => []);
+  const name = h('input', { type: 'text', placeholder: 'e.g. Sam Taylor', autocomplete: 'off' });
+  const email = h('input', { type: 'email', placeholder: 'name@company.com', autocomplete: 'off' });
+  const mobile = h('input', { type: 'tel', placeholder: '07…', autocomplete: 'off' });
+  const pass = h('input', { type: 'password', placeholder: 'At least 6 characters', autocomplete: 'new-password' });
+  const suggest = () => { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint32Array(10)); pass.value = [...r].map((n) => a[n % a.length]).join(''); pass.type = 'text'; };
+  const acc = accessEditor({ role: 'editor', site_ids: null, features: {} }, sites);
+  modal({ title: `Add a user to ${clientName}`, wide: true, body: [
+    h('p', { class: 'muted small', style: { margin: 0 } }, 'This makes their login straight away. No email is sent: give them the email and password and they can sign in.'),
+    h('div', { class: 'form-2' }, field('Name', name), field('Mobile', mobile), field('Email (they sign in with this)', email),
+      field('Password', h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest')))),
+    acc.el],
+    actions: [{ label: 'Cancel' }, { label: 'Add user', class: 'primary', onClick: async () => {
+      const e = email.value.trim().toLowerCase();
+      if (name.value.trim().length < 2) throw new Error('Enter their name');
+      if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('Enter a valid email address');
+      if (pass.value.length < 6) throw new Error('The password needs at least 6 characters');
+      const a = acc.value();
+      const r = await rpc('add_user', { p_client: clientId, p_name: name.value.trim(), p_email: e, p_mobile: mobile.value.trim(), p_password: pass.value, p_role: a.role, p_site_ids: a.site_ids, p_features: a.features });
+      const pw = pass.value;
+      onDone?.();
+      const site = location.origin + location.pathname;
+      const details = `PROVIEW SIGNAGE login\n${site}\nEmail: ${e}\nPassword: ${pw}`;
+      setTimeout(() => modal({ title: r?.existing ? 'User added' : 'User added: they can sign in now',
+        body: r?.existing
+          ? h('p', { style: { margin: 0 } }, `${e} already had a PROVIEW SIGNAGE login, so they were added to ${clientName} and keep the password they already use. The password you typed was not applied.`)
+          : h('div', { class: 'stack' },
+            h('p', { class: 'muted', style: { margin: 0 } }, 'No email was sent. Pass these details on yourself:'),
+            h('div', { class: 'notice info login-card' }, h('div', {}, h('span', { class: 'muted' }, 'Sign in at'), h('b', {}, site.replace(/^https?:\/\//, ''))), h('div', {}, h('span', { class: 'muted' }, 'Email'), h('b', {}, e)), h('div', {}, h('span', { class: 'muted' }, 'Password'), h('b', {}, pw))),
+            h('button', { class: 'btn', type: 'button', onclick: () => copyText(details) }, icon('copy'), 'Copy login details')),
+        actions: [{ label: 'Done', class: 'primary' }] }), 50);
+    } }] });
 }
 
 export async function inviteDialog(clientId, clientName, onDone) {
@@ -139,13 +175,16 @@ export async function teamPage({ main }) {
     main.replaceChildren(
       h('div', { class: 'page-head' },
         headChips(`${members.length} ${members.length === 1 ? 'person' : 'people'}`, manage && invites.length ? `${invites.length} invite${invites.length === 1 ? '' : 's'} pending` : null, clientTitle(client)),
-        manage ? h('button', { class: 'btn primary', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Invite someone') : null),
+        manage ? h('div', { class: 'row', style: { gap: '8px' } },
+          h('button', { class: 'btn', title: 'Emails them a link to set up their own login', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('send'), 'Invite by email'),
+          h('button', { class: 'btn primary', title: 'Make their login now, no email sent', onclick: () => addUserDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Add user')) : null),
       h('div', { class: 'stack' },
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),
           h('div', { class: 'list' }, members.length ? members.map((m) => {
             const me = m.user_id === state.me.user_id;
             return h('div', { class: 'list-row' },
-              h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.email || 'Unknown', me ? h('span', { class: 'tiny' }, '  (you)') : null),
+              h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.full_name || m.email || 'Unknown', me ? h('span', { class: 'tiny' }, '  (you)') : null),
+                m.full_name || m.mobile ? h('div', { class: 'small muted' }, [m.full_name && m.email, m.mobile].filter(Boolean).join(' · ')) : null,
                 h('div', { class: 'tiny' }, accessSummary(m, sites) + ' · joined ' + timeAgo(m.created_at))),
               h('span', { class: 'badge plain' }, roleLabel(m.role)),
               manage && !me ? h('button', { class: 'btn sm', onclick: () => editDialog(m, sites, clientTitle(client), refresh) }, icon('edit'), 'Edit access') : null,
@@ -156,7 +195,7 @@ export async function teamPage({ main }) {
                 refresh();
               } }, 'Remove') : null);
           })
-            : h('div', { class: 'list-row muted small' }, state.me.is_admin ? 'No users yet. Invite the business’s staff so they can manage their own screens.' : 'No members.'))),
+            : h('div', { class: 'list-row muted small' }, state.me.is_admin ? 'No users yet. Add the business’s staff so they can manage their own screens.' : 'No members.'))),
         manage ? h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Pending invites')),
           h('div', { class: 'list' }, invites.length ? invites.map((i) => h('div', { class: 'list-row' },
             h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, i.email), h('div', { class: 'tiny' }, `${roleLabel(i.role)} · ${accessSummary(i, sites)} · created ${timeAgo(i.created_at)}`)),
