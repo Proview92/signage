@@ -4,6 +4,8 @@ import { clientTitle, headChips } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, errMsg, FEATURES, featureDefault, roleLabel, passwordToggle } from '../core.js';
 import { loadSites } from './sites-ui.js';
 
+const req = (label) => h('span', {}, label, h('span', { style: { color: '#d92d20' }, title: 'Required' }, ' *'));
+
 export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
 
 const ROLE_OPTIONS = [
@@ -52,7 +54,7 @@ const FEATURE_ICON = { screens: 'screens', schedule: 'calendar', playlists: 'pla
 const shortLabel = (l) => l.split(' (')[0].replace(' & ', ' and ');
 
 function accessEditor(a, sites) {
-  let role = a.role || 'editor';
+  let role = a.role === null ? null : (a.role || 'editor');   // null = nothing picked yet, they must choose
   let all = a.site_ids == null;
   const chosen = new Set(a.site_ids || []);
   const feats = { ...(a.features || {}) };
@@ -80,11 +82,12 @@ function accessEditor(a, sites) {
     sites.length > 1 ? h('div', {}, h('div', { class: 'sec-label' }, 'Locations they can use'), siteBox) : null,
     h('div', {}, h('div', { class: 'sec-label' }, 'What they can see and use'), featBox, h('div', { class: 'tiny', style: { marginTop: '6px' } }, 'Anything switched off is hidden and blocked for them.')));
   const fullNote = h('div', { class: 'notice info small' }, 'Owner / Admins see every location and every feature, and can add and edit users.');
-  const paintRole = () => { scoped.classList.toggle('hidden', role === 'manager'); fullNote.classList.toggle('hidden', role !== 'manager'); };
+  const paintRole = () => { scoped.classList.toggle('hidden', !role || role === 'manager'); fullNote.classList.toggle('hidden', role !== 'manager'); };
   paintRole();
 
-  const el = h('div', { class: 'stack' }, h('div', {}, h('div', { class: 'sec-label' }, 'Role'), roleBox), scoped, fullNote);
+  const el = h('div', { class: 'stack' }, h('div', {}, h('div', { class: 'sec-label' }, req('Role')), roleBox), scoped, fullNote);
   const value = () => {
+    if (!role) throw new Error('Choose a role');
     if (role === 'manager') return { role, site_ids: null, features: {} };
     if (!all && !chosen.size && sites.length > 1) throw new Error('Switch on at least one location, or All locations');
     const features = {};
@@ -109,11 +112,11 @@ export async function addUserDialog(clientId, clientName, onDone) {
   const mobile = h('input', { type: 'tel', placeholder: '07…', autocomplete: 'off' });
   const pass = h('input', { type: 'password', placeholder: 'At least 6 characters', autocomplete: 'new-password' });
   const suggest = () => { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint32Array(10)); pass.value = [...r].map((n) => a[n % a.length]).join(''); pass.type = 'text'; };
-  const acc = accessEditor({ role: 'editor', site_ids: null, features: {} }, sites);
+  const acc = accessEditor({ role: null, site_ids: null, features: {} }, sites);
   modal({ title: `Add a user to ${clientName}`, wide: true, body: [
     h('p', { class: 'muted small', style: { margin: 0 } }, 'This makes their login straight away. No email is sent: give them the email and password and they can sign in.'),
-    h('div', { class: 'form-2' }, field('Name', name), field('Mobile', mobile), field('Email (they sign in with this)', email),
-      field('Password', h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest')))),
+    h('div', { class: 'form-2' }, field(req('Name'), name), field('Mobile', mobile), field(req('Email (they sign in with this)'), email),
+      field(req('Password'), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest')))),
     acc.el],
     actions: [{ label: 'Cancel' }, { label: 'Add user', class: 'primary', onClick: async () => {
       const e = email.value.trim().toLowerCase();
@@ -141,7 +144,7 @@ export async function inviteDialog(clientId, clientName, onDone) {
   const sites = await loadSites(clientId).catch(() => []);
   const email = h('input', { type: 'email', placeholder: 'name@company.com' });
   const acc = accessEditor({ role: 'editor', site_ids: null, features: {} }, sites);
-  modal({ title: `Invite someone to ${clientName}`, wide: true, body: [field('Email address', email), acc.el],
+  modal({ title: `Invite someone to ${clientName}`, wide: true, body: [field(req('Email address'), email), acc.el],
     actions: [{ label: 'Cancel' }, { label: 'Send invite', class: 'primary', onClick: async () => {
       const e = email.value.trim().toLowerCase();
       if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('Enter a valid email address');
@@ -157,7 +160,7 @@ function editDialog(m, sites, clientName, onDone) {
   const mobile = h('input', { type: 'tel', value: m.mobile || '', placeholder: '07…' });
   modal({ title: `Edit ${m.full_name || m.email || 'this person'}`, wide: true, body: [
     h('p', { class: 'muted small', style: { margin: 0 } }, `${m.email} · what they can see and do in ${clientName}.`),
-    h('div', { class: 'form-2' }, field('Name', name), field('Mobile', mobile)), acc.el],
+    h('div', { class: 'form-2' }, field(req('Name'), name), field('Mobile', mobile)), acc.el],
     actions: [{ label: 'Cancel' }, { label: 'Save', class: 'primary', onClick: async () => {
       const access = acc.value();
       if (name.value.trim() !== (m.full_name || '') || mobile.value.trim() !== (m.mobile || '')) {
@@ -196,7 +199,7 @@ function passwordDialog(m) {
     linkBtn.disabled = false;
   } }, icon('send'), 'Email a reset link');
   modal({ title: `Password for ${m.full_name || m.email}`, body: [
-    field('Type a new password for them', h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest'), setBtn)),
+    field(req('Type a new password for them'), h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest'), setBtn)),
     h('div', { class: 'or-line' }, 'or'),
     h('div', { class: 'row between', style: { gap: '10px' } }, h('span', { class: 'small muted grow' }, `Let them choose their own: sends an email to ${m.email}.`), linkBtn),
     state.me.is_admin ? h('button', { class: 'btn ghost sm', type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => resetPassword(m) }, 'Or reset to the temporary password 123456') : null,
