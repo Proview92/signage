@@ -1023,3 +1023,11 @@ input.switch:checked { background: var(--accent); }
 input.switch:checked::after { left: 18px; }
 input.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 640px) { .role-cards, .tog-grid { grid-template-columns: 1fr; } }
+
+/* Users: active / deactivated switch (green on, red off) */
+input.switch.status { background: #d92d20; }
+input.switch.status:checked { background: #12a150; }
+input.switch.status:disabled { opacity: .45; cursor: not-allowed; }
+.status-tog { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; min-width: 132px; }
+.status-tog.on { color: #0b7a3b; } .status-tog.off { color: #b42318; }
+.list-row.user-off .grow { opacity: .55; }

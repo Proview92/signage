@@ -78,6 +78,9 @@ async function render() {
   if (!state.me.is_admin && !state.me.clients.length) {
     // Added to a business but given no sites: not linked to anything yet (never the trial screen).
     if (state.me.no_site_clients) return signOut(NOT_LINKED);
+    // Switched off by their Owner / Admin (or Proview): say so, rather than offering a new trial.
+    try { if (await rpc('am_i_deactivated')) return signOut(DEACTIVATED); } catch {}
+    if (my !== renderSeq) return;
     // Invited by email (no link opened): join those businesses instead of starting a trial.
     const joined = await joinMyInvites();
     if (my !== renderSeq) return;
@@ -350,6 +353,7 @@ function bell(variant = 'row') {
 }
 
 const NOT_LINKED = 'Your login isn’t linked to a business yet. Ask your owner or Proview.';
+const DEACTIVATED = 'Your account has been deactivated. Ask your owner or Proview to switch it back on.';
 const SIGNIN_MSG = 'signage.signinMsg';
 /** Joins businesses this person was invited to by email. null = not available on this server yet (032). */
 async function joinMyInvites() {

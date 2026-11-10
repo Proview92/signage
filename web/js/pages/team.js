@@ -233,7 +233,7 @@ export async function teamPage({ main }) {
   const paint = () => {
     main.replaceChildren(
       h('div', { class: 'page-head' },
-        headChips(`${members.length} ${members.length === 1 ? 'person' : 'people'}`, manage && invites.length ? `${invites.length} invite${invites.length === 1 ? '' : 's'} pending` : null, clientTitle(client)),
+        headChips(`${members.length} ${members.length === 1 ? 'person' : 'people'}`, members.some((m) => m.active === false) ? `${members.filter((m) => m.active === false).length} deactivated` : null, manage && invites.length ? `${invites.length} invite${invites.length === 1 ? '' : 's'} pending` : null, clientTitle(client)),
         manage ? h('div', { class: 'row', style: { gap: '8px' } },
           h('button', { class: 'btn', title: 'Emails them a link to set up their own login', onclick: () => inviteDialog(state.clientId, clientTitle(client), refresh) }, icon('send'), 'Invite by email'),
           h('button', { class: 'btn primary', title: 'Make their login now, no email sent', onclick: () => addUserDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Add user')) : null),
@@ -241,17 +241,34 @@ export async function teamPage({ main }) {
         h('div', { class: 'card' }, h('div', { class: 'card-head' }, h('h2', {}, 'Members')),
           h('div', { class: 'list' }, members.length ? members.map((m) => {
             const me = m.user_id === state.me.user_id;
-            return h('div', { class: 'list-row' },
+            const active = m.active !== false;
+            // Owner / Admins can only be switched off by the Proview master account.
+            const canToggle = manage && !me && (state.me.is_admin || m.role !== 'manager');
+            const sw = h('input', { type: 'checkbox', class: 'switch status', checked: active, disabled: !canToggle,
+              'aria-label': active ? 'Active: switch off to deactivate' : 'Deactivated: switch on to activate',
+              onchange: async (e) => {
+                const on = e.target.checked;
+                if (!on && !(await confirmBox('Deactivate this account?', `${m.full_name || m.email} won’t be able to use ${clientTitle(client)} until you switch them back on. Their role and access are kept.`, 'Deactivate'))) { e.target.checked = true; return; }
+                e.target.disabled = true;
+                try { await rpc('set_user_active', { p_client: state.clientId, p_user: m.user_id, p_active: on }); toast(on ? 'Account activated' : 'Account deactivated'); }
+                catch (err) { toast(errMsg(err), true); }
+                refresh();
+              } });
+            const statusTitle = me ? 'You can’t deactivate your own account' : !canToggle && manage ? 'Only Proview can deactivate an Owner / Admin' : active ? 'Active: switch off to deactivate' : 'Deactivated: switch on to activate';
+            return h('div', { class: 'list-row' + (active ? '' : ' user-off') },
               h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.full_name || m.email || 'Unknown', me ? h('span', { class: 'tiny' }, '  (you)') : null),
                 m.full_name || m.mobile ? h('div', { class: 'small muted' }, [m.full_name && m.email, m.mobile].filter(Boolean).join(' · ')) : null,
                 h('div', { class: 'tiny' }, accessSummary(m, sites) + ' · joined ' + timeAgo(m.created_at))),
               h('span', { class: 'badge plain' }, roleLabel(m.role)),
-              manage && !me ? h('button', { class: 'btn sm', onclick: () => editDialog(m, sites, clientTitle(client), refresh) }, icon('edit'), 'Edit') : null,
-              manage && !me ? h('button', { class: 'btn sm', title: 'Type a new password or email a reset link', onclick: () => passwordDialog(m) }, 'Password') : null,
-              
-              manage && !me ? h('button', { class: 'btn sm danger', onclick: async () => {
+              manage ? h('label', { class: 'status-tog' + (active ? ' on' : ' off'), title: statusTitle }, sw, h('span', {}, active ? 'Active' : 'Deactivated')) : null,
+              manage && !me && active ? h('button', { class: 'btn sm', onclick: () => editDialog(m, sites, clientTitle(client), refresh) }, icon('edit'), 'Edit') : null,
+              manage && !me && active ? h('button', { class: 'btn sm', title: 'Type a new password or email a reset link', onclick: () => passwordDialog(m) }, 'Password') : null,
+              manage && !me && (active || canToggle) ? h('button', { class: 'btn sm danger', onclick: async () => {
                 if (!(await confirmBox('Remove user?', `${m.email} will lose access to ${clientTitle(client)}.`, 'Remove'))) return;
-                await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
+                try {
+                  if (active) await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
+                  else await rpc('remove_deactivated_user', { p_client: state.clientId, p_user: m.user_id });
+                } catch (err) { toast(errMsg(err), true); }
                 refresh();
               } }, 'Remove') : null);
           })
