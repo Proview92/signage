@@ -1,6 +1,6 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
-import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc } from '../core.js';
+import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
 import { integrationsCards } from './integrations.js';
 import { takePendingPair } from './qr-scan.js';
@@ -15,7 +15,7 @@ export async function clientsPage({ main, go, rerender }) {
   // Screens and sites across the platform (the master can read all of them). Sites are optional:
   // if that query fails the list still shows each client, just without the per-site rows.
   const [scr, st, wt] = await Promise.all([
-    sb.from('screens').select('id, name, client_id, site_id, last_seen, license_type, license_expires_at').eq('claimed', true),
+    sb.from('screens').select('*').eq('claimed', true),
     sb.from('sites').select('id, client_id, name'),
     // TVs showing their "Pair this screen" code right now (seen in the last 15 minutes)
     sb.from('screens').select('id, pairing_code, last_seen, created_at, device_info').eq('claimed', false)
@@ -106,7 +106,7 @@ export async function clientsPage({ main, go, rerender }) {
     const inBiz = s.client_id && ids.has(s.client_id);
     return h(inBiz ? 'button' : 'div', { type: inBiz ? 'button' : undefined, class: 'ov-li', onclick: inBiz ? () => openTv(s) : undefined },
       dot(isOnline(s) ? 'ok' : 'bad'),
-      h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [bizName(s.client_id), siteName(s.site_id), !isOnline(s) && (s.last_seen ? 'last seen ' + timeAgo(s.last_seen) : 'never connected')].filter(Boolean).join(' · '))),
+      h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [bizName(s.client_id), siteName(s.site_id), !isOnline(s) && (s.last_seen ? 'last seen ' + timeAgo(s.last_seen) : 'never connected'), pairedLine(s)].filter(Boolean).join(' · '))),
       extra || h('span', { class: 'muted small' }, isOnline(s) ? 'Online' : 'Offline'),
       inBiz ? chev() : h('a', { class: 'btn sm', href: LIC_PORTAL, target: '_blank', rel: 'noopener', onclick: (e) => e.stopPropagation() }, 'Licence portal ↗'));
   };
@@ -160,7 +160,7 @@ export async function clientsPage({ main, go, rerender }) {
         h('p', { class: 'muted small', style: { marginTop: 0 } }, 'Tick the TVs to move. They go into the business’s location and start blank: publish a playlist to them afterwards.'),
         h('div', { class: 'list ov-list', style: { maxHeight: '38vh' } }, ticks.map(({ s, box }) => h('label', { class: 'ov-li', style: { cursor: 'pointer' } }, box,
           h('span', { class: 'ov-dot ' + (isOnline(s) ? 'ok' : 'bad') }),
-          h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, isOnline(s) ? 'Online' : (s.last_seen ? 'Last seen ' + timeAgo(s.last_seen) : 'Never connected')))))),
+          h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [isOnline(s) ? 'Online' : (s.last_seen ? 'Last seen ' + timeAgo(s.last_seen) : 'Never connected'), pairedLine(s, { long: true }), s.device_info?.model].filter(Boolean).join(' · ')))))),
         h('div', { class: 'stack', style: { gap: '10px', marginTop: '14px' } },
           radio('existing', 'Existing business', pick),
           radio('new', 'New business', newName)),

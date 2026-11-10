@@ -204,6 +204,14 @@ export function timeAgo(ts) {
   if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
   return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 }
+// How a TV was paired, for telling TVs apart: "Paired 10 Nov 2026, 14:35 · code ABC123 · TV ID 2B823C5E".
+export const fmtWhen = (ts) => ts ? new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+export const tvId = (scr) => (scr?.hardware_id || '').slice(0, 8).toUpperCase();
+export function pairedLine(scr, { long = false } = {}) {
+  if (!scr) return '';
+  const when = scr.paired_at ? (long ? fmtWhen(scr.paired_at) : new Date(scr.paired_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })) : '';
+  return [when && 'Paired ' + when, scr.paired_code && 'code ' + scr.paired_code, tvId(scr) && 'TV ID ' + tvId(scr)].filter(Boolean).join(' · ');
+}
 export const isOnline = (scr) => scr.last_seen && Date.now() - new Date(scr.last_seen) < 3 * 60 * 1000;
 export function fmtBytes(n) {
   if (!n) return '';

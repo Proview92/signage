@@ -1,6 +1,6 @@
 import { clientLabel, clientTitle } from '../core.js';
 import { publishOrRequest, renameDialog } from '../core.js';
-import { headChips } from '../core.js';
+import { headChips, pairedLine } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, hasFeature, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet } from '../renderer.js';
 import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
@@ -190,6 +190,7 @@ export async function screensPage({ main, go }) {
             await q(sb.from('screens').update({ name: v }).eq('id', s.id)); toast('Renamed'); await refresh();
           }); } }, icon('edit')) : null), h('span', { class: 'tiny' }, s.location || '')),
         quickPlaylist(s, now, rule),
+        pairedLine(s) ? h('div', { class: 'tiny muted', title: 'Use this to tell TVs apart' }, pairedLine(s)) : null,
         h('div', { class: 'row', style: { gap: '6px' } }, statusBadges(s, rules, byId))));
   };
 

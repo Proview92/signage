@@ -1,4 +1,5 @@
 import { clientLabel } from '../core.js';
+import { fmtWhen, tvId } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, timeAgo, canManage, hasFeature, mediaUrl, draftContent, colorFor, setClient } from '../core.js';
 import { SlidePlayer, LayoutPlayer, onAirPlaylist, pausedSet, resolveSchedule, describeRule, DAY_NAMES, localDate, zonePlaylistIds } from '../renderer.js';
 import { statusBadges } from './screens.js';
@@ -289,6 +290,10 @@ export async function screenPage({ main, params: [id], go, rerender }) {
       h('div', { class: 'card-head' }, h('h2', {}, 'Device')),
       h('div', { class: 'card-body stack small' },
         h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Last seen'), timeAgo(screen.last_seen)),
+        screen.paired_at ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Paired on'), fmtWhen(screen.paired_at)) : null,
+        h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Pairing code used'), screen.paired_code ? h('b', { style: { fontFamily: 'ui-monospace, monospace', letterSpacing: '1px' } }, screen.paired_code) : h('span', { class: 'muted' }, screen.paired_at ? 'not recorded (paired before 10 Nov 2026)' : 'not recorded')),
+        screen.paired_by ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Paired by'), screen.paired_by) : null,
+        tvId(screen) ? h('div', { class: 'row between', title: 'Fixed for this TV box, even if it is re-paired' }, h('span', { class: 'muted' }, 'TV ID'), h('b', { style: { fontFamily: 'ui-monospace, monospace' } }, tvId(screen))) : null,
         dinfo.model ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Model'), dinfo.model) : null,
         dinfo.resolution ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Resolution'), dinfo.resolution) : null,
         dinfo.app ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'App'), dinfo.app) : null,
