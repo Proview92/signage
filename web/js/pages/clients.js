@@ -258,7 +258,7 @@ export async function clientsPage({ main, go, rerender }) {
         h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licences ↗'),
         h('button', { class: 'btn primary', onclick: addClient }, icon('plus'), 'Add business'))),
     stats,
-    ...[waitingBox, looseBox, clients.length > 3 ? h('div', { class: 'ov-tools' }, search) : null].filter(Boolean),
+    ...[waitingBox, looseBox, h('div', { class: 'ov-tools' }, search)].filter(Boolean),
     grid,
     // Alerts & email (Resend key, offline alerts) - master only; it lived on the old Clients & TVs page
     h('h2', { style: { margin: '24px 0 10px' } }, 'Platform settings'),
