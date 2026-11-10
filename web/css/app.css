@@ -1002,3 +1002,5 @@ html .side .nav > a.disabled:hover { background: none; color: var(--side-ink, #c
 .login-card > div { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .login-card b { font-family: ui-monospace, monospace; word-break: break-all; }
 @media (max-width: 640px) { .form-2 { grid-template-columns: 1fr; } }
+.or-line { display: flex; align-items: center; gap: 10px; color: var(--ink-3, #888); font-size: 12px; }
+.or-line::before, .or-line::after { content: ''; flex: 1; height: 1px; background: rgba(0,0,0,.1); }

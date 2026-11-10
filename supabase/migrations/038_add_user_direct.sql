@@ -86,3 +86,65 @@ as $$
 $$;
 revoke all on function public.list_team(uuid) from public, anon;
 grant execute on function public.list_team(uuid) to authenticated;
+
+-- Owner / Admin (and the Proview admin) can edit a user's name and mobile...
+create or replace function public.update_user_details(p_client uuid, p_user uuid, p_name text, p_mobile text)
+returns void
+language plpgsql security definer
+set search_path = public
+as $$
+begin
+  if not public.is_real_user() or not public.is_member(p_client, array['manager']) then
+    raise exception 'Only an Owner / Admin can edit users.';
+  end if;
+  if not exists (select 1 from public.client_members where client_id = p_client and user_id = p_user) then
+    raise exception 'That person is not a user of this business.';
+  end if;
+  if nullif(trim(coalesce(p_name, '')), '') is null then raise exception 'Enter the person''s name.'; end if;
+  update public.profiles set full_name = trim(p_name), mobile = nullif(trim(coalesce(p_mobile, '')), '') where id = p_user;
+end;
+$$;
+revoke all on function public.update_user_details(uuid, uuid, text, text) from public, anon;
+grant execute on function public.update_user_details(uuid, uuid, text, text) to authenticated;
+
+-- ...and type a new password for them. They are signed out everywhere and sign in with the new one.
+-- An Owner / Admin can't do this to a Proview admin, or to someone who is also in a business they don't run.
+create or replace function public.set_user_password(p_client uuid, p_user uuid, p_password text)
+returns text
+language plpgsql security definer
+set search_path = public, extensions
+as $$
+declare em text;
+begin
+  if not public.is_real_user() or not public.is_member(p_client, array['manager']) then
+    raise exception 'Only an Owner / Admin can change a user''s password.';
+  end if;
+  if p_user = auth.uid() then raise exception 'Change your own password from your account menu.'; end if;
+  if not exists (select 1 from public.client_members where client_id = p_client and user_id = p_user) then
+    raise exception 'That person is not a user of this business.';
+  end if;
+  if not public.is_admin() then
+    if exists (select 1 from public.profiles where id = p_user and is_admin) then
+      raise exception 'You can''t change this person''s password.';
+    end if;
+    if exists (select 1 from public.client_members m where m.user_id = p_user
+                and not public.is_member(m.client_id, array['manager'])) then
+      raise exception 'This person also belongs to another business, so you can''t type a password for them. Send them a reset link instead.';
+    end if;
+  end if;
+  if length(coalesce(p_password, '')) < 6 then raise exception 'The password needs at least 6 characters.'; end if;
+
+  -- the auth_clear_temp_password trigger clears any "must change password" flag
+  update auth.users
+     set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf', 10)),
+         raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) - 'temp_password_expired',
+         updated_at = now()
+   where id = p_user and coalesce(is_anonymous, false) = false
+  returning email into em;
+  if em is null then raise exception 'user not found'; end if;
+  delete from auth.sessions where user_id = p_user;
+  return em;
+end;
+$$;
+revoke all on function public.set_user_password(uuid, uuid, text) from public, anon;
+grant execute on function public.set_user_password(uuid, uuid, text) to authenticated;

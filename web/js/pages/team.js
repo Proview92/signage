@@ -140,12 +140,55 @@ export async function inviteDialog(clientId, clientName, onDone) {
 
 function editDialog(m, sites, clientName, onDone) {
   const acc = accessEditor(m, sites);
-  modal({ title: `Access for ${m.email || 'this person'}`, wide: true, body: [h('p', { class: 'muted', style: { margin: 0 } }, `What ${m.email} can see and do in ${clientName}.`), acc.el],
+  const name = h('input', { type: 'text', value: m.full_name || '', placeholder: 'e.g. Sam Taylor' });
+  const mobile = h('input', { type: 'tel', value: m.mobile || '', placeholder: '07…' });
+  modal({ title: `Edit ${m.full_name || m.email || 'this person'}`, wide: true, body: [
+    h('p', { class: 'muted small', style: { margin: 0 } }, `${m.email} · what they can see and do in ${clientName}.`),
+    h('div', { class: 'form-2' }, field('Name', name), field('Mobile', mobile)), acc.el],
     actions: [{ label: 'Cancel' }, { label: 'Save', class: 'primary', onClick: async () => {
-      await q(sb.from('client_members').update(acc.value()).eq('client_id', state.clientId).eq('user_id', m.user_id));
-      toast('Access updated');
+      const access = acc.value();
+      if (name.value.trim() !== (m.full_name || '') || mobile.value.trim() !== (m.mobile || '')) {
+        if (name.value.trim().length < 2) throw new Error('Enter their name');
+        await rpc('update_user_details', { p_client: state.clientId, p_user: m.user_id, p_name: name.value.trim(), p_mobile: mobile.value.trim() });
+      }
+      await q(sb.from('client_members').update(access).eq('client_id', state.clientId).eq('user_id', m.user_id));
+      toast('User updated');
       onDone?.();
     } }] });
+}
+
+// Password help for a user: type a new password for them, or email them a reset link.
+function passwordDialog(m) {
+  const pass = h('input', { type: 'password', placeholder: 'At least 6 characters', autocomplete: 'new-password' });
+  const suggest = () => { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const r = crypto.getRandomValues(new Uint32Array(10)); pass.value = [...r].map((n) => a[n % a.length]).join(''); pass.type = 'text'; };
+  const status = h('div', { class: 'notice info', style: { display: 'none' } });
+  const say = (text, kind) => { status.textContent = text; status.className = 'notice ' + (kind || 'info'); status.style.display = ''; };
+  const setBtn = h('button', { class: 'btn primary', type: 'button', onclick: async () => {
+    if (pass.value.length < 6) return say('The password needs at least 6 characters.', 'bad');
+    setBtn.disabled = true;
+    try {
+      await rpc('set_user_password', { p_client: state.clientId, p_user: m.user_id, p_password: pass.value });
+      pass.type = 'text';
+      say(`✓ Password changed. ${m.email} has been signed out everywhere and can sign in with the new password now. No email was sent, so pass it on yourself.`, 'ok');
+    } catch (e) { say(errMsg(e), 'bad'); }
+    setBtn.disabled = false;
+  } }, 'Set password');
+  const linkBtn = h('button', { class: 'btn', type: 'button', onclick: async () => {
+    linkBtn.disabled = true;
+    try {
+      const { error } = await sb.auth.resetPasswordForEmail(m.email, { redirectTo: location.origin + location.pathname });
+      if (error) throw error;
+      say(`✓ Reset link emailed to ${m.email}. They click it and choose their own new password. Their current password keeps working until they do.`, 'ok');
+    } catch (e) { say(errMsg(e), 'bad'); }
+    linkBtn.disabled = false;
+  } }, icon('send'), 'Email a reset link');
+  modal({ title: `Password for ${m.full_name || m.email}`, body: [
+    field('Type a new password for them', h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest'), setBtn)),
+    h('div', { class: 'or-line' }, 'or'),
+    h('div', { class: 'row between', style: { gap: '10px' } }, h('span', { class: 'small muted grow' }, `Let them choose their own: sends an email to ${m.email}.`), linkBtn),
+    state.me.is_admin ? h('button', { class: 'btn ghost sm', type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => resetPassword(m) }, 'Or reset to the temporary password 123456') : null,
+    status],
+    actions: [{ label: 'Done' }] });
 }
 
 // Admin: reset someone's password to the temporary password 123456 (they choose a new one when they sign in).
@@ -187,8 +230,9 @@ export async function teamPage({ main }) {
                 m.full_name || m.mobile ? h('div', { class: 'small muted' }, [m.full_name && m.email, m.mobile].filter(Boolean).join(' · ')) : null,
                 h('div', { class: 'tiny' }, accessSummary(m, sites) + ' · joined ' + timeAgo(m.created_at))),
               h('span', { class: 'badge plain' }, roleLabel(m.role)),
-              manage && !me ? h('button', { class: 'btn sm', onclick: () => editDialog(m, sites, clientTitle(client), refresh) }, icon('edit'), 'Edit access') : null,
-              state.me.is_admin && !me ? h('button', { class: 'btn sm', title: 'Reset to the temporary password 123456', onclick: () => resetPassword(m) }, 'Reset password') : null,
+              manage && !me ? h('button', { class: 'btn sm', onclick: () => editDialog(m, sites, clientTitle(client), refresh) }, icon('edit'), 'Edit') : null,
+              manage && !me ? h('button', { class: 'btn sm', title: 'Type a new password or email a reset link', onclick: () => passwordDialog(m) }, 'Password') : null,
+              
               manage && !me ? h('button', { class: 'btn sm danger', onclick: async () => {
                 if (!(await confirmBox('Remove user?', `${m.email} will lose access to ${clientTitle(client)}.`, 'Remove'))) return;
                 await q(sb.from('client_members').delete().eq('client_id', state.clientId).eq('user_id', m.user_id));
