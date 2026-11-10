@@ -43,8 +43,28 @@ function loadJsQR() {
   }));
 }
 
+// Short "beep" when a code is read (Web Audio, no sound file needed) plus a buzz on phones that support it.
+let audioCtx = null;
+function unlockBeep() {
+  try { audioCtx ||= new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); } catch {}
+}
+function beep() {
+  try {
+    unlockBeep();
+    const t = audioCtx.currentTime, osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = 'square'; osc.frequency.setValueAtTime(1760, t);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.25, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t); osc.stop(t + 0.16);
+  } catch {}
+  try { navigator.vibrate?.(80); } catch {}
+}
+
 /** Camera dialog. Calls onCode(code) once a TV pairing QR is read. */
 export function scanDialog(onCode) {
+  unlockBeep();   // phones only allow sound that starts from a tap: prepare it now (the Scan QR tap)
   if (!navigator.mediaDevices?.getUserMedia) {
     toast('This browser can’t open the camera. Type the code shown on the TV instead.', true);
     return;
@@ -66,6 +86,7 @@ export function scanDialog(onCode) {
   const found = (text) => {
     const code = codeFromText(text);
     if (!code) { msg.textContent = 'That QR code isn’t a PROVIEW SIGNAGE pairing code. Scan the one on the TV’s “Pair this screen” page.'; return false; }
+    beep();
     dlg.close();
     onCode(code);
     return true;
