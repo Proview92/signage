@@ -400,8 +400,9 @@ function deviceInfo() {
     tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     display: window.innerHeight > window.innerWidth ? 'portrait' : 'landscape',
     app_update: (() => { try { return window.SignageNative?.updateAvailable?.() || undefined; } catch { return undefined; } })(),
-    sleeping: sleeping || undefined,
-    held: (() => { try { return isHeld() || undefined; } catch { return undefined; } })(),
+    // always sent (also when false): heartbeats merge into device_info, so leaving them out kept an old "true"
+    sleeping: !!sleeping,
+    held: (() => { try { return !!isHeld(); } catch { return false; } })(),
     can_turn_off: (() => { try { return window.SignageNative?.canTurnOff ? window.SignageNative.canTurnOff() : undefined; } catch { return undefined; } })(),
   };
 }
