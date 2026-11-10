@@ -15,7 +15,7 @@ export async function clientsPage({ main, go, rerender }) {
   // Screens and sites across the platform (the master can read all of them). Sites are optional:
   // if that query fails the list still shows each client, just without the per-site rows.
   const [scr, st] = await Promise.all([
-    sb.from('screens').select('id, name, client_id, site_id, last_seen, license_type, license_expires_at'),
+    sb.from('screens').select('id, name, client_id, site_id, last_seen, license_type, license_expires_at').eq('claimed', true),
     sb.from('sites').select('id, client_id, name'),
   ]);
   if (scr.error) throw scr.error;
@@ -136,7 +136,7 @@ export async function clientsPage({ main, go, rerender }) {
   const looseBox = loose.length ? h('div', { class: 'card ov-warnbox' },
     h('span', { class: 'ov-warnicon', 'aria-hidden': 'true' }, '!'),
     h('div', { class: 'grow', style: { minWidth: '200px' } }, h('b', {}, `${loose.length} TV${loose.length === 1 ? '' : 's'} ${loose.length === 1 ? "isn't" : "aren't"} in a business yet`),
-      h('div', { class: 'muted small' }, `Paired but not handed over${loose.some(isOnline) ? `, ${loose.filter(isOnline).length} of them online` : ''}. Give them to a business in the licence portal.`)),
+      h('div', { class: 'muted small' }, `Paired but not given to a business${loose.some(isOnline) ? `, ${loose.filter(isOnline).length} of them online` : ''}. Give them to a business in the licence portal.`)),
     h('button', { class: 'btn sm', onclick: () => showTvs('TVs not in a business', loose, '') }, 'See them'),
     h('a', { class: 'btn sm', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Sort them ↗')) : null;
 
