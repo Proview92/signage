@@ -43,40 +43,53 @@ export function showInviteLink(inv, clientName, { autoSend = false } = {}) {
  * Role + sites + features editor. a = { role, site_ids (null = all sites), features }.
  * Returns { el, value() } where value() gives the row fields to save.
  */
+const ROLE_CARDS = [
+  ['manager', 'Owner / Admin', 'Everything, and manages users'],
+  ['site_manager', 'Manager', 'Chosen features, publishes without approval'],
+  ['editor', 'Staff', 'Chosen features'],
+];
+const FEATURE_ICON = { screens: 'screens', schedule: 'calendar', playlists: 'playlists', media: 'media', billing: 'chart' };
+const shortLabel = (l) => l.split(' (')[0].replace(' & ', ' and ');
+
 function accessEditor(a, sites) {
   let role = a.role || 'editor';
   let all = a.site_ids == null;
   const chosen = new Set(a.site_ids || []);
   const feats = { ...(a.features || {}) };
   const on = (k) => (typeof feats[k] === 'boolean' ? feats[k] : featureDefault(k));
+  const group = 'role' + Math.random().toString(36).slice(2, 7);
 
-  const checkRow = (checked, label, onchange, extra = {}) => h('label', { class: 'row small', style: { gap: '8px', alignItems: 'flex-start', flexWrap: 'nowrap', padding: '4px 0', cursor: 'pointer' } },
-    h('input', { type: 'checkbox', checked, style: { flex: 'none' }, onchange: (e) => onchange(e.target.checked), ...extra }), h('span', { style: { flex: 1, minWidth: 0 } }, label));
+  // A tile with a label on the left and an on/off switch on the right.
+  const tile = (checked, label, onchange, { ic, hint, disabled } = {}) => h('label', { class: 'tog-tile' + (disabled ? ' off' : ''), title: hint || '' },
+    ic ? icon(ic) : null, h('span', { class: 'grow' }, label),
+    h('input', { type: 'checkbox', class: 'switch', checked, disabled: !!disabled, onchange: (e) => onchange(e.target.checked) }));
 
-  const siteBox = h('div', {});
+  const roleBox = h('div', { class: 'role-cards' }, ROLE_CARDS.map(([val, label, sub]) => h('label', { class: 'role-card' },
+    h('input', { type: 'radio', name: group, value: val, checked: val === role, onchange: () => { role = val; paintRole(); } }),
+    h('b', {}, label), h('span', { class: 'tiny' }, sub))));
+
+  // Locations only matter when the business has more than one.
+  const siteBox = h('div', { class: 'tog-grid' });
   const paintSites = () => siteBox.replaceChildren(
-    checkRow(all, 'All locations (including locations added later)', (v) => { all = v; paintSites(); }),
-    sites.length
-      ? h('div', { style: { paddingLeft: '22px', opacity: all ? 0.5 : 1 } }, sites.map((s) => checkRow(all || chosen.has(s.id), s.name, (v) => { v ? chosen.add(s.id) : chosen.delete(s.id); }, { disabled: all })))
-      : h('div', { class: 'tiny' }, 'This business has no locations yet. Add them on the Screens page (Locations button).'));
+    tile(all, 'All locations', (v) => { all = v; paintSites(); }, { ic: 'clients', hint: 'Includes locations added later' }),
+    ...sites.map((s) => tile(all || chosen.has(s.id), s.name, (v) => { v ? chosen.add(s.id) : chosen.delete(s.id); }, { disabled: all })));
   paintSites();
 
-  const featBox = h('div', { class: 'check-grid' }, FEATURES.map(([k, label]) => checkRow(on(k), label, (v) => { feats[k] = v; })));
+  const featBox = h('div', { class: 'tog-grid' }, FEATURES.map(([k, label]) => tile(on(k), shortLabel(label), (v) => { feats[k] = v; }, { ic: FEATURE_ICON[k], hint: label })));
   const scoped = h('div', { class: 'stack' },
-    field('Locations they can use', siteBox),
-    field('What they can see and use', featBox, 'Everything not ticked is hidden and blocked for them.'));
-  const paintRole = () => scoped.classList.toggle('hidden', role === 'manager');
+    sites.length > 1 ? h('div', {}, h('div', { class: 'sec-label' }, 'Locations they can use'), siteBox) : null,
+    h('div', {}, h('div', { class: 'sec-label' }, 'What they can see and use'), featBox, h('div', { class: 'tiny', style: { marginTop: '6px' } }, 'Anything switched off is hidden and blocked for them.')));
+  const fullNote = h('div', { class: 'notice info small' }, 'Owner / Admins see every location and every feature, and can add and edit users.');
+  const paintRole = () => { scoped.classList.toggle('hidden', role === 'manager'); fullNote.classList.toggle('hidden', role !== 'manager'); };
   paintRole();
 
-  const el = h('div', { class: 'stack' },
-    field('Role', select(ROLE_OPTIONS, role, (v) => { role = v; paintRole(); })),
-    scoped);
+  const el = h('div', { class: 'stack' }, h('div', {}, h('div', { class: 'sec-label' }, 'Role'), roleBox), scoped, fullNote);
   const value = () => {
     if (role === 'manager') return { role, site_ids: null, features: {} };
-    if (!all && !chosen.size && sites.length) throw new Error('Pick at least one location, or tick All locations');
+    if (!all && !chosen.size && sites.length > 1) throw new Error('Switch on at least one location, or All locations');
     const features = {};
     for (const [k] of FEATURES) features[k] = on(k);
-    return { role, site_ids: all ? null : [...chosen], features };
+    return { role, site_ids: all || sites.length <= 1 ? null : [...chosen], features };
   };
   return { el, value };
 }
