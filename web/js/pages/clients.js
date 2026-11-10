@@ -1,6 +1,6 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
-import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine } from '../core.js';
+import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen } from '../core.js';
 import { licenseState, businessTrial, businessTrialText } from '../license.js';
 import { integrationsCards } from './integrations.js';
 import { takePendingPair } from './qr-scan.js';
@@ -141,12 +141,14 @@ export async function clientsPage({ main, go, rerender }) {
   const looseBox = loose.length ? h('div', { class: 'card ov-warnbox' },
     h('span', { class: 'ov-warnicon', 'aria-hidden': 'true' }, '!'),
     h('div', { class: 'grow', style: { minWidth: '200px' } }, h('b', {}, `${loose.length} TV${loose.length === 1 ? '' : 's'} ${loose.length === 1 ? "isn't" : "aren't"} in a business yet`),
-      h('div', { class: 'muted small' }, `Paired but not given to a business${loose.some(isOnline) ? `, ${loose.filter(isOnline).length} of them online` : ''}. Give them to a business in the licence portal.`)),
-    h('button', { class: 'btn sm', onclick: () => showTvs('TVs not in a business', loose, '') }, 'See them'),
-    h('button', { class: 'btn sm primary', onclick: () => sortDialog(loose) }, 'Sort them')) : null;
+      h('div', { class: 'muted small' }, `Paired but not in a business yet${loose.some(isOnline) ? `, ${loose.filter(isOnline).length} of them online` : ''}. Use Assign TVs to put them in a business.`)),
+    h('button', { class: 'btn sm primary', onclick: () => sortDialog(loose) }, 'Assign TVs')) : null;
 
   // Give TVs that aren't in a business to an existing business, or to a new one made here.
   function sortDialog(tvs) {
+    // newest first: when the TV first started the app (or was paired, if that is all we know)
+    const added = (s) => [s.created_at, s.license_starts_at, s.paired_at].filter(Boolean).sort((a, b) => new Date(a) - new Date(b))[0] || '';
+    tvs = [...tvs].sort((a, b) => new Date(added(b) || 0) - new Date(added(a) || 0));
     const ticks = tvs.map((s) => ({ s, box: h('input', { type: 'checkbox', checked: true }) }));
     let mode = 'existing';
     const pick = h('select', {}, h('option', { value: '' }, '— Choose a business —'), ...clients.map((c) => h('option', { value: c.id }, clientTitle(c))));
@@ -155,12 +157,12 @@ export async function clientsPage({ main, go, rerender }) {
       h('input', { type: 'radio', name: 'sortmode', value: val, checked: val === mode, onchange: () => { mode = val; pick.disabled = mode !== 'existing'; newName.disabled = mode !== 'new'; (mode === 'new' ? newName : pick).focus(); } }),
       h('span', { class: 'grow' }, h('b', {}, label), field));
     const dlg = modal({
-      title: `Give ${tvs.length === 1 ? 'this TV' : 'these TVs'} to a business`,
+      title: `Assign ${tvs.length === 1 ? 'this TV' : 'these TVs'} to a business`,
       body: [
         h('p', { class: 'muted small', style: { marginTop: 0 } }, 'Tick the TVs to move. They go into the business’s location and start blank: publish a playlist to them afterwards.'),
         h('div', { class: 'list ov-list', style: { maxHeight: '38vh' } }, ticks.map(({ s, box }) => h('label', { class: 'ov-li', style: { cursor: 'pointer' } }, box,
           h('span', { class: 'ov-dot ' + (isOnline(s) ? 'ok' : 'bad') }),
-          h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [isOnline(s) ? 'Online' : (s.last_seen ? 'Last seen ' + timeAgo(s.last_seen) : 'Never connected'), pairedLine(s, { long: true }), s.device_info?.model].filter(Boolean).join(' · ')))))),
+          h('span', { class: 'grow' }, h('b', {}, s.name || 'Unnamed TV'), h('span', { class: 'tiny', style: { display: 'block' } }, [added(s) && 'Added ' + fmtWhen(added(s)), isOnline(s) ? 'Online' : (s.last_seen ? 'Last seen ' + timeAgo(s.last_seen) : 'Never connected'), pairedLine(s, { long: true }), s.device_info?.model].filter(Boolean).join(' · ')))))),
         h('div', { class: 'stack', style: { gap: '10px', marginTop: '14px' } },
           radio('existing', 'Existing business', pick),
           radio('new', 'New business', newName)),
