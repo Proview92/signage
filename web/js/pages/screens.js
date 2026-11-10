@@ -4,7 +4,7 @@ import { headChips } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, hasFeature, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet } from '../renderer.js';
 import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
-import { loadSites, manageSitesDialog, siteSelect } from './sites-ui.js';
+import { loadSites, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
 import { licenseState, businessTrial, fmtDate } from '../license.js';
 import { publishSummary } from './show-on-tvs.js';
@@ -64,8 +64,10 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '', co
   const paintSites = async () => {
     site = clientId === fixedClient ? site : '';
     if (!clientId) return siteWrap.replaceChildren();
+    // One location per business, named after it: the TV goes there automatically (no picker).
     const sites = await loadSites(clientId).catch(() => []);
-    siteWrap.replaceChildren(sites.length ? field('Location', siteSelect(sites, site, (v) => (site = v), { noneLabel: '— Choose later —' })) : h('div', { class: 'tiny' }, 'This business has no locations yet. You can add them under Locations.'));
+    site = sites[0]?.id || '';
+    siteWrap.replaceChildren(sites.length > 1 ? field('Location', siteSelect(sites, site, (v) => (site = v))) : null);
   };
   const pick = clients ? select([['', '— Assign later —'], ...clients.map((c) => [c.id, clientLabel(c)])], clientId, (v) => { clientId = v; paintSites(); }) : null;
   paintSites();
@@ -269,7 +271,6 @@ export async function screensPage({ main, go }) {
         sites.length > 1 ? `${sites.length} locations` : null,
         clientTitle(client)),
       h('div', { class: 'row' },
-        canManage() ? h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, 'Locations') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() && screens.some((s) => installedApp(s)) ? (() => {
           const n = screens.filter((s) => appBehind(s, latest)).length;
@@ -294,7 +295,6 @@ export async function screensPage({ main, go }) {
         h('h2', {}, 'No TVs yet'),
         h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Add your locations first so you can put each TV in the right place.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
         canManage() ? h('div', { class: 'row', style: { justifyContent: 'center' } },
-          sites.length ? null : h('button', { class: 'btn', onclick: () => manageSitesDialog(state.clientId, clientTitle(client), refresh) }, icon('plus'), 'Add location'),
           h('button', { class: 'btn primary', onclick: () => addTv() }, icon('plus'), 'Add a TV')) : null));
     }
 

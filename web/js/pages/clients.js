@@ -36,7 +36,7 @@ export async function clientsPage({ main, go, rerender }) {
       const { data, error } = await sb.from('clients').insert({ name: name.trim() }).select('id').single();
       if (error) throw error;
       await refreshMe();
-      toast('Business added. Add its locations from Screens, and licences in the licence portal.');
+      toast('Business added, with its location. Add licences in the licence portal.');
       open(data.id);
     } catch (e) { toast(errMsg(e), true); }
   };
@@ -74,7 +74,7 @@ export async function clientsPage({ main, go, rerender }) {
     const rows = mine.map((s) => locRow(s.name, list.filter((x) => x.site_id === s.id), s.id));
     const none = list.filter((x) => !x.site_id || !mine.some((s) => s.id === x.site_id));
     if (mine.length && none.length) rows.push(locRow(h('span', { class: 'muted' }, 'No location'), none, 'none'));
-    if (!mine.length) rows.push(h('div', { class: 'ov-loc muted' }, 'No locations yet. Open the business to add one.'));
+    if (!mine.length) rows.push(h('div', { class: 'ov-loc muted' }, 'Setting up its location… press Refresh.'));
     // Only one location (and no TVs outside it): the card already says it all, so no location list
     const single = mine.length === 1 && rows.length === 1;
     if (single) rows.length = 0;

@@ -10,7 +10,7 @@ export const TV = [
     'Open Downloader, type **app.proviewsignage.co.uk/tv.apk**, press **Go**, then **Install** and **Open**.',
     'Open the app. It goes full screen and shows **Pair this screen** with a 6-character code.',
     'On your phone or computer, sign in to the dashboard and go to **Screens → Add a TV**.',
-    'Type the code from the TV, give the TV a name (e.g. “Counter TV”), pick the location, then press **Pair TV**.',
+    'Type the code from the TV (or press **Scan QR**), give the TV a name (e.g. “Counter TV”), then press **Pair TV**.',
     'Within a few seconds the TV shows “paired”. It plays as soon as you publish a playlist to it.',
   ], ['A brand-new TV gets a free 3-day trial licence when it is first paired.', 'The code changes every hour while the TV is waiting, so always use the one on screen now.']],
 
@@ -145,7 +145,7 @@ export const DASH = [
     'Each card shows what the TV is playing, whether it is online, its licence, and **Unpublished changes** if you edited something but didn’t publish.',
     'Change the playlist straight from the card using the **Playing** drop-down.',
     'Press the pencil next to a TV’s name to rename it.',
-    'Filter by location, and use **Locations** to add or rename your locations.',
+    'Each business has one location, named after the business; it is set up for you.',
     'Click a TV to open its own page.',
   ]],
 
@@ -185,7 +185,7 @@ export const DASH = [
 
   ['Users and roles', 'Invite people and control what they can do.', [
     'Go to **Users** and press invite. Enter their email, choose a role, tick the locations they can see and the features they can use.',
-    '**Owner / Admin**: every location and feature, adds TVs and locations, manages users. **Manager**: only their locations and features, publishes without approval. **Staff**: only their locations and features.',
+    '**Owner / Admin**: every feature, adds TVs, manages users. **Manager**: only their locations and features, publishes without approval. **Staff**: only their locations and features.',
     'Press **Edit access** next to a person to change their role, locations or features. Nobody can change their own access.',
     'Playlists and media are shared with all locations unless you pick **Locations** for them (on the playlist’s **Screen & layout** step, or in a file’s details). Managers and Staff only see shared items and items for their locations; what they create is kept to their locations, and shared items are view-only for them (they can duplicate a playlist to make their own copy).',
     'Send the invite email, or copy the link and send it yourself (WhatsApp, text…).',
@@ -204,7 +204,7 @@ export const DASH = [
   ]],
 
   ['Administrators: Locations', 'For Proview staff who manage several businesses.', [
-    'Go to **Locations** to add a business, then add its locations and invite its owner.',
+    'Go to **Locations** and press **Add business**. Its location is created for you with the same name. Then invite its owner.',
     'Assign TVs that are waiting for a business, and manage licences that need attention.',
     'Set the TV menu options for all screens, such as how long before the player reopens.',
   ]],
