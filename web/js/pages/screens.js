@@ -265,15 +265,17 @@ export async function screensPage({ main, go }) {
           h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
             screens.length && canManage() ? h('button', { class: 'btn sm primary', onclick: () => renewOnlineDialog(screens.find((x) => !x.license_type) || screens[0]).catch((e) => toast(e.message || String(e), true)) },
               screens.length === 1 ? 'Buy licence online' : `Buy licence: ${(screens.find((x) => !x.license_type) || screens[0]).name}`) : null,
-            h('a', { class: 'btn sm', href: LICENCE_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
-            h('span', { class: 'muted small', style: { alignSelf: 'center' } }, 'or call ', h('a', { href: 'tel:02089355495' }, '020 8935 5495'))))
+            // (non-masters only here: no licence-portal link, owner 11 Nov 2026; the location's Buy button is below)
+            h('span', { class: 'muted small', style: { alignSelf: 'center' } },
+              screens.length && canManage() ? 'or call ' : canManage() ? 'Or call Proview on ' : 'Ask your owner to buy it, or call Proview on ',
+              h('a', { href: 'tel:02089355495' }, '020 8935 5495'))))
       : !trial ? null : bt?.state === 'expired'
       ? h('div', { class: 'notice bad stack', style: { marginBottom: '14px', gap: '8px' } },
           h('div', {}, h('b', {}, `Your free trial ended on ${fmtDate(bt.ends)}. `),
             screens.length ? 'Your TV has stopped playing. Buy a licence for it (open it and press “Buy licence online”) to turn it back on.' : 'Buy a licence to start using your screens.'),
           h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
-            screens.length ? h('button', { class: 'btn sm primary', onclick: () => go('screen/' + screens[0].id) }, 'Open my TV') : null,
-            h('a', { class: 'btn sm', href: LICENCE_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
+            screens.length && canManage() ? h('button', { class: 'btn sm primary', onclick: () => renewOnlineDialog(screens[0]).catch((e) => toast(e.message || String(e), true)) }, 'Buy licence online') : null,
+            screens.length ? h('button', { class: 'btn sm' + (canManage() ? '' : ' primary'), onclick: () => go('screen/' + screens[0].id) }, 'Open my TV') : null,
             h('a', { class: 'btn sm', href: 'tel:02089355495' }, 'Call 020 8935 5495')))
       : h('div', { class: 'notice info', style: { marginBottom: '14px' } },
           h('b', {}, bt?.state === 'active' ? `Free trial · 1 screen · ends ${fmtDate(bt.ends)}. ` : 'Free trial · 1 screen for 3 days. '),

@@ -673,8 +673,9 @@ function setupBusiness(setupOn = true) {
   const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Set up my business');
   const usedMsg = (text) => h('div', { class: 'notice bad stack', style: { gap: '8px' } }, h('div', {}, text),
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
-      h('a', { class: 'btn sm primary', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
-      h('a', { class: 'btn sm', href: 'tel:02089355495' }, 'Call Proview · 020 8935 5495')));
+      // licence portal for the Proview master only (owner, 11 Nov 2026); everyone else calls Proview
+      state.me?.is_admin ? h('a', { class: 'btn sm primary', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗') : null,
+      h('a', { class: 'btn sm' + (state.me?.is_admin ? '' : ' primary'), href: 'tel:02089355495' }, 'Call Proview · 020 8935 5495')));
   const form = h('form', { onsubmit: async (e) => {
     e.preventDefault(); msg.replaceChildren(); submit.disabled = true;
     try {

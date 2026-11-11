@@ -105,7 +105,12 @@ export function errMsg(e) {
   const m = e?.message || String(e);
   if (/exceeded the maximum allowed size|Payload too large|413/i.test(m)) return 'File is too large for your Supabase storage limit (raise it under Storage → Settings).';
   // database messages still say "site" (UI wording is "location"; the database is unchanged)
-  return m.replace(/^.*?ERROR:\s*/, '').replace(/\bThat site belongs to\b/, 'That location belongs to');
+  const t = m.replace(/^.*?ERROR:\s*/, '').replace(/\bThat site belongs to\b/, 'That location belongs to');
+  // Older database messages point at the licence portal; only the Proview master is sent there (owner, 11 Nov 2026).
+  if (state.me?.is_admin || !/licen[cs]e\.proviewcrm/i.test(t)) return t;
+  return t.replace(/Buy a licence at license\.proviewcrm\.co\.uk or call/i, 'Buy a licence online in the app, or call')
+    .replace(/Licences are now managed at license\.proviewcrm\.co\.uk\.?/i, 'Licences are managed by Proview: buy one online in the app or call Proview on 020 8935 5495.')
+    .replace(/\s*(at|in|from)?\s*(https?:\/\/)?licen[cs]e\.proviewcrm\.co\.uk\/?/gi, '');
 }
 
 export function modal({ title, body, actions = [], wide = false, compact = false, onClose }) {
