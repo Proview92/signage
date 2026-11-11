@@ -128,6 +128,9 @@ class MainActivity : Activity() {
         w.setBackgroundColor(Color.BLACK)
         w.isFocusable = true
         w.isFocusableInTouchMode = true
+        // Some signage panels draw a coloured frame round whatever has the remote's focus. The player fills the screen, so no frame.
+        if (Build.VERSION.SDK_INT >= 26) { w.defaultFocusHighlightEnabled = false; root.defaultFocusHighlightEnabled = false }
+        w.isHapticFeedbackEnabled = false
         with(w.settings) {
             javaScriptEnabled = true
             domStorageEnabled = true

@@ -9,6 +9,8 @@
     html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden; cursor: none;
       font-family: "Inter", "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif; }
     body.cursor { cursor: default; }
+    /* No focus frame or tap flash from the TV's browser: the player draws its own highlight in the menu */
+    *, *:focus { outline: none !important; -webkit-tap-highlight-color: transparent; }
     /* Screen rotation set on the dashboard, for TVs mounted on their side that can't rotate the picture themselves */
     body.rot90, body.rot270 { position: absolute; top: 0; left: 0; width: 100vmin; height: 100vw; transform-origin: top left; }
     body.rot90 { transform: rotate(90deg) translateY(-100%); }
