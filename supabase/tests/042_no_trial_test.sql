@@ -107,7 +107,9 @@ begin
   execute 'set local role authenticated';
   s := public.claim_screen('NTAAA4', 'Trial TV', ctr);
   ok := true;
+  execute 'reset role';   -- the TV's own row is set up as the database, not as the owner (live RLS)
   insert into public.screens (device_user_id, claimed, name, pairing_code, hardware_id) values (dev5, false, 'TV5', 'NTAAA5', 'nt-hw5');
+  execute 'set local role authenticated';
   begin perform public.claim_screen('NTAAA5', 'Trial TV 2', ctr); exception when others then ok := false; msg := sqlerrm; end;
   j := public.whoami();
   execute 'reset role';
