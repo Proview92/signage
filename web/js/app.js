@@ -284,7 +284,9 @@ function masterBar() {
 /** Platform settings (alerts & email, offline alerts): the Proview master only, last in the sidebar. No business data. */
 function platformNav(section) {
   if (!state.me?.is_admin) return null;
-  return [h('div', { class: 'nav-sep' }, 'Proview'),
+  // No customer open: the "Open a customer" page is a menu item too, so Platform settings has a way back.
+  const home = state.me.master_home ? h('a', { href: '#/', class: 'nav-master-home' + (section !== 'platform' ? ' active' : ''), title: 'Open a customer', 'aria-current': section !== 'platform' ? 'page' : null }, icon('clients'), h('span', {}, 'Open a customer')) : null;
+  return [h('div', { class: 'nav-sep' }, 'Proview'), home,
     h('a', { href: '#/platform', class: 'nav-platform' + (section === 'platform' ? ' active' : ''), title: 'Platform settings', 'aria-current': section === 'platform' ? 'page' : null }, icon('cog'), h('span', {}, 'Platform settings'))];
 }
 async function platformPage({ main, rerender }) {
