@@ -8,7 +8,7 @@ import { ruleForm } from './rule-form.js';
 import { loadSites, siteSelect } from './sites-ui.js';
 import { licenseBanner, licensePortalButton } from './license-ui.js';
 import { renewOnlineDialog } from './integrations.js';
-import { licenseState, licenseSummary, licenseLabel, fmtDate } from '../license.js';
+import { licenseState, licenseSummary, licenseLabel, fmtDate, tvLocationLicence } from '../license.js';
 import { latestApp, newestFor, installedApp, appBehind } from '../app-version.js';
 import { sleepCard } from './sleep-ui.js';
 import { loadPauses, pauseBadge, pauseControls } from './playlist-pause.js';
@@ -255,6 +255,8 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         screen.license_starts_at ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Started'), fmtDate(screen.license_starts_at)) : null,
         h('div', { class: 'row between' }, h('span', { class: 'muted' }, L.state === 'lifetime' ? 'Expires' : (L.daysLeft >= 0 ? 'Expires' : 'Expired')), L.state === 'lifetime' ? 'Never' : L.expires ? fmtDate(L.expires) : '—'),
         state.me.is_admin && screen.license_notes ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Notes'), screen.license_notes) : null,
+        tvLocationLicence(screen) ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Location licence'),
+          h('span', { class: 'badge ' + licenseSummary(tvLocationLicence(screen)).tone }, licenseSummary(tvLocationLicence(screen)).text)) : null,
         h('div', { class: 'row' },
           state.me.is_admin ? licensePortalButton() : null,
           hasFeature('billing') && L.state !== 'lifetime' ? h('button', { class: 'btn sm' + (['none', 'expired', 'grace'].includes(L.state) || screen.license_type === 'trial7' ? ' primary' : ''), onclick: () => renewOnlineDialog(screen) }, !screen.license_type || screen.license_type === 'trial7' ? 'Buy licence online' : 'Renew online') : null)));

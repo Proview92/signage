@@ -6,7 +6,7 @@
 // =====================================================================
 import { makeClient, configured, BUCKET } from './sb.js';
 import { LayoutPlayer, WallPlayer, validWall, onAirPlaylist, pausedSet } from './renderer.js';
-import { licenseState, licenseSummary } from './license.js';
+import { licenseState, licenseSummary, tvCanPlay, tvLocationLicence, locationBlocks } from './license.js';
 import { createRemoteMenu } from './remote.js';
 import { shrinkImage } from './imgfit.js';
 import { sleepState, hhmm, DEFAULT_SLEEP } from './sleep.js';
@@ -200,7 +200,8 @@ async function prune() {
 }
 
 // ------------------------------------------------------------ playback
-function isExpired() { return screen?.claimed && ['expired', 'none'].includes(licenseState(screen).state); }
+// The TV plays only if its own licence AND its location's licence are valid (migration 045).
+function isExpired() { return screen?.claimed && !tvCanPlay(screen); }
 
 // ------------------------------------------------------------ sleep hours
 // Set on the dashboard (screens.sleep / sleep_override). While asleep: black screen, playback stopped,
@@ -272,9 +273,16 @@ function evaluate() {
     if (currentKey !== 'expired') {
       currentKey = 'expired'; player?.clear(); nowPlaying = 'licence expired';
       $('expired-name').textContent = screen.name;
-      const none = licenseState(screen).state === 'none';
-      $('expired-title').textContent = none ? 'Licence required' : 'Licence expired';
-      $('expired-msg').textContent = none ? 'needs a licence before it can play.' : 'has ended.';
+      const tvState = licenseState(screen).state;
+      if (['expired', 'none'].includes(tvState)) {
+        $('expired-title').textContent = tvState === 'none' ? 'Licence required' : 'Licence expired';
+        $('expired-msg').textContent = tvState === 'none' ? 'needs a licence before it can play.' : 'has ended.';
+      } else {
+        // the TV's own licence is fine: its location is not licensed
+        const none = licenseState(tvLocationLicence(screen)).state === 'none';
+        $('expired-title').textContent = none ? 'Location licence required' : 'Location licence expired';
+        $('expired-msg').textContent = none ? 'is at a location that needs a licence before its TVs can play.' : 'is at a location whose licence has ended.';
+      }
       show('expired');
     }
     return;
@@ -611,7 +619,7 @@ const remote = createRemoteMenu({
     let needsOverlay = false;
     try { needsOverlay = !!window.SignageNative && !window.SignageNative.canReopen(); } catch {}
     return {
-      name: screen?.name, licence: screen?.claimed ? licenseSummary(screen).text : 'Not paired',
+      name: screen?.name, licence: screen?.claimed ? (locationBlocks(screen) && !['expired', 'none'].includes(licenseState(screen).state) ? 'Location needs a licence' : licenseSummary(screen).text) : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
       canSkip: !!player && !sleeping && views.stage.classList.contains('on'),

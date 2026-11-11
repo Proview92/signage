@@ -1,7 +1,7 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
 import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen, field, copyText, passwordToggle } from '../core.js';
-import { licenseState, businessTrial, businessTrialText, neverLicensed } from '../license.js';
+import { licenseState, businessTrial, businessTrialText, neverLicensed, locationSummary } from '../license.js';
 import { integrationsCards } from './integrations.js';
 import { takePendingPair } from './qr-scan.js';
 import { pairDialog } from './screens.js';
@@ -16,7 +16,7 @@ export async function clientsPage({ main, go, rerender }) {
   // if that query fails the list still shows each client, just without the per-site rows.
   const [scr, st, wt] = await Promise.all([
     sb.from('screens').select('*').eq('claimed', true),
-    sb.from('sites').select('id, client_id, name'),
+    sb.from('sites').select('*'),
     // TVs showing their "Pair this screen" code right now (seen in the last 15 minutes)
     sb.from('screens').select('id, pairing_code, last_seen, created_at, device_info').eq('claimed', false)
       .gt('last_seen', new Date(Date.now() - 15 * 60000).toISOString()).order('created_at', { ascending: false })
@@ -27,6 +27,9 @@ export async function clientsPage({ main, go, rerender }) {
   const screens = scr.data || [];
   const sites = (st.data || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
   const needs = (list) => list.filter((s) => NEEDS.includes(licenseState(s).state)).length;
+  // location licences (migration 045): a location needs its own licence as well as each TV; older databases have none
+  const hasLocLic = (x) => 'license_type' in x;
+  const locNeeds = (list) => list.filter((x) => hasLocLic(x) && NEEDS.includes(licenseState(x).state));
 
   const open = (cid, siteId) => {
     setClient(cid);
@@ -36,7 +39,7 @@ export async function clientsPage({ main, go, rerender }) {
   const refresh = async () => { try { await refreshMe(); } catch {} rerender(); };
   // "+ Add business" (master only), design D (ADD_BUSINESS_D_SPEC, 11 Nov 2026): business + owner in one grid, then two choices.
   //   How will they sign in?  invite (email link, they choose the password) | set a password now (no email)
-  //   Licence                 none yet | 3-day trial (master_trial, migration 044) | set it now (licence portal)
+  //   Licence                 none yet | 3-day trial (master_trial, migration 045) | set it now (licence portal)
   // add_business (038) does the business, its location and the Owner login all-or-nothing on the server. For an invite the
   // login gets a random password nobody sees and Supabase emails a set-your-password link (app.js's PASSWORD_RECOVERY
   // handler then asks them to choose one).
@@ -127,6 +130,7 @@ export async function clientsPage({ main, go, rerender }) {
   const ids = new Set(clients.map((c) => c.id));
   const loose = screens.filter((s) => !s.client_id || !ids.has(s.client_id));
   const attention = screens.filter((s) => NEEDS.includes(licenseState(s).state));
+  const locAttention = locNeeds(sites.filter((x) => ids.has(x.client_id)));
   const bizName = (cid) => { const c = clients.find((x) => x.id === cid); return c ? clientTitle(c) : 'Not in a business'; };
   const siteName = (sid) => sites.find((x) => x.id === sid)?.name || '';
   const dot = (tone) => h('span', { class: 'ov-dot ' + tone });
@@ -142,8 +146,10 @@ export async function clientsPage({ main, go, rerender }) {
     if (t) return h('span', { class: 'badge ' + (t.state === 'expired' ? 'bad' : 'warn'), title: t.ends ? new Date(t.ends).toLocaleString() : 'Signed up online' }, businessTrialText(t));
     // Never licensed (no free trials since 042): red "No licence" until a TV licence is bought.
     if (!t && neverLicensed(c, list)) return h('span', { class: 'badge bad', title: 'No TV of this business has a licence yet' }, 'No licence');
-    if (!list.length) return h('span', { class: 'badge' }, 'No TVs yet');
-    const bad = needs(list);
+    const lb = locNeeds(sites.filter((x) => x.client_id === c.id));
+    if (lb.some((x) => licenseState(x).state === 'none')) return h('span', { class: 'badge bad', title: 'Each location needs its own licence, as well as each TV' }, 'No location licence');
+    if (!list.length && !lb.length) return h('span', { class: 'badge' }, 'No TVs yet');
+    const bad = needs(list) + lb.length;
     if (bad) return h('span', { class: 'badge bad' }, `${bad} licence${bad === 1 ? '' : 's'} need${bad === 1 ? 's' : ''} attention`);
     if (!list.every(isOnline)) return h('span', { class: 'badge warn' }, `${list.filter((x) => !isOnline(x)).length} offline`);
     return h('span', { class: 'badge ok' }, 'All good');
@@ -164,9 +170,13 @@ export async function clientsPage({ main, go, rerender }) {
     // Only one location (and no TVs outside it): the card already says it all, so no location list
     const single = mine.length === 1 && rows.length === 1;
     if (single) rows.length = 0;
-    const lic = list.length && list.every((s) => licenseState(s).state === 'lifetime') ? 'Licences: lifetime'
+    const locOk = mine.every((x) => !hasLocLic(x) || licenseState(x).state === 'lifetime');
+    const locLine = mine.filter(hasLocLic).length === 1 ? locationSummary(mine.find(hasLocLic)).text
+      : mine.some(hasLocLic) ? `${mine.filter((x) => hasLocLic(x) && !NEEDS.includes(licenseState(x).state)).length} of ${mine.filter(hasLocLic).length} locations licensed` : '';
+    const lic0 = list.length && locOk && list.every((s) => licenseState(s).state === 'lifetime') ? 'Licences: lifetime'
       : bTrial(c) ? (c.self_signup ? 'Trial · signed up online' : 'Trial · 3 days, from Add business') : neverLicensed(c, list) ? (list.length ? 'No licence yet · buy one for each TV' : 'No licence yet · pair a TV, then buy its licence')
-      : list.length ? `${list.length} licence${list.length === 1 ? '' : 's'}` : 'Pair a TV to get started';
+      : list.length ? `${list.length} TV licence${list.length === 1 ? '' : 's'}` : 'Pair a TV to get started';
+    const lic = lic0 === 'Licences: lifetime' || !locLine || bTrial(c) ? lic0 : `${locLine} · ${lic0}`;
     const el = h('article', { class: 'card ov-biz' },
       h('div', { class: 'ov-bh' },
         h('div', { class: 'grow' }, h('h3', {}, clientTitle(c)),
@@ -176,7 +186,7 @@ export async function clientsPage({ main, go, rerender }) {
         status(c, list)),
       ...rows,
       h('div', { class: 'ov-bf' }, h('span', { class: 'muted small' }, lic), h('button', { class: 'btn sm primary', onclick: () => open(c.id, single ? mine[0].id : undefined) }, 'Open business')));
-    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(bTrial(c)), !bTrial(c) && neverLicensed(c, list) && 'No licence', ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
+    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(bTrial(c)), !bTrial(c) && neverLicensed(c, list) && 'No licence', locNeeds(mine).length && 'No location licence', ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
     return { el, text };
   });
 
@@ -203,8 +213,12 @@ export async function clientsPage({ main, go, rerender }) {
     const tvs = screens.filter((x) => x.site_id === s.id);
     return h('button', { type: 'button', class: 'ov-li', onclick: () => { document.querySelector('.modal-back')?._close?.(); open(s.client_id, s.id); } },
       dot(tvTone(tvs)), h('span', { class: 'grow' }, h('b', {}, s.name), h('span', { class: 'tiny', style: { display: 'block' } }, bizName(s.client_id))),
-      h('span', { class: 'muted small' }, tvLine(tvs)), chev());
+      h('span', { class: 'muted small' }, tvLine(tvs)), hasLocLic(s) ? locBadge(s) : null, chev());
   }), 'No locations yet.');
+  const locBadge = (x) => { const L = licenseState(x); return h('span', { class: 'badge ' + (L.state === 'expiring' ? 'warn' : NEEDS.includes(L.state) ? 'bad' : 'ok') }, 'Location: ' + licText(x).toLowerCase()); };
+  const locItem = (x) => h('button', { type: 'button', class: 'ov-li', onclick: () => { document.querySelector('.modal-back')?._close?.(); open(x.client_id, x.id); } },
+    dot(NEEDS.includes(licenseState(x).state) ? 'bad' : 'ok'), h('span', { class: 'grow' }, h('b', {}, x.name), h('span', { class: 'tiny', style: { display: 'block' } }, bizName(x.client_id) + ' · location licence')),
+    locBadge(x), chev());
   const showTvs = (title, list, empty, extra) => listModal(title, list.slice().sort(byName).map((s) => tvItem(s, extra?.(s))), empty);
 
   const offline = screens.filter((s) => !isOnline(s));
@@ -216,8 +230,10 @@ export async function clientsPage({ main, go, rerender }) {
     stat('Screens', screens.length, () => showTvs('Screens', screens, 'No TVs yet.')),
     stat('Online', online.length, () => showTvs('Online now', online, 'No TVs are online right now.'), online.length ? 'ok' : ''),
     stat('Offline', offline.length, () => showTvs('Offline', offline, 'Every TV is online.'), offline.length ? 'warn' : ''),
-    stat('Licences need attention', attention.length, () => showTvs('Licences needing attention', attention, 'Every licence is fine.',
-      (s) => h('span', { class: 'badge ' + (licenseState(s).state === 'expiring' ? 'warn' : 'bad') }, licText(s))), attention.length ? 'bad' : ''));
+    stat('Licences need attention', attention.length + locAttention.length, () => listModal('Licences needing attention', [
+      ...locAttention.slice().sort((a, b) => (bizName(a.client_id) + a.name).localeCompare(bizName(b.client_id) + b.name)).map(locItem),
+      ...attention.slice().sort(byName).map((s) => tvItem(s, h('span', { class: 'badge ' + (licenseState(s).state === 'expiring' ? 'warn' : 'bad') }, licText(s))))],
+      'Every licence is fine.'), attention.length + locAttention.length ? 'bad' : ''));
 
   // TVs paired but not given to a business yet: one clear warning instead of a table row
   const looseBox = loose.length ? h('div', { class: 'card ov-warnbox' },

@@ -3,12 +3,12 @@ import { publishOrRequest, renameDialog } from '../core.js';
 import { headChips, pairedLine } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, hasFeature, mediaUrl, needsPublish, currentClient } from '../core.js';
 import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet } from '../renderer.js';
-import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
+import { licenseBadge, locationBlockBadge, locationBadge, LICENCE_PORTAL } from './license-ui.js';
 import { loadSites, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
-import { licenseState, businessTrial, neverLicensed, NO_LICENCE_TEXT, fmtDate } from '../license.js';
+import { licenseState, businessTrial, neverLicensed, NO_LICENCE_TEXT, LOCATION_NO_LICENCE_TEXT, fmtDate } from '../license.js';
 import { publishSummary } from './show-on-tvs.js';
-import { renewOnlineDialog } from './integrations.js';
+import { renewOnlineDialog, buyLocationDialog } from './integrations.js';
 import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
 import { validWall } from '../renderer.js';
 import { latestApp, appBehind, installedApp, newestFor } from '../app-version.js';
@@ -49,6 +49,7 @@ export function statusBadges(screen, rules, byId) {
   else { out.push(isOnline(screen) ? h('span', { class: 'badge ok' }, 'Online') : h('span', { class: 'badge bad' }, screen.last_seen ? `Offline · ${timeAgo(screen.last_seen)}` : 'Offline')); if (zz) out.push(zz); }
   if (needsPublish(screen, rules.filter((r) => r.screen_id === screen.id), byId)) out.push(h('span', { class: 'badge warn' }, 'Unpublished changes'));
   out.push(licenseBadge(screen));
+  const lb = locationBlockBadge(screen); if (lb) out.push(lb);
   if (screen.device_info?.held && isOnline(screen)) out.push(h('span', { class: 'badge warn', title: 'Someone pressed “Skip to next content” on the TV menu. Choose “Reactivate schedule” on the TV menu to go back to normal.' }, 'Schedule paused on TV'));
   if (validWall(screen.wall)) out.push(h('span', { class: 'badge', title: 'Part of a video wall' }, `Wall: ${screen.wall.name} · row ${screen.wall.y + 1}, screen ${screen.wall.x + 1}`));
   return out;
@@ -259,8 +260,8 @@ export async function screensPage({ main, go }) {
     const trialNote = noLicence
       ? h('div', { class: 'notice bad stack nolicence', style: { marginBottom: '14px', gap: '8px' } },
           h('div', {}, h('b', {}, NO_LICENCE_TEXT + '. '),
-            screens.length ? 'Open your TV and press “Buy licence online” under Licence. It plays as soon as it is licensed.'
-              : 'Install the PROVIEW SIGNAGE app on your TV, open it, press Add a TV and type the code it shows. Then buy its licence online.'),
+            screens.length ? 'Each location needs its own licence, and each TV too. Buy your location’s licence below, then open your TV and press “Buy licence online” under Licence. It plays as soon as both are licensed.'
+              : 'Each location needs its own licence, and each TV too. Buy your location’s licence below. Then install the PROVIEW SIGNAGE app on your TV, open it, press Add a TV, type the code it shows and buy the TV’s licence online.'),
           h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
             screens.length && canManage() ? h('button', { class: 'btn sm primary', onclick: () => renewOnlineDialog(screens.find((x) => !x.license_type) || screens[0]).catch((e) => toast(e.message || String(e), true)) },
               screens.length === 1 ? 'Buy licence online' : `Buy licence: ${(screens.find((x) => !x.license_type) || screens[0]).name}`) : null,
@@ -277,6 +278,25 @@ export async function screensPage({ main, go }) {
       : h('div', { class: 'notice info', style: { marginBottom: '14px' } },
           h('b', {}, bt?.state === 'active' ? `Free trial · 1 screen · ends ${fmtDate(bt.ends)}. ` : 'Free trial · 1 screen for 3 days. '),
           screens.length ? 'Buy a licence for your TV (open it and press “Buy licence online”) to keep it playing and add more screens.' : 'Install the PROVIEW SIGNAGE app on your TV, open it, then press Add a TV and type the code it shows.');
+
+    // Location licences (migration 045): every location needs its own licence, and each TV needs its own on top.
+    // Owners see each location's licence with Buy / Renew online; the master manages them in the licence portal.
+    const shownSites = sites.filter((x) => 'license_type' in x && (filter === 'all' || filter === 'none' || x.id === filter));
+    const locBad = (x) => ['none', 'expired', 'grace', 'expiring'].includes(licenseState(x).state);
+    const locNote = shownSites.length ? h('div', { class: 'card pad stack loc-licences' + (shownSites.some((x) => ['none', 'expired'].includes(licenseState(x).state)) ? ' bad' : ''), style: { marginBottom: '14px', gap: '8px' } },
+      h('div', { class: 'row between' }, h('b', {}, shownSites.length === 1 ? 'Location licence' : 'Location licences'),
+        h('span', { class: 'tiny' }, 'Each location needs its own licence, and each TV its own too.')),
+      ...shownSites.map((x) => {
+        const L = licenseState(x), blocked = ['none', 'expired'].includes(L.state);
+        return h('div', { class: 'row between loc-lic-row', style: { gap: '8px', flexWrap: 'wrap' } },
+          h('span', { class: 'grow', style: { fontWeight: 600 } }, x.name, blocked ? h('span', { class: 'tiny', style: { display: 'block', fontWeight: 500 } }, LOCATION_NO_LICENCE_TEXT + '.') : null),
+          locationBadge(x),
+          state.me.is_admin ? h('a', { class: 'btn sm', href: LICENCE_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗')
+            : canManage() && L.state !== 'lifetime' ? h('button', { class: 'btn sm' + (locBad(x) ? ' primary' : ''), onclick: () => buyLocationDialog(x).catch((e) => toast(e.message || String(e), true)) },
+              !x.license_type || x.license_type === 'trial7' ? 'Buy location licence online' : 'Renew online') : null);
+      }),
+      shownSites.some((x) => ['none', 'expired'].includes(licenseState(x).state)) && !state.me.is_admin
+        ? h('span', { class: 'muted small' }, 'or call ', h('a', { href: 'tel:02089355495' }, '020 8935 5495')) : null) : null;
 
     // The location is picked in the top header dropdown (no second picker here).
     const head = h('div', { class: 'page-head' },
@@ -305,7 +325,7 @@ export async function screensPage({ main, go }) {
     }
 
     if (!screens.length) {
-      return main.replaceChildren(head, trialNote || '', h('div', { class: 'card empty' },
+      return main.replaceChildren(head, trialNote || '', locNote || '', h('div', { class: 'card empty' },
         h('h2', {}, 'No TVs yet'),
         h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Add your locations first so you can put each TV in the right place.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
         canManage() ? h('div', { class: 'row', style: { justifyContent: 'center' } },
@@ -330,7 +350,7 @@ export async function screensPage({ main, go }) {
           h('span', { class: 'small muted' }, 'Plays: ' + (data.byId[w.tvs[0]?.default_playlist_id]?.name || 'nothing')),
           canManage() ? h('button', { class: 'btn sm', onclick: () => wallDialog({ wall: w, screens, playlists: data.playlists, onDone: refresh }) }, 'Edit wall') : null))))) : null;
 
-    main.replaceChildren(head, trialNote || '', bannerBox, wallSection || '', ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
+    main.replaceChildren(head, trialNote || '', locNote || '', bannerBox, wallSection || '', ...groups.map((g) => h('section', { style: { marginBottom: '26px' } },
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },

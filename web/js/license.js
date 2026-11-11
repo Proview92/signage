@@ -93,3 +93,30 @@ export function neverLicensed(c, screens = null) {
   return Array.isArray(screens) ? !screens.some((s) => s.license_type) : false;
 }
 export const NO_LICENCE_TEXT = 'No licence yet: buy a licence to start using Proview Signage';
+
+/*
+ * Location licences (migration 045, owner 11 Nov 2026: "per location + per TV"). A location (a sites row) has the same
+ * licence fields as a TV, so licenseState / licenseSummary read it directly. Each TV also carries a copy of its
+ * location's licence (screens.site_license_type / site_license_expires_at): a TV plays only if both are valid.
+ */
+export const LOCATION_NO_LICENCE_TEXT = 'This location needs a licence before its TVs can play';
+/** The licence of a TV's location, from the TV's own row; null before migration 045 (then only the TV licence counts). */
+export function tvLocationLicence(screen) {
+  if (!screen || !('site_license_type' in screen)) return null;
+  return { license_type: screen.site_license_type, license_expires_at: screen.site_license_expires_at };
+}
+const BLOCKED = ['expired', 'none'];
+/** The TV can't play because of its location's licence (its own licence may be fine). */
+export function locationBlocks(screen) {
+  const l = tvLocationLicence(screen);
+  return !!l && BLOCKED.includes(licenseState(l).state);
+}
+/** The TV plays: its own licence and its location's licence are both valid (grace counts as valid). */
+export const tvCanPlay = (screen) => !BLOCKED.includes(licenseState(screen).state) && !locationBlocks(screen);
+/** Short text + tone for a location's licence badge (a sites row). */
+export function locationSummary(site) {
+  const s = licenseSummary(site);
+  if (s.L.state === 'none') return { ...s, text: 'Location: no licence yet' };
+  if (s.L.state === 'lifetime') return { ...s, text: 'Location: lifetime licence' };
+  return { ...s, text: 'Location: ' + s.text.charAt(0).toLowerCase() + s.text.slice(1) };
+}

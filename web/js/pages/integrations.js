@@ -66,5 +66,31 @@ export async function renewOnlineDialog(screen) {
     window.open(u.toString(), '_blank', 'noopener');
   } }] });
 }
+/**
+ * Client-side: pick a plan and pay for a LOCATION's licence (migration 045: every location needs its own licence, and
+ * each TV needs its own on top). Prices are the licence portal's "location" prices; Stripe reference
+ * pvs__loc__<site id>__<plan> (HUB_UNITS.md), which the portal applies to unit loc/<site id>.
+ */
+export async function buyLocationDialog(site) {
+  let plans = {};
+  try { plans = (await rpc('licence_buy_plans_by_kind'))?.location || {}; } catch { plans = {}; }
+  const entries = Object.entries(plans).sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
+  if (!entries.length) return toast('Online payment for location licences isn’t available yet. Call Proview on 020 8935 5495 to buy one.', true);
+  let pick = entries.find(([k]) => k === 'm12')?.[0] || entries[0][0];
+  const buying = !site.license_type || site.license_type === 'trial7';
+  modal({ title: `${buying ? 'Buy a location licence' : 'Renew location licence'}: ${site.name}`, body: [
+    h('p', { class: 'muted small', style: { margin: 0 } }, (buying
+      ? 'Every location needs its own licence, and each TV needs its own licence too. Choose a plan. You’ll pay securely with Stripe, and the location is licensed within about 5 minutes.'
+      : 'Choose a plan. Time is added on top of the current licence. You’ll pay securely with Stripe; the licence updates within about 5 minutes.')),
+    h('div', { class: 'stack', style: { gap: '8px' } }, entries.map(([k, p]) => h('label', { class: 'row card pad', style: { fontWeight: 600, padding: '12px 14px' } },
+      h('input', { type: 'radio', name: 'plan', checked: k === pick, onchange: () => (pick = k) }), h('span', { class: 'grow' }, p.label || k), money(p))))],
+  actions: [{ label: 'Cancel' }, { label: 'Pay with card', class: 'primary', onClick: () => {
+    const p = plans[pick];
+    const u = new URL(p.link);
+    u.searchParams.set('client_reference_id', `${p.ref || 'pvs'}__loc__${site.id}__${pick}`);
+    if (state.me.email) u.searchParams.set('prefilled_email', state.me.email);
+    window.open(u.toString(), '_blank', 'noopener');
+  } }] });
+}
 const ORDER = ['m1', 'm3', 'm6', 'm12', 'm24', 'm36', 'lifetime'];
 const money = (p) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: (p.currency || 'gbp').toUpperCase() }).format(p.amount / 100);
