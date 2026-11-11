@@ -6,8 +6,9 @@ import { renderStill, resolveSchedule, onAirPlaylist, isSlideActive, pausedSet }
 import { licenseBadge, LICENCE_PORTAL } from './license-ui.js';
 import { loadSites, siteSelect } from './sites-ui.js';
 import { ruleForm } from './rule-form.js';
-import { licenseState, businessTrial, fmtDate } from '../license.js';
+import { licenseState, businessTrial, neverLicensed, NO_LICENCE_TEXT, fmtDate } from '../license.js';
 import { publishSummary } from './show-on-tvs.js';
+import { renewOnlineDialog } from './integrations.js';
 import { wallsOf, wallDiagram, wallDialog } from './video-wall.js';
 import { validWall } from '../renderer.js';
 import { latestApp, appBehind, installedApp, newestFor } from '../app-version.js';
@@ -92,7 +93,7 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '', co
         if (Object.keys(extra).length) await q(sb.from('screens').update(extra).eq('id', s.id));
         if (s.license_type === 'trial7') toast(`${s.name} paired — 3-day trial started`);
         else if (s.license_type) toast(`${s.name} paired`);
-        else toast(`${s.name} paired, but no free trial: ${s.trial_blocked_reason || 'this device needs a licence'}`, true);
+        else toast(`${s.name} paired. It needs a licence before it plays: press “Buy licence online” under Licence.${s.trial_blocked_reason ? ` (${s.trial_blocked_reason})` : ''}`);
         onDone?.(s);
       } },
     ],
@@ -253,7 +254,19 @@ export async function screensPage({ main, go }) {
       return pairDialog({ fixedClient: state.clientId, siteId, code: pairCode, onDone: (s) => go('screen/' + s.id) });
     };
     const bt = trial ? businessTrial(currentClient()) : null;
-    const trialNote = !trial ? null : bt?.state === 'expired'
+    // Never licensed (every business set up since 042): the buy screen, never "Trial ended".
+    const noLicence = !state.me.is_admin && neverLicensed(currentClient(), screens);
+    const trialNote = noLicence
+      ? h('div', { class: 'notice bad stack nolicence', style: { marginBottom: '14px', gap: '8px' } },
+          h('div', {}, h('b', {}, NO_LICENCE_TEXT + '. '),
+            screens.length ? 'Open your TV and press “Buy licence online” under Licence. It plays as soon as it is licensed.'
+              : 'Install the PROVIEW SIGNAGE app on your TV, open it, press Add a TV and type the code it shows. Then buy its licence online.'),
+          h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
+            screens.length && canManage() ? h('button', { class: 'btn sm primary', onclick: () => renewOnlineDialog(screens.find((x) => !x.license_type) || screens[0]).catch((e) => toast(e.message || String(e), true)) },
+              screens.length === 1 ? 'Buy licence online' : `Buy licence: ${(screens.find((x) => !x.license_type) || screens[0]).name}`) : null,
+            h('a', { class: 'btn sm', href: LICENCE_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
+            h('span', { class: 'muted small', style: { alignSelf: 'center' } }, 'or call ', h('a', { href: 'tel:02089355495' }, '020 8935 5495'))))
+      : !trial ? null : bt?.state === 'expired'
       ? h('div', { class: 'notice bad stack', style: { marginBottom: '14px', gap: '8px' } },
           h('div', {}, h('b', {}, `Your free trial ended on ${fmtDate(bt.ends)}. `),
             screens.length ? 'Your TV has stopped playing. Buy a licence for it (open it and press “Buy licence online”) to turn it back on.' : 'Buy a licence to start using your screens.'),

@@ -76,12 +76,12 @@ async function render() {
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
   if (!state.me.is_admin && !state.me.clients.length) {
-    // Added to a business but given no sites: not linked to anything yet (never the trial screen).
+    // Added to a business but given no sites: not linked to anything yet (never the set-up screen).
     if (state.me.no_site_clients) return signOut(NOT_LINKED);
-    // Switched off by their Owner / Admin (or Proview): say so, rather than offering a new trial.
+    // Switched off by their Owner / Admin (or Proview): say so, rather than offering to set up a business.
     try { if (await rpc('am_i_deactivated')) return signOut(DEACTIVATED); } catch {}
     if (my !== renderSeq) return;
-    // Invited by email (no link opened): join those businesses instead of starting a trial.
+    // Invited by email (no link opened): join those businesses instead of setting up a new one.
     const joined = await joinMyInvites();
     if (my !== renderSeq) return;
     if (joined > 0) { try { await refreshMe(); } catch (e) { return root.replaceChildren(errorPage(e)); } return render(); }
@@ -493,7 +493,7 @@ async function authPage(inviteToken, startSignup = false) {
     title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in';
     sub.textContent = invite && !invite.used
       ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'manager' ? 'an owner / admin' : invite.role === 'site_manager' ? 'a manager' : 'staff'}.`
-      : mode === 'signup' ? 'Start your free 3-day trial on 1 screen. No card needed. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
+      : mode === 'signup' ? 'Set up your business, then buy a licence for each TV. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';
     pass.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
@@ -538,7 +538,7 @@ async function authPage(inviteToken, startSignup = false) {
       compact: true,
       body: [h('p', {}, 'We couldn’t find an account for', h('br'), h('b', { class: 'nm-email' }, addr.toLowerCase())),
         h('p', {}, 'Would you like to create a new account?'),
-        h('p', { class: 'nm-note' }, 'Includes a free 3-day trial on 1 screen.')],
+        h('p', { class: 'nm-note' }, 'You can then set up your business and buy a licence for each TV.')],
       onClose: () => { prompting = false; },
       actions: [
         { label: 'No, go back', onClick: () => { pass.value = ''; msg.replaceChildren(h('div', { class: 'notice' }, 'Check the email address and try again.')); setTimeout(() => email.focus(), 50); } },
@@ -657,10 +657,11 @@ function changePasswordPage() {
   return h('div', { class: 'auth-form', style: { minHeight: '100vh' } }, form);
 }
 
-// Signed in, no business and no invite: create one (business + first site, you as Owner) on a 3-day trial.
-// trialOn = false when the server doesn't have the trial RPCs yet (migration 032): no button, just who to ask.
+// Signed in, no business and no invite: create one (business + its location, you as Owner), with no licence (no free
+// trials, migration 042): Screens then shows "No licence yet" with the buy options.
+// setupOn = false when the server doesn't have create_my_business yet (migration 032): no button, just who to ask.
 const LIC_PORTAL = 'https://license.proviewcrm.co.uk';
-function setupBusiness(trialOn = true) {
+function setupBusiness(setupOn = true) {
   const name = h('input', { type: 'text', required: true, maxLength: 80, autocomplete: 'organization', placeholder: 'e.g. Station Road Café' });
   const site = h('input', { type: 'text', maxLength: 80, placeholder: 'Same as your business name' });
   const phone = h('input', { type: 'tel', maxLength: 30, autocomplete: 'tel', placeholder: 'Optional, so we can help you get set up' });
@@ -669,7 +670,7 @@ function setupBusiness(trialOn = true) {
   site.addEventListener('input', () => { siteTouched = !!site.value; });
   name.addEventListener('input', () => { if (!siteTouched) site.value = name.value; });
   const msg = h('div');
-  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Start free trial');
+  const submit = h('button', { class: 'btn primary', type: 'submit', style: { width: '100%' } }, 'Set up my business');
   const usedMsg = (text) => h('div', { class: 'notice bad stack', style: { gap: '8px' } }, h('div', {}, text),
     h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
       h('a', { class: 'btn sm primary', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗'),
@@ -680,7 +681,7 @@ function setupBusiness(trialOn = true) {
       const cid = await rpc('create_my_business', { p_name: name.value, p_phone: phone.value || null, p_site: site.value || name.value });
       await refreshMe();
       if (cid) setClient(cid);
-      toast('Welcome! Your 3-day free trial has started. Now pair your TV.');
+      toast('Your business is set up. Buy a licence to start using Proview Signage.');
       if (location.hash === '#/screens') render(); else location.hash = '#/screens';
     } catch (err) {
       const t = errMsg(err);
@@ -690,15 +691,15 @@ function setupBusiness(trialOn = true) {
   } },
     h('div', { class: 'auth-brand' }, h('img', { class: 'auth-logo', src: 'icon-app.svg', alt: '' }), wordmark(APP)),
     h('h1', {}, 'Set up your business'),
-    h('p', { class: 'muted', style: { margin: 0 } }, trialOn ? 'Start your free 3-day trial' : 'Your login isn’t linked to a business yet.'),
-    h('p', { class: 'tiny', style: { margin: 0 } }, `Signed in as ${state.me.email}.${trialOn ? ' The trial includes 1 screen and every feature.' : ''}`),
+    h('p', { class: 'muted', style: { margin: 0 } }, setupOn ? 'Add your business. Then pair your TV and buy its licence.' : 'Your login isn’t linked to a business yet.'),
+    h('p', { class: 'tiny', style: { margin: 0 } }, `Signed in as ${state.me.email}.`),
     msg,
-    ...(trialOn
+    ...(setupOn
       ? [field('Business name', name), field('First location', site), field('Phone number', phone), submit,
          h('p', { class: 'tiny', style: { margin: 0 } }, 'Were you invited to someone else’s account? Open the invite link from your email instead.')]
-      : [usedMsg('Free trials can’t be started here right now. Ask your owner for an invite, or contact Proview.')]),
+      : [usedMsg('A business can’t be set up here right now. Ask your owner for an invite, or contact Proview.')]),
     h('div', { class: 'row between' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: signOut }, 'Sign out'), h('span')));
-  if (trialOn) setTimeout(() => name.focus(), 50);
+  if (setupOn) setTimeout(() => name.focus(), 50);
   return authLayout(form);
 }
 

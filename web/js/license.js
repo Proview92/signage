@@ -68,18 +68,27 @@ export function licenseSummary(screen) {
 }
 
 /**
- * Business-level free trial (online sign-ups, migration 032). c = a client from whoami.
- * null = not on a trial (added by Proview, or has bought a TV licence).
- * state: 'active' | 'expired' | 'unknown' (older server without trial_ends_at).
+ * Business-level free trial (online sign-ups before migration 042; there are no new trials). c = a client from whoami.
+ * null = not on a trial (added by Proview, set up after 042, or has bought a TV licence).
+ * state: 'active' | 'expired'.
  */
 export function businessTrial(c, now = Date.now()) {
-  if (!c?.trial_only) return null;
-  if (!c.trial_ends_at) return c.self_signup ? { state: 'unknown' } : null;
+  if (!c?.trial_only || !c.trial_ends_at) return null;
   const ends = new Date(c.trial_ends_at).getTime();
   return { state: now < ends ? 'active' : 'expired', ends };
 }
 export function businessTrialText(t) {
   if (!t) return '';
-  if (t.state === 'unknown') return 'Free trial';
   return t.state === 'active' ? `Trial – ends ${fmtDate(t.ends)}` : 'Trial expired';
 }
+
+/**
+ * Never licensed: no TV of this business has ever had a licence (and it isn't on a pre-042 trial).
+ * Uses whoami's has_licence (042) when there, else the business's TVs if given.
+ */
+export function neverLicensed(c, screens = null) {
+  if (!c || businessTrial(c)) return false;
+  if (typeof c.has_licence === 'boolean') return !c.has_licence;
+  return Array.isArray(screens) ? !screens.some((s) => s.license_type) : false;
+}
+export const NO_LICENCE_TEXT = 'No licence yet: buy a licence to start using Proview Signage';

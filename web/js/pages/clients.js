@@ -1,7 +1,7 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
 import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen, field, copyText, passwordToggle } from '../core.js';
-import { licenseState, businessTrial, businessTrialText } from '../license.js';
+import { licenseState, businessTrial, businessTrialText, neverLicensed } from '../license.js';
 import { integrationsCards } from './integrations.js';
 import { takePendingPair } from './qr-scan.js';
 import { pairDialog } from './screens.js';
@@ -84,10 +84,12 @@ export async function clientsPage({ main, go, rerender }) {
   const openTv = (s) => { setClient(s.client_id); document.querySelector('.modal-back')?._close?.(); go('screen/' + s.id); };
   const licText = (s) => { const L = licenseState(s); return { none: 'No licence', expiring: `Ends in ${L.daysLeft} day${L.daysLeft === 1 ? '' : 's'}`, grace: 'Expired, in grace period', expired: 'Expired', lifetime: 'Lifetime', active: 'Active' }[L.state]; };
 
-  // Online sign-ups on their 3-day trial: "Trial – ends <date>" / "Trial expired" (gone once a TV licence is bought).
+  // Online sign-ups from before 042 still on their 3-day trial: "Trial – ends <date>" / "Trial expired" (gone once a TV licence is bought).
   const status = (c, list) => {
     const t = businessTrial(c);
     if (t) return h('span', { class: 'badge ' + (t.state === 'expired' ? 'bad' : 'warn'), title: t.ends ? new Date(t.ends).toLocaleString() : 'Signed up online' }, businessTrialText(t));
+    // Never licensed (no free trials since 042): red "No licence" until a TV licence is bought.
+    if (neverLicensed(c, list)) return h('span', { class: 'badge bad', title: 'No TV of this business has a licence yet' }, 'No licence');
     if (!list.length) return h('span', { class: 'badge' }, 'No TVs yet');
     const bad = needs(list);
     if (bad) return h('span', { class: 'badge bad' }, `${bad} licence${bad === 1 ? '' : 's'} need${bad === 1 ? 's' : ''} attention`);
@@ -111,7 +113,8 @@ export async function clientsPage({ main, go, rerender }) {
     const single = mine.length === 1 && rows.length === 1;
     if (single) rows.length = 0;
     const lic = list.length && list.every((s) => licenseState(s).state === 'lifetime') ? 'Licences: lifetime'
-      : businessTrial(c) ? 'Free trial · signed up online' : list.length ? `${list.length} licence${list.length === 1 ? '' : 's'}` : 'Pair a TV to get started';
+      : businessTrial(c) ? 'Trial · signed up online' : neverLicensed(c, list) ? (list.length ? 'No licence yet · buy one for each TV' : 'No licence yet · pair a TV, then buy its licence')
+      : list.length ? `${list.length} licence${list.length === 1 ? '' : 's'}` : 'Pair a TV to get started';
     const el = h('article', { class: 'card ov-biz' },
       h('div', { class: 'ov-bh' },
         h('div', { class: 'grow' }, h('h3', {}, clientTitle(c)),
@@ -121,7 +124,7 @@ export async function clientsPage({ main, go, rerender }) {
         status(c, list)),
       ...rows,
       h('div', { class: 'ov-bf' }, h('span', { class: 'muted small' }, lic), h('button', { class: 'btn sm primary', onclick: () => open(c.id, single ? mine[0].id : undefined) }, 'Open business')));
-    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
+    const text = [clientTitle(c), c.name, c.contact_email, businessTrialText(businessTrial(c)), neverLicensed(c, list) && 'No licence', ...mine.map((s) => s.name)].filter(Boolean).join(' ').toLowerCase();
     return { el, text };
   });
 

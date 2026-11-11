@@ -12,7 +12,7 @@ export const TV = [
     'On your phone or computer, sign in to the dashboard and go to **Screens → Add a TV**.',
     'Type the code from the TV (or press **Scan QR**), give the TV a name (e.g. “Counter TV”), then press **Pair TV**.',
     'Within a few seconds the TV shows “paired”. It plays as soon as you publish a playlist to it.',
-  ], ['A brand-new TV gets a free 3-day trial licence when it is first paired.', 'The code changes every hour while the TV is waiting, so always use the one on screen now.']],
+  ], ['A newly paired TV needs a licence before it plays: open it and press Buy licence online under Licence.', 'The code changes every hour while the TV is waiting, so always use the one on screen now.']],
 
   ['What the TV does on its own', 'Once paired, the TV needs no attention.', [
     'It starts the player automatically when the TV is switched on.',
@@ -198,7 +198,7 @@ export const DASH = [
   ]],
 
   ['Licences', 'Every TV needs an active licence to play.', [
-    'New TVs get a 3-day trial when first paired.',
+    'New TVs have no licence until one is bought (there is no free trial).',
     'A TV’s licence is shown on its card and its page. You get reminders before it ends.',
     'Renew on the TV’s page with **Renew online**, or contact Proview.',
   ]],
@@ -216,7 +216,7 @@ export const FACTS = [
   'Phone support: 020 8935 5495. We can also set everything up for you (installation, content design, updates).',
   'Works on Android TV, Google TV and Fire TV sticks. TV app download: app.proviewsignage.co.uk/tv.apk',
   'Pricing per TV, in GBP, excluding VAT, currently 50% off: 1 month £6 (was £12); 12 months £54 (£4.50 a month, was £108); 36 months £126 (£3.50 a month, was £252). 10 or more screens: call for a quote.',
-  'Free trial: 3 days on 1 screen with every feature, no card needed. Sign up at app.proviewsignage.co.uk/#/signup. To add more TVs during a trial, buy a licence for the first TV.',
-  'Licences do not renew automatically: renew online from the TV page in the dashboard (Licence → Renew online). Paid licences keep playing for 7 days after expiry, then stop; trials stop when they end.',
+  'There is no free trial. Set up your business at app.proviewsignage.co.uk/#/signup, pair your TV, then buy its licence online (TV page → Licence → Buy licence online) or call 020 8935 5495. Each TV needs its own licence.',
+  'Licences do not renew automatically: renew online from the TV page in the dashboard (Licence → Renew online). Paid licences keep playing for 7 days after expiry, then stop.',
   'Data is stored in the EU (Ireland).',
 ];
