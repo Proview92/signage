@@ -92,7 +92,7 @@ Deno.test("signature is really checked: wrong key, tampered biz, wrong audience"
   const good = await sign(claims("master@proview.test", { biz: "c-1" }));
   const forged = b64u(new TextEncoder().encode(JSON.stringify(claims("master@proview.test", { biz: "c-2" })))) + "." + good.split(".")[1];
   assertEquals((await call(forged)).status, 401);
-  assertEquals((await call(await sign({ ...claims("master@proview.test", { biz: "c-1" }), aud: "bookings" }))).status, 401);
+  assertEquals((await call(await sign({ ...claims("master@proview.test", { biz: "c-1" }), aud: "some-other-app" }))).status, 401);
 });
 
 Deno.test("single use: the same assertion can't be replayed", async () => {
