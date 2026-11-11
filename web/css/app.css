@@ -1033,3 +1033,10 @@ input.switch.status:disabled { opacity: .45; cursor: not-allowed; }
 .list-row.user-off .grow { opacity: .55; }
 
 /* Add business pop-up, design D: web/pv-addbiz.js (the same file in all six Proview apps) */
+
+/* The Proview master inside one customer's business, opened from the licence portal (MASTER_OPEN_SPEC) */
+.pv-master-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; padding: 8px 20px; background: #fff7e0; border-bottom: 1px solid #f1dfa6; color: #5c4400; font-size: 13.5px; }
+.pv-master-bar b { font-weight: 700; }
+.pv-master-bar .pv-master-back { margin-left: auto; color: #5c4400; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.pv-master-home { max-width: 560px; margin: 8vh auto 0; }
+.pv-master-home h1 { margin: 0; font-size: 22px; }

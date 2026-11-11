@@ -1,9 +1,8 @@
 import { rememberPairLink, hasPendingPair } from './pages/qr-scan.js';
 import { configured } from './sb.js';
 import { startHub, statusDot } from './hub-app.js';
-import { sb, state, h, icon, brandMark, wordmark, clientTitle, toast, errMsg, field, refreshMe, setClient, clearBusinessCache, rpc, role, promptBox, passwordToggle, canView, roleLabel } from './core.js';
+import { sb, state, h, icon, brandMark, wordmark, clientTitle, toast, errMsg, field, refreshMe, setClient, clearBusinessCache, rpc, role, promptBox, passwordToggle, canView, roleLabel, setMasterOpen } from './core.js';
 import { screensPage } from './pages/screens.js';
-import { clientsPage } from './pages/clients.js';
 import { screenPage } from './pages/screen.js';
 import { playlistsPage } from './pages/playlists.js';
 import { editorPage } from './pages/editor.js';
@@ -29,7 +28,6 @@ const routes = [
   [/^activity(\?.*)?$/, activityPage, 'activity'],
   [/^reports$/, reportsPage, 'reports'],
   [/^help$/, helpPage, 'help'],
-  [/^clients$/, clientsPage, 'clients'],
 ];
 
 let cleanup = null, renderSeq = 0;
@@ -75,6 +73,8 @@ async function render() {
   }
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
+  // Proview master with no customer opened from the licence portal: nothing of any business is loaded.
+  if (state.me.is_admin && state.me.master_home) return root.replaceChildren(masterHome());
   if (!state.me.is_admin && !state.me.clients.length) {
     // Added to a business but given no sites: not linked to anything yet (never the set-up screen).
     if (state.me.no_site_clients) return signOut(NOT_LINKED);
@@ -89,12 +89,9 @@ async function render() {
   }
   // Always have a valid business selected (never "none" for someone who belongs to one).
   if (state.me.clients.length && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
-  // Proview master: lands on All sites (every client and site). With no clients yet, All sites is the only page.
-  if (state.me.is_admin && (!path || !state.me.clients.length) && !/^(clients|help)$/.test(path)) return go('clients');
 
-  // A scanned TV code is waiting: Screens of the open business opens Add a TV with it (master with no business open: Locations).
-  if (hasPendingPair() && !/^(screens|clients)$/.test(path)) return go(state.clientId ? 'screens' : (state.me.is_admin ? 'clients' : 'screens'));
-  if (hasPendingPair() && path === 'screens' && !state.clientId && state.me.is_admin) return go('clients');
+  // A scanned TV code is waiting: Screens of the open business opens Add a TV with it.
+  if (hasPendingPair() && path !== 'screens') return go('screens');
 
   let match = null, page = null, section = null;
   for (const [re, fn, sec] of routes) { const m = path.match(re); if (m) { match = m; page = fn; section = sec; break; } }
@@ -115,7 +112,8 @@ async function render() {
     main.replaceChildren(errorPage(e));
   }
 }
-window.addEventListener('hashchange', () => { document.querySelectorAll('.modal-back').forEach((m) => (m._close ? m._close() : m.remove())); render(); });
+window.addEventListener('hashchange', () => { if (/[#&]pv_sso=/.test(location.hash)) return location.reload();   // a hand-off into an open tab: run it like a fresh load
+  document.querySelectorAll('.modal-back').forEach((m) => (m._close ? m._close() : m.remove())); render(); });
 
 // ------------------------------------------------------------ shell
 function nav(section) {
@@ -128,43 +126,33 @@ function nav(section) {
     ['activity', 'Activity', 'activity'],
     ['team', 'Users', 'team'],
   ].filter(([k]) => canView(k));
-  // The master always sees the usual pages (greyed out on All sites until a business/site is picked).
-  return { items: state.clientId || state.me.is_admin ? items : [], admin: state.me.is_admin, r, section };
+  return { items: state.clientId ? items : [], admin: state.me.is_admin, r, section };
 }
 
 // ------------------------------------------------------------ site picker (top header, same as Proview WiFi)
 // One picker, in the header right after the page title, on every screen size.
-//   master: "All sites (N)" (the All sites page), then every site by name (" · Business" only when two share a name)
-//   others: their business's sites ("All my sites (N)" + each site); exactly one site: its name, disabled
+//   everyone (the master too, inside the one business they opened): their business's sites
+//   ("All my sites (N)" + each site); exactly one site: its name, disabled
 // (the standard for all Proview apps: PICKER_STANDARD.md)
-// Values: '__all' | '<clientId>|all' | '<clientId>|<siteId>'. Choosing one selects the business (saved),
+// Values: '<clientId>|all' | '<clientId>|<siteId>'. Choosing one selects the business (saved),
 // sets the Screens site filter (signage.siteFilter.<client>) and stays on the same kind of page, as before.
 let pickSites = null;            // sites this person can see (null until the first load), refreshed on each page
 const siteFilterOf = (cid) => { try { return localStorage.getItem('signage.siteFilter.' + cid) || 'all'; } catch { return 'all'; } };
 async function loadPickSites() {
-  const { data, error } = await sb.from('sites').select('id, client_id, name');
+  let qry = sb.from('sites').select('id, client_id, name');
+  if (state.me?.master_open) qry = qry.eq('client_id', state.me.master_open);   // the master: only the opened business
+  const { data, error } = await qry;
   pickSites = !error && data ? data.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))) : pickSites || [];
 }
 function pickGroups() {
   return state.me.clients.map((c) => ({ c,
-    sites: (pickSites || []).filter((s) => s.client_id === c.id && (state.me.is_admin || !Array.isArray(c.site_ids) || c.site_ids.includes(s.id))) }));
+    sites: (pickSites || []).filter((s) => s.client_id === c.id && (!Array.isArray(c.site_ids) || c.site_ids.includes(s.id))) }));
 }
 function fillPicker(s) {
-  const admin = state.me.is_admin, groups = pickGroups();
+  const groups = pickGroups();
   const opt = (value, text) => h('option', { value, title: text }, text);
   const out = [];
-  if (admin) {
-    const all = groups.flatMap(({ c, sites }) => sites.map((x) => ({ c, x })))
-      .sort((a, b) => String(a.x.name).localeCompare(String(b.x.name)) || clientTitle(a.c).localeCompare(clientTitle(b.c)));
-    const dup = (x) => all.filter((y) => String(y.x.name).toLowerCase() === String(x.name).toLowerCase()).length > 1;
-    out.push(opt('__all', pickSites ? `All locations (${all.length})` : 'All locations'));
-    for (const { c, x } of all) out.push(opt(c.id + '|' + x.id, dup(x) ? `${x.name} · ${clientTitle(c)}` : x.name));
-    // A whole business opened from the All sites page ("Open" on its row) isn't in the list: the box reads
-    // "<Business> (all sites)" from a hidden selected option, so it still says where you are.
-    const cur = groups.find((g) => g.c.id === state.clientId);
-    if (cur && !/^#\/?clients/.test(location.hash) && !all.some((y) => y.c.id === cur.c.id && y.x.id === siteFilterOf(cur.c.id)))
-      out.push(h('option', { value: cur.c.id + '|all', hidden: true, disabled: true }, `${clientTitle(cur.c)} (all locations)`));
-  } else if (groups.length === 1) {
+  if (groups.length === 1) {
     const { c, sites } = groups[0];
     if (sites.length === 1) out.push(opt(c.id + '|' + sites[0].id, sites[0].name));
     else { out.push(opt(c.id + '|all', sites.length ? `All my locations (${sites.length})` : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
@@ -174,41 +162,29 @@ function fillPicker(s) {
       sites.map((x) => opt(c.id + '|' + x.id, `${clientTitle(c)} ▸ ${x.name}`))));
   }
   s.replaceChildren(...out);
-  s.disabled = !admin && (!pickSites || s.options.length <= 1);   // one site: shown in the same box, nothing to choose
+  s.disabled = !pickSites || s.options.length <= 1;   // one site: shown in the same box, nothing to choose
   syncPicker(s);
 }
-/** Select the option for where we are now (All sites page, or the business + its Screens site filter). */
+/** Select the option for where we are now (the business + its Screens site filter). */
 function syncPicker(s = document.querySelector('.hdr-pick select')) {
   if (!s || !state.me) return;
   const vals = [...s.options].map((o) => o.value), cid = state.clientId;
-  const want = state.me.is_admin && /^#\/?clients/.test(location.hash) ? '__all' : cid + '|' + siteFilterOf(cid);
+  const want = cid + '|' + siteFilterOf(cid);
   s.value = vals.includes(want) ? want : vals.includes(cid + '|all') ? cid + '|all' : vals.find((v) => v.startsWith(cid + '|')) || vals[0] || '';
   s.title = s.options[s.selectedIndex]?.text || '';
 }
 // The Screens page's own site filter changed: keep the header in step.
 window.addEventListener('signage:sitefilter', () => syncPicker());
 
-/** A greyed page was clicked on All sites: ask for a site, focus the header dropdown and pulse it. */
-function chooseSiteFirst() {
-  toast('Choose a location in the dropdown first');
-  const box = document.querySelector('.hdr-pick'), s = box?.querySelector('select');
-  if (!box || !s) return;
-  s.focus();
-  box.classList.remove('pulse'); void box.offsetWidth; box.classList.add('pulse');
-  setTimeout(() => box.classList.remove('pulse'), 1000);
-}
-
 function sitePicker() {
-  if (!state.me.clients.length && !state.me.is_admin) return null;
+  if (!state.me.clients.length) return null;
   const s = h('select', {
     id: 'hdr-site', 'aria-label': 'Choose location',
     onchange: (e) => {
-      // Proview master: "All sites" opens the overview of every client and site
-      if (e.target.value === '__all') return go('clients');
       const [cid, sid] = e.target.value.split('|');
       setClient(cid);
       try { localStorage.setItem('signage.siteFilter.' + cid, sid || 'all'); } catch {}
-      const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p && p !== 'clients' ? p : 'screens')); if (location.hash === to) render(); else location.hash = to;
+      const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p || 'screens')); if (location.hash === to) render(); else location.hash = to;
     },
   });
   fillPicker(s);
@@ -237,24 +213,15 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
-const PAGE_TITLES = { clients: 'Locations', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
+const PAGE_TITLES = { screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
-  // Master on All sites (no business/site picked): usual pages stay in place but greyed out; a click asks
-  // for a site in the header dropdown instead of opening the page (same in all Proview apps).
-  const onAll = n.admin && section === 'clients';
-  const link = (key, label, ic) => onAll
-    ? h('a', { class: 'disabled', role: 'link', tabindex: '0', 'aria-disabled': 'true', title: label + ' – choose a location first',
-        onclick: (e) => { e.preventDefault(); chooseSiteFirst(); },
-        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); chooseSiteFirst(); } } }, icon(ic), h('span', {}, label))
-    : h('a', { href: '#/' + key, class: section === key ? 'active' : '', title: label }, icon(ic), h('span', {}, label));
+  const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '', title: label }, icon(ic), h('span', {}, label));
 
   const meEl = sideMe(n.r);
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
     h('nav', { class: 'nav' },
-      // master only: All sites, always first (highlighted while the All sites page is showing)
-      n.admin ? h('a', { href: '#/clients', class: 'nav-allsites' + (section === 'clients' ? ' active' : ''), title: 'Locations', 'aria-current': section === 'clients' ? 'page' : null }, icon('clients'), h('span', {}, 'Locations')) : null,
       // group headers, same style as Proview Bookings (Service / Grow / Team / Manage)
       n.items.length ? h('div', { class: 'nav-sep' }, 'Content') : null,
       n.items.filter(([k]) => ['screens', 'playlists', 'media'].includes(k)).map(([k, l, i]) => link(k, l, i)),
@@ -291,7 +258,37 @@ function shell(section, main) {
     topMe);
   startHub(go);
   const scrim = h('div', { class: 'nav-scrim', onclick: toggleNav });
-  return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main), scrim);
+  return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, masterBar(), main), scrim);
+}
+
+// ------------------------------------------------------------ the master inside a customer / not inside one
+const LICENCE_PORTAL = 'https://license.proviewcrm.co.uk';
+/** "Viewing <Business> as Proview" under the header, while the master is inside a customer's business. */
+function masterBar() {
+  if (!state.me?.is_admin || !state.me.master_open) return null;
+  const c = state.me.clients.find((x) => x.id === state.me.master_open);
+  return h('div', { class: 'pv-master-bar', role: 'status' },
+    h('span', {}, 'Viewing ', h('b', {}, clientTitle(c) || 'this business'), ' as Proview'),
+    h('a', { href: LICENCE_PORTAL, class: 'pv-master-back' }, 'Back to licence portal'));
+}
+/** The master signed in here without opening a customer: one simple page, no business data. */
+function masterHome() {
+  const missing = state.me.master_missing;
+  const main = h('main', { class: 'main' },
+    h('div', { class: 'card pad stack pv-master-home' },
+      h('h1', {}, 'Open a customer from the licence portal'),
+      h('p', { class: 'muted', style: { margin: 0 } }, missing
+        ? 'That business couldn’t be found here. It may have been deleted. Open the customer again from the licence portal.'
+        : 'As Proview you open a customer’s Signage from their page in the licence portal (Open in Signage). It opens here, inside that business.'),
+      h('div', {}, h('a', { class: 'btn primary', href: LICENCE_PORTAL }, 'Go to license.proviewcrm.co.uk'))));
+  const side = h('aside', { class: 'side' },
+    h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
+    h('nav', { class: 'nav' }),
+    h('div', { class: 'side-foot' },
+      h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
+  const top = h('header', { class: 'top' }, h('h2', {}, 'Proview Signage'), h('div', { class: 'sp' }),
+    h('div', { class: 'top-me' }, h('button', { class: 'icon-btn top-out', title: 'Sign out', 'aria-label': 'Sign out', onclick: signOut }, icon('logout'))));
+  return h('div', { class: 'app pv-master-only' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main));
 }
 
 // ------------------------------------------------------------ notifications bell
@@ -310,7 +307,7 @@ function paintBells() {
 async function loadBells() {
   try {
     let qry = sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(60);
-    if (!state.me.is_admin && state.clientId) qry = qry.eq('client_id', state.clientId);
+    if (!state.clientId) { if (state.me.is_admin) return; } else qry = qry.eq('client_id', state.clientId);
     bellItems = await q(qry);
     // A licence reminder whose TV has been renewed since (lifetime, or a new end date) is marked done
     const ids = [...new Set(bellItems.filter((n) => /^licence_/.test(n.kind) && n.screen_id).map((n) => n.screen_id))];
@@ -366,6 +363,7 @@ async function signOut(message) {
   const why = typeof message === 'string' ? message : '';
   await sb.auth.signOut();
   state.me = null;
+  setMasterOpen(null);
   clearBusinessCache();   // nothing of this person's businesses stays on the device
   // Reason shown on the sign-in page after the reload below (e.g. "isn't linked to a business yet").
   if (why) { try { sessionStorage.setItem(SIGNIN_MSG, why); } catch {} }
@@ -443,6 +441,9 @@ async function pvSso(token) {
   const r = await fetch(cfg.SUPABASE_URL + '/functions/v1/sso-login', { method: 'POST', headers: { 'content-type': 'application/json', apikey: cfg.SUPABASE_ANON_KEY }, body: JSON.stringify({ assertion: token }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.token_hash) throw new Error(j.error || 'Sign-in with your Proview account failed. Please try again.');
+  // The master opened a customer from the licence portal: open exactly that business (kept per tab). A hand-off
+  // without one (an old link, or a non-master) clears it; sso-login only sends "open" for the master.
+  setMasterOpen(j.open || null);
   const cur = (await sb.auth.getSession()).data.session?.user;
   if (cur && String(cur.email || '').toLowerCase() !== j.email) await sb.auth.signOut();
   const { error } = await sb.auth.verifyOtp({ token_hash: j.token_hash, type: 'magiclink' });
@@ -751,7 +752,7 @@ setTimeout(async () => {
       promptBox('Choose a new password', 'New password (8+ characters)', { type: 'password', okLabel: 'Save password', minLength: 8 })
         .then((p) => p && sb.auth.updateUser({ password: p }).then(({ error }) => toast(error ? errMsg(error) : 'Password updated', !!error)));
     }
-    if (had && !session) clearBusinessCache();   // signed out (here, in another tab, or the session ended)
+    if (had && !session) { clearBusinessCache(); setMasterOpen(null); }   // signed out (here, in another tab, or the session ended)
     if (had !== !!session) { state.me = null; render(); }
   });
   render();

@@ -371,7 +371,42 @@ function pruneBusinessCache(me) {
   } catch {}
 }
 
+// ---------------------------------------------------------------- the master inside one customer (MASTER_OPEN_SPEC)
+// The Proview master has no view of every business here. The licence portal's "Open in Signage" signs them in
+// with a biz claim; sso-login answers { open: <client id> } and the app keeps it per tab (sessionStorage), so a
+// reload stays in that business and another "Open in Signage" switches. Without it: "Open a customer" page.
+export const MASTER_OPEN_KEY = 'pv_master_open';
+export function masterOpenId() { try { return sessionStorage.getItem(MASTER_OPEN_KEY) || null; } catch { return null; } }
+export function setMasterOpen(id) { try { id ? sessionStorage.setItem(MASTER_OPEN_KEY, String(id)) : sessionStorage.removeItem(MASTER_OPEN_KEY); } catch {} }
+/** The master's "me": only the opened business is loaded (whoami would list every business). */
+async function masterMe() {
+  const u = state.session?.user || (await sb.auth.getUser()).data.user;
+  const me = { user_id: u?.id, email: u?.email || '', is_admin: true, clients: [], master_home: true, master_missing: false };
+  const id = masterOpenId();
+  if (!id) return me;
+  const { data: c, error } = /^[0-9a-f-]{36}$/i.test(id)
+    ? await sb.from('clients').select('id, name, contact_email, require_approval, self_signup, trial_ends_at').eq('id', id).maybeSingle()
+    : { data: null, error: null };
+  if (error) throw error;
+  if (!c) { me.master_missing = true; return me; }
+  // Same fields whoami gives (042): has_licence, and trial_only (self sign-up, still only on its trial)
+  const scr = await q(sb.from('screens').select('license_type, license_expires_at').eq('client_id', c.id).not('license_type', 'is', null).limit(1000));
+  const paid = scr.some((x) => x.license_type !== 'trial7' && (x.license_type === 'lifetime' || (x.license_expires_at && new Date(x.license_expires_at) > new Date())));
+  me.clients = [{ ...c, role: 'admin', site_ids: null, features: {}, has_licence: scr.length > 0, trial_only: !!(c.self_signup && c.trial_ends_at && !paid) }];
+  me.master_home = false; me.master_open = c.id;
+  return me;
+}
+
 export async function refreshMe() {
+  // The master never loads whoami (it lists every business): only the business opened from the licence portal.
+  const admin = await sb.rpc('is_admin');
+  if (!admin.error && admin.data === true) {
+    const me = await masterMe();
+    if (!me.user_id) { await sb.auth.signOut().catch(() => {}); throw new Error('Your sign-in has ended. Please sign in again.'); }
+    state.me = me;
+    state.clientId = me.master_open || null;
+    return state.me;
+  }
   const me = await rpc('whoami');
   // No signed-in user (the session ended in the background): don't carry on with an empty account.
   if (!me?.user_id) { await sb.auth.signOut().catch(() => {}); throw new Error('Your sign-in has ended. Please sign in again.'); }
@@ -382,6 +417,11 @@ export async function refreshMe() {
     me.clients = all.filter((c) => !(c.role !== 'manager' && Array.isArray(c.site_ids) && c.site_ids.length === 0));
     me.no_site_clients = all.length - me.clients.length;
   }
+  if (me.is_admin) {   // is_admin() couldn't be asked first: still show only the opened business
+    const id = masterOpenId(), c = (me.clients || []).find((x) => x.id === id);
+    me.clients = c ? [c] : []; me.master_home = !c; me.master_missing = !!id && !c; if (c) me.master_open = c.id;
+    state.me = me; state.clientId = c?.id || null; return state.me;
+  }
   pruneBusinessCache(me);
   state.me = me;
   const ids = state.me.clients.map((c) => c.id);
@@ -391,6 +431,7 @@ export async function refreshMe() {
 }
 export function setClient(id) {
   if (!id) return;   // never switch to "no business": every page needs one
+  if (state.me?.master_open && id !== state.me.master_open) return;   // the master stays in the business they opened
   state.clientId = id;
   localStorage.setItem('signage.client', id);
 }

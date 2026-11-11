@@ -203,10 +203,10 @@ export const DASH = [
     'Renew on the TV’s page with **Renew online**, or contact Proview.',
   ]],
 
-  ['Administrators: Locations', 'For Proview staff who manage several businesses.', [
-    'Go to **Locations** and press **Add business**. Its location is created for you with the same name. Then invite its owner.',
-    'Assign TVs that are waiting for a business, and manage licences that need attention.',
-    'Set the TV menu options for all screens, such as how long before the player reopens.',
+  ['Administrators: opening a customer', 'For Proview staff.', [
+    'Customers are opened from the licence portal (license.proviewcrm.co.uk): on the customer’s page press **Open in Signage**.',
+    'Signage opens in a new tab inside that one business, with a “Viewing … as Proview” bar and a link back to the licence portal.',
+    'New businesses are added in the licence portal with **New customer**.',
   ]],
 ];
 
