@@ -1,6 +1,6 @@
 // "All sites" (Proview master, the landing page and the top of the client picker):
 // every client and each of its sites, with TV counts and licences. Open one to see it as its team does.
-import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen, field, copyText, passwordToggle } from '../core.js';
+import { sb, state, h, icon, isOnline, setClient, clientTitle, refreshMe, toast, errMsg, promptBox, modal, timeAgo, rpc, pairedLine, fmtWhen, copyText } from '../core.js';
 import { licenseState, businessTrial, businessTrialText, neverLicensed, locationSummary } from '../license.js';
 import { integrationsCards } from './integrations.js';
 import { takePendingPair } from './qr-scan.js';
@@ -43,88 +43,52 @@ export async function clientsPage({ main, go, rerender }) {
   // add_business (038) does the business, its location and the Owner login all-or-nothing on the server. For an invite the
   // login gets a random password nobody sees and Supabase emails a set-your-password link (app.js's PASSWORD_RECOVERY
   // handler then asks them to choose one).
-  const addClient = () => {
+  const addClient = () => window.pvAddBiz({ onSubmit: async (v, ui) => {   // the pop-up: web/pv-addbiz.js, shared by all six apps
     const rand = (n) => { const a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return [...crypto.getRandomValues(new Uint32Array(n))].map((x) => a[x % a.length]).join(''); };
-    const biz = h('input', { type: 'text', placeholder: 'e.g. Tolians', autocomplete: 'off' });
-    const name = h('input', { type: 'text', placeholder: 'e.g. Sam Taylor', autocomplete: 'off' });
-    const email = h('input', { type: 'email', placeholder: 'name@company.com', autocomplete: 'off' });
-    const mobile = h('input', { type: 'tel', placeholder: '07…', autocomplete: 'off' });
-    const pass = h('input', { type: 'password', placeholder: 'At least 6 characters', autocomplete: 'new-password' });
-    const suggest = () => { pass.value = rand(10); pass.type = 'text'; };
-    const req = (label) => h('span', {}, label, h('span', { style: { color: '#d92d20' } }, ' *'));
     const need = (input, msg) => { toast(msg, true); input.focus(); return false; };
-    const opt = (group, val, title, sub, on, badge) => h('label', { class: 'abz-opt' + (on ? ' on' : '') },
-      h('input', { type: 'radio', name: group, value: val, checked: !!on }),
-      h('span', { class: 't' }, h('b', {}, title), h('span', {}, sub)), badge ? h('span', { class: 'abz-badge' }, badge) : null);
-    const pwRow = h('div', { class: 'abz-pwrow', hidden: true }, field(req('Password'),
-      h('div', { class: 'row', style: { gap: '6px', flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, passwordToggle(pass)), h('button', { class: 'btn sm', type: 'button', onclick: suggest }, 'Suggest'))));
-    const signSet = h('fieldset', { class: 'abz-set' }, h('legend', {}, 'How will they sign in?'),
-      opt('abzSi', 'invite', 'Email them an invite', 'They get an email link and choose their own password.', true, 'Recommended'),
-      opt('abzSi', 'pw', 'Set a password now', 'No email is sent. You pass the password on yourself.', false),
-      pwRow);
-    const licSet = h('fieldset', { class: 'abz-set' }, h('legend', {}, 'Licence'), h('div', { class: 'abz-lic' },
-      opt('abzLic', 'none', 'None yet', 'They buy one when they sign in.', true),
-      opt('abzLic', 'trial', '3-day trial', 'Full access for 3 days, then it locks.', false),
-      opt('abzLic', 'set', 'Set it now', 'Then set it in the licence portal.', false)));
-    const body = h('div', { class: 'abz' },
-      h('div', { class: 'form-2' }, field(req('Business name'), biz), field(req('Owner’s name'), name),
-        field(req('Owner’s email'), email), field(h('span', {}, 'Mobile ', h('span', { class: 'muted', style: { fontWeight: 400 } }, '(optional)')), mobile)),
-      signSet, licSet);
-    const pick = (group) => body.querySelector(`input[name="${group}"]:checked`)?.value;
-    const m = modal({ title: 'Add business', body,
-      actions: [{ label: 'Cancel' }, { label: 'Add and send invite', class: 'primary', onClick: async () => {
-        const e = email.value.trim().toLowerCase(), b = biz.value.trim();
-        const invite = pick('abzSi') !== 'pw', lic = pick('abzLic') || 'none';
-        const pw = invite ? rand(24) : pass.value;
-        if (b.length < 2) return need(biz, 'Enter the business name');
-        if (name.value.trim().length < 2) return need(name, 'Enter the owner’s name');
-        if (!/^\S+@\S+\.\S+$/.test(e)) return need(email, 'Enter a valid email address');
-        if (!invite && pw.length < 6) return need(pass, 'The password needs at least 6 characters');
-        let r;
-        try { r = await rpc('add_business', { p_business: b, p_name: name.value.trim(), p_email: e, p_mobile: mobile.value.trim(), p_password: pw }); }
-        catch (err) { toast(errMsg(err), true); return false; }
-        const p = (text, cls) => h('p', { class: cls || '', style: { margin: 0 } }, text);
-        // licence: a 3-day business trial now (never replaces a licence already set)
-        let licLine;
-        if (lic === 'trial') {
-          try {
-            const t = await rpc('master_trial', { p_client: r.client_id });
-            licLine = t?.applied ? p(`On a 3-day trial until ${new Date(t.expires_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Each TV paired before then plays until the trial ends.`, 'notice ok')
-              : p('It already had a licence, so no trial was added.', 'muted');
-          } catch (err) { licLine = p(`The business was added, but the trial couldn’t be started: ${errMsg(err)}. Set a licence in the licence portal.`, 'notice warn'); }
-        } else if (lic === 'none') licLine = p('No licence yet: they buy one when they sign in.', 'muted');
-        else licLine = p('Next, set its licence in the licence portal.', 'muted');
-        // sign-in: email the invite (new logins only; an existing login keeps its password)
-        let signIn = null;
-        if (r?.existing) {
-          signIn = p(`${e} already had a PROVIEW SIGNAGE login, so they were made Owner / Admin of this business and keep the password they already use.${invite ? ' No invite was needed.' : ' The password you typed was not applied.'}`);
-        } else if (invite) {
-          const { error: me } = await sb.auth.resetPasswordForEmail(e, { redirectTo: location.origin + location.pathname });
-          signIn = me ? p(`The business was added, but the invite email couldn’t be sent (${errMsg(me)}). They can use “Forgot password?” on the sign-in page with ${e}.`, 'notice warn')
-            : h('p', { class: 'notice ok', style: { margin: 0 } }, 'Invite sent to ', h('b', {}, e), '. They open the email link and choose their own password.');
-        }
-        await refresh();
-        const site = location.origin + location.pathname;
-        const details = `PROVIEW SIGNAGE login\n${site}\nEmail: ${e}\nPassword: ${pw}`;
-        const pwCard = !r?.existing && !invite ? [
-          p('The owner can sign in now. No email was sent, so pass these on yourself:', 'muted'),
-          h('div', { class: 'notice info login-card' }, h('div', {}, h('span', { class: 'muted' }, 'Sign in at'), h('b', {}, site.replace(/^https?:\/\//, ''))), h('div', {}, h('span', { class: 'muted' }, 'Email'), h('b', {}, e)), h('div', {}, h('span', { class: 'muted' }, 'Password'), h('b', {}, pw))),
-          h('button', { class: 'btn', type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => copyText(details) }, icon('copy'), 'Copy login details')] : null;
-        setTimeout(() => {
-          const done = modal({ title: `${b} added`, body: h('div', { class: 'stack' }, signIn, pwCard, licLine),
-            actions: [{ label: 'Stay here' }, { label: 'Open business', class: 'primary', onClick: () => open(r.client_id) }] });
-          if (lic === 'set') done.el.querySelector('.modal-foot').prepend(h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Set licence ↗'));
-        }, 50);
-      } }] });
-    m.el.querySelector('.modal').classList.add('abz-modal');
-    const foot = m.el.querySelector('.modal-foot'), go1 = foot.lastElementChild;
-    foot.prepend(h('span', { class: 'tiny abz-note' }, 'Adds the business and a location with the same name.'));
-    body.addEventListener('change', (ev) => {
-      const t = ev.target; if (!t || t.type !== 'radio') return;
-      body.querySelectorAll(`input[name="${t.name}"]`).forEach((x) => x.closest('.abz-opt').classList.toggle('on', x.checked));
-      if (t.name === 'abzSi') { const pw = t.value === 'pw'; pwRow.hidden = !pw; go1.textContent = pw ? 'Add business' : 'Add and send invite'; if (pw) pass.focus(); }
-    });
-  };
+    const e = v.email, b = v.biz, invite = v.invite, lic = v.lic;
+    const pw = invite ? rand(24) : v.password;
+    if (b.length < 2) return need(ui.input('biz'), 'Enter the business name');
+    if (v.name.length < 2) return need(ui.input('name'), 'Enter the owner’s name');
+    if (!/^\S+@\S+\.\S+$/.test(e)) return need(ui.input('email'), 'Enter a valid email address');
+    if (!invite && pw.length < 6) return need(ui.input('pw'), 'The password needs at least 6 characters');
+    let r;
+    try { r = await rpc('add_business', { p_business: b, p_name: v.name, p_email: e, p_mobile: v.mobile, p_password: pw }); }
+    catch (err) { toast(errMsg(err), true); return false; }
+    const p = (text, cls) => h('p', { class: cls || '', style: { margin: 0 } }, text);
+    // licence: a 3-day business trial now (never replaces a licence already set)
+    let licLine;
+    if (lic === 'trial') {
+      try {
+        const t = await rpc('master_trial', { p_client: r.client_id });
+        licLine = t?.applied ? p(`On a 3-day trial until ${new Date(t.expires_at).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Each TV paired before then plays until the trial ends.`, 'notice ok')
+          : p('It already had a licence, so no trial was added.', 'muted');
+      } catch (err) { licLine = p(`The business was added, but the trial couldn’t be started: ${errMsg(err)}. Set a licence in the licence portal.`, 'notice warn'); }
+    } else if (lic === 'none') licLine = p('No licence yet: they buy one when they sign in.', 'muted');
+    else licLine = p('Next, set its licence in the licence portal.', 'muted');
+    // sign-in: email the invite (new logins only; an existing login keeps its password)
+    let signIn = null;
+    if (r?.existing) {
+      signIn = p(`${e} already had a PROVIEW SIGNAGE login, so they were made Owner / Admin of this business and keep the password they already use.${invite ? ' No invite was needed.' : ' The password you typed was not applied.'}`);
+    } else if (invite) {
+      const { error: me } = await sb.auth.resetPasswordForEmail(e, { redirectTo: location.origin + location.pathname });
+      signIn = me ? p(`The business was added, but the invite email couldn’t be sent (${errMsg(me)}). They can use “Forgot password?” on the sign-in page with ${e}.`, 'notice warn')
+        : h('p', { class: 'notice ok', style: { margin: 0 } }, 'Invite sent to ', h('b', {}, e), '. They open the email link and choose their own password.');
+    }
+    await refresh();
+    const site = location.origin + location.pathname;
+    const details = `PROVIEW SIGNAGE login\n${site}\nEmail: ${e}\nPassword: ${pw}`;
+    const pwCard = !r?.existing && !invite ? [
+      p('The owner can sign in now. No email was sent, so pass these on yourself:', 'muted'),
+      h('div', { class: 'notice info login-card' }, h('div', {}, h('span', { class: 'muted' }, 'Sign in at'), h('b', {}, site.replace(/^https?:\/\//, ''))), h('div', {}, h('span', { class: 'muted' }, 'Email'), h('b', {}, e)), h('div', {}, h('span', { class: 'muted' }, 'Password'), h('b', {}, pw))),
+      h('button', { class: 'btn', type: 'button', style: { alignSelf: 'flex-start' }, onclick: () => copyText(details) }, icon('copy'), 'Copy login details')] : null;
+    setTimeout(() => {
+      const done = modal({ title: `${b} added`, body: h('div', { class: 'stack' }, signIn, pwCard, licLine),
+        actions: [{ label: 'Stay here' }, { label: 'Open business', class: 'primary', onClick: () => open(r.client_id) }] });
+      if (lic === 'set') done.el.querySelector('.modal-foot').prepend(h('a', { class: 'btn', href: LIC_PORTAL, target: '_blank', rel: 'noopener' }, 'Set licence ↗'));
+    }, 50);
+    return true;
+  } });
 
   const online = screens.filter(isOnline);
   const ids = new Set(clients.map((c) => c.id));
