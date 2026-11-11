@@ -88,6 +88,7 @@ export function businessTrialText(t) {
  */
 export function neverLicensed(c, screens = null) {
   if (!c || businessTrial(c)) return false;
+  if (c.trial_ends_at && Date.now() < new Date(c.trial_ends_at).getTime()) return false;   // 3-day trial from the master's Add business (044)
   if (typeof c.has_licence === 'boolean') return !c.has_licence;
   return Array.isArray(screens) ? !screens.some((s) => s.license_type) : false;
 }
