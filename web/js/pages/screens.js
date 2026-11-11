@@ -1,4 +1,4 @@
-import { clientLabel, clientTitle } from '../core.js';
+import { clientTitle } from '../core.js';
 import { publishOrRequest, renameDialog } from '../core.js';
 import { headChips, pairedLine } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, timeAgo, isOnline, canManage, hasFeature, mediaUrl, needsPublish, currentClient } from '../core.js';
@@ -55,7 +55,7 @@ export function statusBadges(screen, rules, byId) {
   return out;
 }
 
-export async function pairDialog({ fixedClient, clients, onDone, siteId = '', code: initialCode = '' }) {
+export async function pairDialog({ fixedClient, onDone, siteId = '', code: initialCode = '' }) {
   const code = h('input', { type: 'text', class: 'code-input', maxLength: 6, placeholder: 'ABC123', autocomplete: 'off', autocapitalize: 'characters', value: initialCode });
   const scanBtn = h('button', { type: 'button', class: 'btn', title: 'Scan the QR code on the TV', onclick: () => scanDialog((c) => { code.value = c; name.focus(); }) }, icon('qr'), 'Scan QR');
   const name = h('input', { type: 'text', placeholder: 'e.g. Reception TV' });
@@ -71,7 +71,6 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '', co
     site = sites[0]?.id || '';
     siteWrap.replaceChildren(sites.length > 1 ? field('Location', siteSelect(sites, site, (v) => (site = v))) : null);
   };
-  const pick = clients ? select([['', '— Assign later —'], ...clients.map((c) => [c.id, clientLabel(c)])], clientId, (v) => { clientId = v; paintSites(); }) : null;
   paintSites();
   modal({
     title: 'Add a TV',
@@ -79,7 +78,6 @@ export async function pairDialog({ fixedClient, clients, onDone, siteId = '', co
       h('div', { class: 'notice info' }, initialCode ? `Code ${initialCode} from the TV’s QR code. Give the screen a name and press Pair TV.` : 'Open the PROVIEW SIGNAGE app on the TV. It shows a 6-character code: type it below, or scan the QR code next to it.'),
       field('Pairing code', h('div', { class: 'row', style: { gap: '8px', flexWrap: 'nowrap' } }, code, scanBtn)),
       field('Screen name', name),
-      pick ? field('Business', pick, 'Which business will manage this TV?') : null,
       siteWrap,
       field('Position at the location', loc),
     ],

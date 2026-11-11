@@ -891,8 +891,6 @@ html .app .side .side-me.side-me,html .side .side-foot [data-act=logout],html .s
 .ov-v { font-size: 26px; font-weight: 700; margin-top: 4px; }
 .ov-search { height: 40px; width: 320px; max-width: 100%; }
 .ov-tools { display: flex; justify-content: flex-end; margin-bottom: 12px; }
-.ov-warnbox { display: flex; align-items: center; gap: 14px; padding: 14px 18px; margin-bottom: 18px; border-color: #f0c9a0; background: #fffaf3; flex-wrap: wrap; }
-.ov-warnicon { width: 34px; height: 34px; border-radius: 10px; background: #fdf1dc; color: #a35f00; display: grid; place-items: center; font-weight: 800; flex: none; }
 .ov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 18px; align-items: start; }
 .ov-biz { display: flex; flex-direction: column; overflow: hidden; }
 .ov-bh { display: flex; align-items: flex-start; gap: 10px; padding: 16px 18px 12px; }
@@ -983,17 +981,6 @@ html .side .nav > a.disabled:hover { background: none; color: var(--side-ink, #c
 .chip.warn { background: #fdf1dc; color: #7a4d00; }
 .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-/* Locations page: TVs waiting to be paired */
-.ov-waiting { margin-bottom: 18px; padding: 6px 0; }
-.ov-wh { display: flex; align-items: center; gap: 10px; padding: 10px 18px; flex-wrap: wrap; }
-.ov-wh h2 { margin: 0; font-size: 17px; }
-.ov-wrow { display: flex; align-items: center; gap: 14px; padding: 11px 18px; border-top: 1px solid var(--line); }
-.ov-code { font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; padding: 8px 12px; border-radius: 10px; background: #eef2fd; color: #1f3f8f; }
-
-.ov-pick { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
-.ov-pick:has(input[type=radio]:checked) { border-color: #2f84d4; background: #f3f7fe; }
-.ov-pick b { display: block; margin-bottom: 8px; }
-.ov-pick select, .ov-pick input[type=text] { width: 100%; }
 
 /* Add user pop-up */
 .form-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }

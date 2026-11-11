@@ -11,6 +11,7 @@ import { teamPage } from './pages/team.js';
 import { activityPage } from './pages/activity.js';
 import { reportsPage } from './pages/reports.js';
 import { helpPage } from './pages/help.js';
+import { integrationsCards } from './pages/integrations.js';
 import { q, timeAgo, modal } from './core.js';
 
 const root = document.getElementById('root');
@@ -28,6 +29,7 @@ const routes = [
   [/^activity(\?.*)?$/, activityPage, 'activity'],
   [/^reports$/, reportsPage, 'reports'],
   [/^help$/, helpPage, 'help'],
+  [/^platform$/, platformPage, 'platform'],
 ];
 
 let cleanup = null, renderSeq = 0;
@@ -74,7 +76,14 @@ async function render() {
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
   // Proview master with no customer opened from the licence portal: nothing of any business is loaded.
-  if (state.me.is_admin && state.me.master_home) return root.replaceChildren(masterHome());
+  if (state.me.is_admin && state.me.master_home) {
+    if (path !== 'platform') return root.replaceChildren(masterHome());
+    const main = masterHome(true);
+    root.replaceChildren(main.closest('.app'));
+    main.replaceChildren(h('div', { class: 'row', style: { gap: '10px', color: '#888' } }, h('div', { class: 'spinner' }), 'Loading…'));
+    await platformPage({ main, rerender: render });
+    return;
+  }
   if (!state.me.is_admin && !state.me.clients.length) {
     // Added to a business but given no sites: not linked to anything yet (never the set-up screen).
     if (state.me.no_site_clients) return signOut(NOT_LINKED);
@@ -213,7 +222,7 @@ function sideMe(r) {
     canTeam ? icon('right') : null);
 }
 
-const PAGE_TITLES = { screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
+const PAGE_TITLES = { platform: 'Platform settings', screens: 'Screens', playlists: 'Playlists', media: 'Media', reports: 'Reports', activity: 'Activity', team: 'Users', help: 'Help' };
 function shell(section, main) {
   const n = nav(section);
   const link = (key, label, ic) => h('a', { href: '#/' + key, class: section === key ? 'active' : '', title: label }, icon(ic), h('span', {}, label));
@@ -228,7 +237,8 @@ function shell(section, main) {
       n.items.some(([k]) => ['reports', 'activity'].includes(k)) ? h('div', { class: 'nav-sep' }, 'Insights') : null,
       n.items.filter(([k]) => ['reports', 'activity'].includes(k)).map(([k, l, i]) => link(k, l, i)),
       n.items.some(([k]) => k === 'team') ? h('div', { class: 'nav-sep' }, 'Manage') : null,
-      n.items.filter(([k]) => ['team'].includes(k)).map(([k, l, i]) => link(k, l, i))),
+      n.items.filter(([k]) => ['team'].includes(k)).map(([k, l, i]) => link(k, l, i)),
+      platformNav(section)),
     meEl,
     h('div', { class: 'side-foot' },
       h('button', { class: 'sf-link', title: 'Collapse menu', 'aria-label': 'Collapse menu', onclick: toggleSide }, icon('left'), h('span', { class: 'lbl' }, 'COLLAPSE')),
@@ -271,8 +281,22 @@ function masterBar() {
     h('span', {}, 'Viewing ', h('b', {}, clientTitle(c) || 'this business'), ' as Proview'),
     h('a', { href: LICENCE_PORTAL, class: 'pv-master-back' }, 'Back to licence portal'));
 }
-/** The master signed in here without opening a customer: one simple page, no business data. */
-function masterHome() {
+/** Platform settings (alerts & email, offline alerts): the Proview master only, last in the sidebar. No business data. */
+function platformNav(section) {
+  if (!state.me?.is_admin) return null;
+  return [h('div', { class: 'nav-sep' }, 'Proview'),
+    h('a', { href: '#/platform', class: 'nav-platform' + (section === 'platform' ? ' active' : ''), title: 'Platform settings', 'aria-current': section === 'platform' ? 'page' : null }, icon('cog'), h('span', {}, 'Platform settings'))];
+}
+async function platformPage({ main, rerender }) {
+  const body = h('div', { class: 'stack' },
+    h('p', { class: 'muted', style: { margin: 0 } }, 'Settings for the whole Proview Signage platform, not one business.'),
+    await integrationsCards(rerender).catch(() => h('div', { class: 'notice' }, 'Could not load alerts & email settings.')));
+  main.replaceChildren(body);
+  return body;
+}
+/** The master signed in here without opening a customer: one simple page, no business data.
+ *  asShell = true: the same shell with Platform settings open (returns its <main>). */
+function masterHome(asShell = false) {
   const missing = state.me.master_missing;
   const main = h('main', { class: 'main' },
     h('div', { class: 'card pad stack pv-master-home' },
@@ -283,12 +307,14 @@ function masterHome() {
       h('div', {}, h('a', { class: 'btn primary', href: LICENCE_PORTAL }, 'Go to license.proviewcrm.co.uk'))));
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
-    h('nav', { class: 'nav' }),
+    h('nav', { class: 'nav' }, platformNav(asShell ? 'platform' : '')),
     h('div', { class: 'side-foot' },
       h('button', { class: 'sf-link', title: 'Sign out', 'aria-label': 'Sign out', style: { marginLeft: 'auto' }, onclick: signOut }, icon('logout'), h('span', { class: 'lbl' }, 'SIGN OUT'))));
-  const top = h('header', { class: 'top' }, h('h2', {}, 'Proview Signage'), h('div', { class: 'sp' }),
+  if (asShell) main.replaceChildren();
+  const top = h('header', { class: 'top' }, h('h2', {}, asShell ? 'Platform settings' : 'Proview Signage'), h('div', { class: 'sp' }),
     h('div', { class: 'top-me' }, h('button', { class: 'icon-btn top-out', title: 'Sign out', 'aria-label': 'Sign out', onclick: signOut }, icon('logout'))));
-  return h('div', { class: 'app pv-master-only' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main));
+  const app = h('div', { class: 'app pv-master-only' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, main));
+  return asShell ? main : app;
 }
 
 // ------------------------------------------------------------ notifications bell

@@ -207,6 +207,7 @@ export const DASH = [
     'Customers are opened from the licence portal (license.proviewcrm.co.uk): on the customer’s page press **Open in Signage**.',
     'Signage opens in a new tab inside that one business, with a “Viewing … as Proview” bar and a link back to the licence portal.',
     'New businesses are added in the licence portal with **New customer**.',
+    'Alert emails and offline alerts for the whole platform are under **Platform settings** at the bottom of the menu.',
   ]],
 ];
 
