@@ -12,7 +12,7 @@ import { shrinkImage } from './imgfit.js';
 import { sleepState, hhmm, DEFAULT_SLEEP } from './sleep.js';
 
 const qs = new URLSearchParams(location.search);
-const APP = qs.get('app') ? `Android ${qs.get('app')}` : 'Web player';
+const APP = qs.get('app') ? (/^pi-/.test(qs.get('app')) ? `Raspberry Pi ${qs.get('app').slice(3)}` : `Android ${qs.get('app')}`) : 'Web player';
 const MODEL = qs.get('model') || '';
 const HW = /^[0-9a-f]{64}$/.test(qs.get('hw') || '') ? qs.get('hw') : '';
 const sb = makeClient('signage-tv');

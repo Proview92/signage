@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROVIEW SIGNAGE – Raspberry Pi player</title>
+<style>
+  body { margin: 0; min-height: 100vh; background: #0f1a33; color: #fff; font: 500 18px/1.6 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 22px; }
+  h1 { font-size: 32px; margin: 0 0 6px; } h2 { font-size: 20px; margin: 30px 0 8px; }
+  p, li { color: #c9d3ea; } b { color: #fff; }
+  pre { background: #08101f; border: 1px solid #25355c; border-radius: 12px; padding: 16px; overflow-x: auto; font: 15px/1.5 ui-monospace, Menlo, monospace; color: #9fe1cb; user-select: all; }
+  button { margin-top: 8px; padding: 10px 18px; border: 0; border-radius: 10px; background: #2f84d4; color: #fff; font: 600 16px system-ui; cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>PROVIEW SIGNAGE on Raspberry Pi</h1>
+  <p>Turns a Raspberry Pi into a signage player that starts by itself when it is switched on.</p>
+  <h2>You need</h2>
+  <ul>
+    <li>A <b>Raspberry Pi 4 or 5</b> with <b>Raspberry Pi OS (with desktop)</b></li>
+    <li>It connected to the internet and to the screen by HDMI</li>
+  </ul>
+  <h2>Install</h2>
+  <p>On the Pi, open <b>Terminal</b>, paste this line and press Enter:</p>
+  <pre id="cmd">curl -fsSL https://app.proviewsignage.co.uk/pi/install.sh | bash</pre>
+  <button onclick="navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(()=>this.textContent='Copied')">Copy</button>
+  <p>When it says <b>Done</b>, restart the Pi. The pairing code and QR appear on the screen: pair it from the <b>Screens</b> page of your dashboard.</p>
+  <h2>Remove</h2>
+  <pre>curl -fsSL https://app.proviewsignage.co.uk/pi/install.sh | bash -s -- --remove</pre>
+  <p style="font-size:15px">Help: 020 8935 5495</p>
+</main>
+</body>
+</html>
