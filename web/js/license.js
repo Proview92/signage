@@ -100,11 +100,9 @@ export const NO_LICENCE_TEXT = 'No licence yet: buy a licence to start using Pro
  * location's licence (screens.site_license_type / site_license_expires_at): a TV plays only if both are valid.
  */
 export const LOCATION_NO_LICENCE_TEXT = 'This business needs a licence before its TVs can play';
-/** The licence of a TV's location, from the TV's own row; null before migration 045 (then only the TV licence counts). */
-export function tvLocationLicence(screen) {
-  if (!screen || !('site_license_type' in screen)) return null;
-  return { license_type: screen.site_license_type, license_expires_at: screen.site_license_expires_at };
-}
+/** Signage is licensed per TV only (owner, 12 Nov 2026, migration 050): a TV's location never blocks it. Kept so
+ *  older callers still work; always null, so locationBlocks is always false and tvCanPlay is the TV's own licence. */
+export function tvLocationLicence(screen) { return null; }
 const BLOCKED = ['expired', 'none'];
 /** The TV can't play because of its location's licence (its own licence may be fine). */
 export function locationBlocks(screen) {
