@@ -26,7 +26,7 @@ export function publishSummary({ ok, pending, failed }) {
 /** Ask whether to replace or add on. Resolves 'replace' | 'add' | null. */
 function replaceOrAdd(playlist, conflicts, plName) {
   return new Promise((resolve) => {
-    let done = false;
+    let done = false, choice = null;
     modal({
       title: 'These TVs already have a playlist',
       body: [
@@ -34,15 +34,14 @@ function replaceOrAdd(playlist, conflicts, plName) {
         h('div', { class: 'list card', style: { maxHeight: '30vh', overflow: 'auto' } }, conflicts.map((s) => h('div', { class: 'list-row' },
           h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, s.name),
             h('div', { class: 'tiny' }, 'Now playing: ' + [s.default_playlist_id, ...(s.also_playlist_ids || [])].map((i) => plName[i]).filter(Boolean).join(' + ')))))),
-        h('div', { class: 'grid2' },
-          h('div', { class: 'card pad' }, h('h3', {}, 'Replace'), h('div', { class: 'tiny', style: { marginTop: '4px' } }, `Stop the current playlist and play only “${playlist.name}”.`)),
-          h('div', { class: 'card pad' }, h('h3', {}, 'Add on'), h('div', { class: 'tiny', style: { marginTop: '4px' } }, `Keep the current playlist and play “${playlist.name}” after it, in a loop.`))),
+        h('div', { class: 'grid2' }, [['replace', 'Replace', `Stop the current playlist and play only “${playlist.name}”.`], ['add', 'Add on', `Keep the current playlist and play “${playlist.name}” after it, in a loop.`]].map(([val, label, sub]) =>
+          h('label', { class: 'role-card', style: { padding: '16px 18px' } },
+            h('input', { type: 'radio', name: 'roa', value: val, onchange: () => { choice = val; } }),
+            h('b', { style: { fontSize: '17px' } }, label), h('span', { class: 'tiny', style: { marginTop: '4px' } }, sub)))),
       ],
       onClose: () => { if (!done) resolve(null); },
       actions: [
-        { label: 'Cancel', onClick: () => { done = true; resolve(null); } },
-        { label: 'Add on', onClick: () => { done = true; resolve('add'); } },
-        { label: 'Replace', class: 'primary', onClick: () => { done = true; resolve('replace'); } },
+        { label: 'Apply', class: 'primary', onClick: () => { if (!choice) { toast('Choose Replace or Add on', true); return false; } done = true; resolve(choice); } },
       ],
     });
   });
