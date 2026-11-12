@@ -339,7 +339,6 @@ export async function screensPage({ main, go }) {
         sites.length > 1 ? `${sites.length} locations` : null,
         clientTitle(client)),
       h('div', { class: 'row' },
-        canManage() && screens.length >= 2 ? h('button', { class: 'btn', title: 'Choose the order the TVs are listed in', onclick: () => sortTvsDialog(screens, refresh) }, h('span', { 'aria-hidden': 'true', style: { fontWeight: 700 } }, '↕'), 'Sort TVs') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() && screens.some((s) => installedApp(s)) ? (() => {
           const n = screens.filter((s) => appBehind(s, latest)).length;
@@ -389,7 +388,7 @@ export async function screensPage({ main, go }) {
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },
-          canManage() && g.id !== 'none' ? h('button', { class: 'btn sm ghost', onclick: () => addTv(g.id) }, icon('plus'), 'Add TV here') : null)) : null,
+          canManage() && g.items.length >= 2 ? h('button', { class: 'btn sm ghost', title: 'Choose the order the TVs are listed in', onclick: () => sortTvsDialog(g.items, refresh) }, h('span', { 'aria-hidden': 'true', style: { fontWeight: 700 } }, '↕'), 'Sort TVs') : null)) : null,
       g.items.length ? h('div', { class: 'cards' }, g.items.map((s) => card(s, data.rules, data.byId)))
         : h('div', { class: 'card pad muted small' }, 'No TVs at this location yet.'))));
   };
