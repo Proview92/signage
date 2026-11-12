@@ -22,7 +22,40 @@ export async function loadClientData(clientId) {
     q(sb.from('schedule_items').select('*').eq('client_id', clientId).order('priority', { ascending: false })),
     loadSites(clientId),
   ]);
+  // The order set with "Sort TVs" first; TVs with no order yet follow, by name.
+  screens.sort((a, b) => (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) || String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true }));
   return { screens, playlists, rules, sites, byId: Object.fromEntries(playlists.map((p) => [p.id, p])) };
+}
+
+/** Owner / Admin and master: put the business's TVs in their own order (arrows, or drag a row). */
+function sortTvsDialog(screens, onDone) {
+  let list = [...screens];
+  const box = h('div', { class: 'sort-list' });
+  let dragId = null;
+  const move = (i, to) => { if (to < 0 || to >= list.length) return; const [x] = list.splice(i, 1); list.splice(to, 0, x); paint(to); };
+  const paint = (focus) => {
+    box.replaceChildren(...list.map((s, i) => h('div', { class: 'sort-row', draggable: 'true', 'data-id': s.id,
+      ondragstart: (e) => { dragId = s.id; e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); },
+      ondragend: (e) => { dragId = null; e.currentTarget.classList.remove('dragging'); },
+      ondragover: (e) => { e.preventDefault(); },
+      ondrop: (e) => { e.preventDefault(); const from = list.findIndex((x) => x.id === dragId); if (from >= 0 && from !== i) move(from, i); } },
+      h('span', { class: 'sort-grip', 'aria-hidden': 'true' }, '⋮⋮'),
+      h('span', { class: 'sort-num' }, String(i + 1)),
+      h('span', { class: 'grow', style: { fontWeight: 600, minWidth: 0 } }, s.name || 'Unnamed TV', h('span', { class: 'tiny', style: { display: 'block', fontWeight: 500 } }, isOnline(s) ? 'Online' : 'Offline')),
+      h('button', { class: 'btn sm icon', type: 'button', disabled: i === 0, 'aria-label': 'Move up', title: 'Move up', onclick: () => move(i, i - 1) }, '↑'),
+      h('button', { class: 'btn sm icon', type: 'button', disabled: i === list.length - 1, 'aria-label': 'Move down', title: 'Move down', onclick: () => move(i, i + 1) }, '↓'))));
+    if (focus != null) box.children[focus]?.scrollIntoView({ block: 'nearest' });
+  };
+  paint();
+  modal({ title: 'Sort TVs', body: [h('p', { class: 'muted small', style: { margin: 0 } }, 'Use the arrows or drag a TV to move it. Everyone in the business sees this order.'), box],
+    actions: [
+      { label: 'A to Z', onClick: () => { list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true })); paint(); return false; } },
+      { label: 'Cancel' },
+      { label: 'Save order', class: 'primary', onClick: async () => {
+        try { await rpc('set_screen_order', { p_client: list[0].client_id, p_ids: list.map((s) => s.id) }); }
+        catch (e) { toast(e.message || String(e), true); return false; }
+        toast('TV order saved'); onDone?.();
+      } }] });
 }
 
 export function screenThumb(screen, contentOverride) {
@@ -306,6 +339,7 @@ export async function screensPage({ main, go }) {
         sites.length > 1 ? `${sites.length} locations` : null,
         clientTitle(client)),
       h('div', { class: 'row' },
+        canManage() && screens.length >= 2 ? h('button', { class: 'btn', title: 'Choose the order the TVs are listed in', onclick: () => sortTvsDialog(screens, refresh) }, h('span', { 'aria-hidden': 'true', style: { fontWeight: 700 } }, '↕'), 'Sort TVs') : null,
         canManage() && screens.length >= 2 ? h('button', { class: 'btn', onclick: () => wallDialog({ screens, playlists: data.playlists, onDone: refresh }) }, 'Video wall') : null,
         canManage() && screens.some((s) => installedApp(s)) ? (() => {
           const n = screens.filter((s) => appBehind(s, latest)).length;
