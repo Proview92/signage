@@ -138,69 +138,55 @@ function nav(section) {
   return { items: state.clientId ? items : [], admin: state.me.is_admin, r, section };
 }
 
-// ------------------------------------------------------------ site picker (top header, same as Proview WiFi)
-// One picker, in the header right after the page title, on every screen size.
-//   everyone (the master too, inside the one business they opened): their business's sites
-//   ("All my sites (N)" + each site); exactly one site: its name, disabled
-// (the standard for all Proview apps: PICKER_STANDARD.md)
-// Values: '<clientId>|all' | '<clientId>|<siteId>'. Choosing one selects the business (saved),
-// sets the Screens site filter (signage.siteFilter.<client>) and stays on the same kind of page, as before.
+// ------------------------------------------------------------ business picker (top header)
+// MULTI_BUSINESS_PICKER_STANDARD (owner update 07:47): business names only. Someone in several businesses gets one
+// option per usable business, by name; picking one opens that whole business (all its locations). One business (and the
+// master inside the business opened from the licence portal): its name in the same box, disabled. No location entries:
+// the Screens page shows every location of the business, grouped by location.
 let pickSites = null;            // sites this person can see (null until the first load), refreshed on each page
-const siteFilterOf = (cid) => { try { return localStorage.getItem('signage.siteFilter.' + cid) || 'all'; } catch { return 'all'; } };
 async function loadPickSites() {
-  let qry = sb.from('sites').select('id, client_id, name');
-  if (state.me?.master_open) qry = qry.eq('client_id', state.me.master_open);   // the master: only the opened business
-  const { data, error } = await qry;
-  pickSites = !error && data ? data.slice().sort((a, b) => String(a.name).localeCompare(String(b.name))) : pickSites || [];
+  if (state.me?.master_open || state.me.clients.length < 2) return;   // only needed to leave out unusable businesses
+  const { data, error } = await sb.from('sites').select('id, client_id, name');
+  pickSites = !error && data ? data : pickSites;
 }
-function pickGroups() {
-  return state.me.clients.map((c) => ({ c,
-    sites: (pickSites || []).filter((s) => s.client_id === c.id && (!Array.isArray(c.site_ids) || c.site_ids.includes(s.id))) }));
+const byName = (a, b) => String(a).toLowerCase().localeCompare(String(b).toLowerCase());
+/** Businesses to list: by name; with several, only usable ones (at least one location this person can see). */
+function pickClients() {
+  const cs = state.me.clients.slice().sort((a, b) => byName(clientTitle(a), clientTitle(b)));
+  const all = pickSites || state.me.sites;
+  if (cs.length < 2 || !all) return cs;
+  const usable = cs.filter((c) => all.some((s) => s.client_id === c.id && (!Array.isArray(c.site_ids) || c.site_ids.includes(s.id))));
+  return usable.length >= 2 ? usable : cs.filter((c) => c.id === state.clientId);
 }
 function fillPicker(s) {
-  const groups = pickGroups();
-  const opt = (value, text) => h('option', { value, title: text }, text);
-  const out = [];
-  if (groups.length === 1) {
-    const { c, sites } = groups[0];
-    if (sites.length === 1) out.push(opt(c.id + '|' + sites[0].id, sites[0].name));
-    else { out.push(opt(c.id + '|all', sites.length ? `All my locations (${sites.length})` : clientTitle(c))); for (const x of sites) out.push(opt(c.id + '|' + x.id, x.name)); }
-  } else {
-    for (const { c, sites } of groups) out.push(h('optgroup', { label: clientTitle(c) },
-      opt(c.id + '|all', sites.length ? `${clientTitle(c)} ▸ All my locations` : clientTitle(c)),
-      sites.map((x) => opt(c.id + '|' + x.id, `${clientTitle(c)} ▸ ${x.name}`))));
-  }
-  s.replaceChildren(...out);
-  s.disabled = !pickSites || s.options.length <= 1;   // one site: shown in the same box, nothing to choose
+  const cs = pickClients();
+  s.replaceChildren(...cs.map((c) => h('option', { value: c.id, title: clientTitle(c) }, clientTitle(c))));
+  s.disabled = cs.length <= 1;   // one business: its name in the same box, nothing to choose
   syncPicker(s);
 }
-/** Select the option for where we are now (the business + its Screens site filter). */
+/** Select the business we are in now. */
 function syncPicker(s = document.querySelector('.hdr-pick select')) {
   if (!s || !state.me) return;
-  const vals = [...s.options].map((o) => o.value), cid = state.clientId;
-  const want = cid + '|' + siteFilterOf(cid);
-  s.value = vals.includes(want) ? want : vals.includes(cid + '|all') ? cid + '|all' : vals.find((v) => v.startsWith(cid + '|')) || vals[0] || '';
+  const vals = [...s.options].map((o) => o.value);
+  s.value = vals.includes(state.clientId) ? state.clientId : vals[0] || '';
   s.title = s.options[s.selectedIndex]?.text || '';
 }
-// The Screens page's own site filter changed: keep the header in step.
-window.addEventListener('signage:sitefilter', () => syncPicker());
 
 function sitePicker() {
   if (!state.me.clients.length) return null;
   const s = h('select', {
-    id: 'hdr-site', 'aria-label': 'Choose location',
+    id: 'hdr-biz', 'aria-label': 'Business',
     onchange: (e) => {
-      const [cid, sid] = e.target.value.split('|');
-      setClient(cid);
-      try { localStorage.setItem('signage.siteFilter.' + cid, sid || 'all'); } catch {}
+      const cid = e.target.value;
+      setClient(cid);   // also remembers this business as the last used (per email)
       const p = location.hash.replace(/^#\/?/, '').split('/')[0]; const to = '#/' + (['screen', 'playlist'].includes(p) ? p + 's' : (p || 'screens')); if (location.hash === to) render(); else location.hash = to;
     },
   });
   fillPicker(s);
-  // Refresh the site list (new or renamed sites) and repaint if it changed.
+  // Refresh the location list (a business that lost its locations drops out) and repaint if it changed.
   const before = JSON.stringify(pickSites);
   loadPickSites().then(() => { if (s.isConnected && JSON.stringify(pickSites) !== before) fillPicker(s); }).catch(() => {});
-  return h('div', { class: 'hdr-pick' }, h('label', { class: 'sr', for: 'hdr-site' }, 'Location'), s);
+  return h('div', { class: 'hdr-pick' }, h('label', { class: 'sr', for: 'hdr-biz' }, 'Business'), s);
 }
 
 // sidebar footer (same as Proview Employee and Bookings): who's signed in, then COLLAPSE and SIGN OUT
@@ -284,8 +270,8 @@ function masterBar() {
 /** Platform settings (alerts & email, offline alerts): the Proview master only, last in the sidebar. No business data. */
 function platformNav(section) {
   if (!state.me?.is_admin) return null;
-  // No location open: the "Open a location" page is a menu item too, so Platform settings has a way back.
-  const home = state.me.master_home ? h('a', { href: '#/', class: 'nav-master-home' + (section !== 'platform' ? ' active' : ''), title: 'Open a location', 'aria-current': section !== 'platform' ? 'page' : null }, icon('clients'), h('span', {}, 'Open a location')) : null;
+  // No location open: the "Open a business" page is a menu item too, so Platform settings has a way back.
+  const home = state.me.master_home ? h('a', { href: '#/', class: 'nav-master-home' + (section !== 'platform' ? ' active' : ''), title: 'Open a business', 'aria-current': section !== 'platform' ? 'page' : null }, icon('clients'), h('span', {}, 'Open a business')) : null;
   return [h('div', { class: 'nav-sep' }, 'Proview'), home,
     h('a', { href: '#/platform', class: 'nav-platform' + (section === 'platform' ? ' active' : ''), title: 'Platform settings', 'aria-current': section === 'platform' ? 'page' : null }, icon('cog'), h('span', {}, 'Platform settings'))];
 }
@@ -302,10 +288,10 @@ function masterHome(asShell = false) {
   const missing = state.me.master_missing;
   const main = h('main', { class: 'main' },
     h('div', { class: 'card pad stack pv-master-home' },
-      h('h1', {}, 'Open a location from the licence portal'),
+      h('h1', {}, 'Open a business from the licence portal'),
       h('p', { class: 'muted', style: { margin: 0 } }, missing
-        ? 'That business couldn’t be found here. It may have been deleted, or linked into another location. Open the location again from the licence portal.'
-        : 'As Proview you open a location’s Signage from its page in the licence portal (Open in Signage). It opens here, inside that business.'),
+        ? 'That business couldn’t be found here. It may have been deleted, or linked into another business. Open the business again from the licence portal.'
+        : 'As Proview you open a business’s Signage from its page in the licence portal (Open in Signage). It opens here, inside that business.'),
       h('div', {}, h('a', { class: 'btn primary', href: LICENCE_PORTAL }, 'Go to license.proviewcrm.co.uk'))));
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),

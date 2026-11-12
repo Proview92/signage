@@ -376,7 +376,7 @@ function pruneBusinessCache(me) {
 // ---------------------------------------------------------------- the master inside one location (MASTER_OPEN_SPEC)
 // The Proview master has no view of every business here. The licence portal's "Open in Signage" signs them in
 // with a biz claim; sso-login answers { open: <client id> } and the app keeps it per tab (sessionStorage), so a
-// reload stays in that business and another "Open in Signage" switches. Without it: "Open a location" page.
+// reload stays in that business and another "Open in Signage" switches. Without it: "Open a business" page.
 export const MASTER_OPEN_KEY = 'pv_master_open';
 export function masterOpenId() { try { return sessionStorage.getItem(MASTER_OPEN_KEY) || null; } catch { return null; } }
 export function setMasterOpen(id) { try { id ? sessionStorage.setItem(MASTER_OPEN_KEY, String(id)) : sessionStorage.removeItem(MASTER_OPEN_KEY); } catch {} }
@@ -425,17 +425,48 @@ export async function refreshMe() {
     state.me = me; state.clientId = c?.id || null; return state.me;
   }
   pruneBusinessCache(me);
+  // MULTI_BUSINESS_PICKER_STANDARD: someone in several businesses gets every business's locations up front, so sign-in
+  // can skip a business they can't use (no location they can see), and the header lists only usable businesses.
+  me.sites = null;
+  if (me.clients.length > 1) {
+    const { data, error } = await sb.from('sites').select('id, client_id, name');
+    if (!error && data) me.sites = data;
+  }
   state.me = me;
+  const usable = usableClientIds(me);
   const ids = state.me.clients.map((c) => c.id);
+  const last = lastUsed(me.email);
   const saved = localStorage.getItem('signage.client');
-  state.clientId = ids.includes(state.clientId) ? state.clientId : (ids.includes(saved) ? saved : ids[0] || null);
+  // in a render already (state.clientId): stay; else the business they last used (per email, kept through sign-out),
+  // else the one this device remembered, else the first usable one by name
+  const pick = [state.clientId, last.client, saved].find((id) => id && usable.includes(id))
+    || usable[0] || [state.clientId, saved].find((id) => id && ids.includes(id)) || ids[0] || null;
+  state.clientId = pick;
   return state.me;
+}
+/** Locations of a business this person can see (me.sites: only loaded for people in several businesses). */
+export function visibleSites(me, c) {
+  return (me?.sites || []).filter((s) => s.client_id === c.id && (!Array.isArray(c.site_ids) || c.site_ids.includes(s.id)));
+}
+/** Businesses this person can use, by name: switched-off ones are not in whoami; one with no location they can see is
+ *  left out (only checked for people in several businesses: a single business is shown as before). */
+export function usableClientIds(me) {
+  const cs = [...(me?.clients || [])].sort((a, b) => clientTitle(a).toLowerCase().localeCompare(clientTitle(b).toLowerCase()));
+  return (me?.sites ? cs.filter((c) => visibleSites(me, c).length > 0) : cs).map((c) => c.id);
+}
+// The business a person last used, keyed by email; kept through sign-out (MULTI_BUSINESS_PICKER_STANDARD).
+const LAST_KEY = (email) => 'signage.lastUsed.' + String(email || '').toLowerCase();
+export function lastUsed(email) { try { return JSON.parse(localStorage.getItem(LAST_KEY(email)) || '{}') || {}; } catch { return {}; } }
+function rememberLastUsed(client) {
+  if (!state.me || state.me.is_admin || !state.me.email || !client) return;
+  try { localStorage.setItem(LAST_KEY(state.me.email), JSON.stringify({ client })); } catch {}
 }
 export function setClient(id) {
   if (!id) return;   // never switch to "no business": every page needs one
   if (state.me?.master_open && id !== state.me.master_open) return;   // the master stays in the business they opened
   state.clientId = id;
   localStorage.setItem('signage.client', id);
+  rememberLastUsed(id);
 }
 
 // Build a screen's content locally from the DRAFT (default + rules + playlists)

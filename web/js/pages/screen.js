@@ -241,7 +241,7 @@ export async function screenPage({ main, params: [id], go, rerender }) {
         screen.license_starts_at ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Started'), fmtDate(screen.license_starts_at)) : null,
         h('div', { class: 'row between' }, h('span', { class: 'muted' }, L.state === 'lifetime' ? 'Expires' : (L.daysLeft >= 0 ? 'Expires' : 'Expired')), L.state === 'lifetime' ? 'Never' : L.expires ? fmtDate(L.expires) : '—'),
         state.me.is_admin && screen.license_notes ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Notes'), screen.license_notes) : null,
-        tvLocationLicence(screen) ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Location licence'),
+        tvLocationLicence(screen) ? h('div', { class: 'row between' }, h('span', { class: 'muted' }, 'Business licence'),
           h('span', { class: 'badge ' + licenseSummary(tvLocationLicence(screen)).tone }, licenseSummary(tvLocationLicence(screen)).text)) : null,
         h('div', { class: 'row' },
           state.me.is_admin ? licensePortalButton() : null,

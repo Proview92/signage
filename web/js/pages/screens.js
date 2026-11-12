@@ -151,7 +151,8 @@ export async function screensPage({ main, go }) {
   const client = currentClient();
   let data = await loadClientData(state.clientId);
 
-  let filter = localStorage.getItem('signage.siteFilter.' + state.clientId) || 'all';
+  // The whole business, grouped by location (the header lists businesses only: MULTI_BUSINESS_PICKER_STANDARD 07:47).
+  let filter = 'all';
 
   // "Playing: [playlist ▾]" on each TV card: switch and go live in one click.
   const quickPlaylist = (s, now, rule) => {
@@ -258,12 +259,12 @@ export async function screensPage({ main, go }) {
     const trialNote = noLicence
       ? h('div', { class: 'notice bad stack nolicence', style: { marginBottom: '14px', gap: '8px' } },
           h('div', {}, h('b', {}, NO_LICENCE_TEXT + '. '),
-            screens.length ? 'Each location needs its own licence, and each TV too. Buy your location’s licence below, then open your TV and press “Buy licence online” under Licence. It plays as soon as both are licensed.'
-              : 'Each location needs its own licence, and each TV too. Buy your location’s licence below. Then install the PROVIEW SIGNAGE app on your TV, open it, press Add a TV, type the code it shows and buy the TV’s licence online.'),
+            screens.length ? 'Each business needs its own licence, and each TV too. Buy your business licence below, then open your TV and press “Buy licence online” under Licence. It plays as soon as both are licensed.'
+              : 'Each business needs its own licence, and each TV too. Buy your business licence below. Then install the PROVIEW SIGNAGE app on your TV, open it, press Add a TV, type the code it shows and buy the TV’s licence online.'),
           h('div', { class: 'row', style: { gap: '8px', flexWrap: 'wrap' } },
             screens.length && canManage() ? h('button', { class: 'btn sm primary', onclick: () => renewOnlineDialog(screens.find((x) => !x.license_type) || screens[0]).catch((e) => toast(e.message || String(e), true)) },
               screens.length === 1 ? 'Buy licence online' : `Buy licence: ${(screens.find((x) => !x.license_type) || screens[0]).name}`) : null,
-            // (non-masters only here: no licence-portal link, owner 11 Nov 2026; the location's Buy button is below)
+            // (non-masters only here: no licence-portal link, owner 11 Nov 2026; the business licence's Buy button is below)
             h('span', { class: 'muted small', style: { alignSelf: 'center' } },
               screens.length && canManage() ? 'or call ' : canManage() ? 'Or call Proview on ' : 'Ask your owner to buy it, or call Proview on ',
               h('a', { href: 'tel:02089355495' }, '020 8935 5495'))))
@@ -284,8 +285,8 @@ export async function screensPage({ main, go }) {
     const shownSites = sites.filter((x) => 'license_type' in x && (filter === 'all' || filter === 'none' || x.id === filter));
     const locBad = (x) => ['none', 'expired', 'grace', 'expiring'].includes(licenseState(x).state);
     const locNote = shownSites.length ? h('div', { class: 'card pad stack loc-licences' + (shownSites.some((x) => ['none', 'expired'].includes(licenseState(x).state)) ? ' bad' : ''), style: { marginBottom: '14px', gap: '8px' } },
-      h('div', { class: 'row between' }, h('b', {}, shownSites.length === 1 ? 'Location licence' : 'Location licences'),
-        h('span', { class: 'tiny' }, 'Each location needs its own licence, and each TV its own too.')),
+      h('div', { class: 'row between' }, h('b', {}, shownSites.length === 1 ? 'Business licence' : 'Business licences'),
+        h('span', { class: 'tiny' }, 'Each business needs its own licence, and each TV its own too.')),
       ...shownSites.map((x) => {
         const L = licenseState(x), blocked = ['none', 'expired'].includes(L.state);
         return h('div', { class: 'row between loc-lic-row', style: { gap: '8px', flexWrap: 'wrap' } },
@@ -293,7 +294,7 @@ export async function screensPage({ main, go }) {
           locationBadge(x),
           state.me.is_admin ? h('a', { class: 'btn sm', href: LICENCE_PORTAL, target: '_blank', rel: 'noopener' }, 'Licence portal ↗')
             : canManage() && L.state !== 'lifetime' ? h('button', { class: 'btn sm' + (locBad(x) ? ' primary' : ''), onclick: () => buyLocationDialog(x).catch((e) => toast(e.message || String(e), true)) },
-              !x.license_type || x.license_type === 'trial7' ? 'Buy location licence online' : 'Renew online') : null);
+              !x.license_type || x.license_type === 'trial7' ? 'Buy business licence online' : 'Renew online') : null);
       }),
       shownSites.some((x) => ['none', 'expired'].includes(licenseState(x).state)) && !state.me.is_admin
         ? h('span', { class: 'muted small' }, 'or call ', h('a', { href: 'tel:02089355495' }, '020 8935 5495')) : null) : null;
@@ -327,7 +328,7 @@ export async function screensPage({ main, go }) {
     if (!screens.length) {
       return main.replaceChildren(head, trialNote || '', locNote || '', h('div', { class: 'card empty' },
         h('h2', {}, 'No TVs yet'),
-        h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Add your locations first so you can put each TV in the right place.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
+        h('p', {}, canManage() ? `Install the PROVIEW SIGNAGE app on your Android TV or Fire TV stick, open it, and pair it with the code it shows.${sites.length ? '' : ' Businesses are set up by Proview.'}` : 'Your manager hasn’t added any TVs to this account yet.'),
         canManage() ? h('div', { class: 'row', style: { justifyContent: 'center' } },
           h('button', { class: 'btn primary', onclick: () => addTv() }, icon('plus'), 'Add a TV')) : null));
     }

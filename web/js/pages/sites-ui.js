@@ -5,36 +5,6 @@ export async function loadSites(clientId) {
   return sortSites(await q(sb.from('sites').select('*').eq('client_id', clientId)));
 }
 
-/** Rename a business's locations. Locations are never added or deleted here: a business starts with one, and Proview
- *  links (or unlinks) locations in the licence portal (LOCATIONS_LINK_SPEC). */
-export async function manageSitesDialog(clientId, clientName, onDone) {
-  const sites = await loadSites(clientId);
-  const { data: tvs } = await sb.from('screens').select('id,site_id').eq('client_id', clientId);
-  const tvCount = (id) => (tvs || []).filter((t) => t.site_id === id).length;
-  let changed = false;
-  const list = h('div', { class: 'stack', style: { gap: '8px' } }, ...sites.map((s) => {
-    const inp = h('input', { type: 'text', value: s.name });
-    inp.addEventListener('change', async () => {
-      const v = inp.value.trim();
-      if (!v || v === s.name) return;
-      try { await q(sb.from('sites').update({ name: v }).eq('id', s.id)); s.name = v; changed = true; toast('Location renamed'); }
-      catch (e) { toast(errMsg(e), true); }
-    });
-    return h('div', { class: 'row', style: { flexWrap: 'nowrap' } },
-      h('div', { class: 'grow' }, inp),
-      h('span', { class: 'tiny', style: { width: '56px', textAlign: 'right' } }, `${tvCount(s.id)} TV${tvCount(s.id) === 1 ? '' : 's'}`));
-  }));
-  modal({
-    title: `Locations — ${clientName}`,
-    body: [
-      h('p', { class: 'muted small', style: { margin: 0 } }, 'Each TV belongs to one location. To link another location to this business, contact Proview.'),
-      list,
-    ],
-    onClose: () => changed && onDone?.(),
-    actions: [{ label: 'Done', class: 'primary' }],
-  });
-}
-
 /** Short text for a playlist / media site list (null = shared with all sites). */
 export function contentSitesLabel(siteIds, sites) {
   if (siteIds == null) return 'All locations';

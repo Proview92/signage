@@ -99,7 +99,7 @@ export const NO_LICENCE_TEXT = 'No licence yet: buy a licence to start using Pro
  * licence fields as a TV, so licenseState / licenseSummary read it directly. Each TV also carries a copy of its
  * location's licence (screens.site_license_type / site_license_expires_at): a TV plays only if both are valid.
  */
-export const LOCATION_NO_LICENCE_TEXT = 'This location needs a licence before its TVs can play';
+export const LOCATION_NO_LICENCE_TEXT = 'This business needs a licence before its TVs can play';
 /** The licence of a TV's location, from the TV's own row; null before migration 045 (then only the TV licence counts). */
 export function tvLocationLicence(screen) {
   if (!screen || !('site_license_type' in screen)) return null;
@@ -116,7 +116,7 @@ export const tvCanPlay = (screen) => !BLOCKED.includes(licenseState(screen).stat
 /** Short text + tone for a location's licence badge (a sites row). */
 export function locationSummary(site) {
   const s = licenseSummary(site);
-  if (s.L.state === 'none') return { ...s, text: 'Location: no licence yet' };
-  if (s.L.state === 'lifetime') return { ...s, text: 'Location: lifetime licence' };
-  return { ...s, text: 'Location: ' + s.text.charAt(0).toLowerCase() + s.text.slice(1) };
+  if (s.L.state === 'none') return { ...s, text: 'Business: no licence yet' };
+  if (s.L.state === 'lifetime') return { ...s, text: 'Business: lifetime licence' };
+  return { ...s, text: 'Business: ' + s.text.charAt(0).toLowerCase() + s.text.slice(1) };
 }

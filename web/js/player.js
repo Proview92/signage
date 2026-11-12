@@ -280,7 +280,7 @@ function evaluate() {
       } else {
         // the TV's own licence is fine: its location is not licensed
         const none = licenseState(tvLocationLicence(screen)).state === 'none';
-        $('expired-title').textContent = none ? 'Location licence required' : 'Location licence expired';
+        $('expired-title').textContent = none ? 'Business licence required' : 'Business licence expired';
         $('expired-msg').textContent = none ? 'is at a location that needs a licence before its TVs can play.' : 'is at a location whose licence has ended.';
       }
       show('expired');
@@ -619,7 +619,7 @@ const remote = createRemoteMenu({
     let needsOverlay = false;
     try { needsOverlay = !!window.SignageNative && !window.SignageNative.canReopen(); } catch {}
     return {
-      name: screen?.name, licence: screen?.claimed ? (locationBlocks(screen) && !['expired', 'none'].includes(licenseState(screen).state) ? 'Location needs a licence' : licenseSummary(screen).text) : 'Not paired',
+      name: screen?.name, licence: screen?.claimed ? (locationBlocks(screen) && !['expired', 'none'].includes(licenseState(screen).state) ? 'Business needs a licence' : licenseSummary(screen).text) : 'Not paired',
       playing: nowPlaying, online: navigator.onLine && !$('net').classList.contains('bad'),
       model: MODEL || navigator.platform, app: APP, isApp: !!window.SignageNative, needsOverlay, paired: !!screen?.claimed,
       canSkip: !!player && !sleeping && views.stage.classList.contains('on'),

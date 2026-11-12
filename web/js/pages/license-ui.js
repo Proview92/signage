@@ -10,7 +10,7 @@ export function licenseBadge(screen) {
 export function locationBlockBadge(screen) {
   if (!locationBlocks(screen)) return null;
   const none = licenseState(tvLocationLicence(screen)).state === 'none';
-  return h('span', { class: 'badge bad', title: 'Each location needs its own licence, as well as each TV' }, none ? 'Location needs a licence' : 'Location licence expired');
+  return h('span', { class: 'badge bad', title: 'Each business needs its own licence, as well as each TV' }, none ? 'Business needs a licence' : 'Business licence expired');
 }
 
 /** Badge for a location's licence (a sites row). */
@@ -29,10 +29,10 @@ export function licenseBanner(screen) {
   if (L.state === 'none') return h('div', { class: 'notice' }, `This TV has no licence${screen.trial_blocked_reason ? ` (${screen.trial_blocked_reason})` : ''} and isn't playing. ${who}`);
   if (locationBlocks(screen)) {
     const LL = licenseState(tvLocationLicence(screen));
-    const whoLoc = state.me?.is_admin ? 'Set it in the licence portal (license.proviewcrm.co.uk).' : 'Buy the location’s licence on the TVs page (Location licence), or call Proview on 020 8935 5495.';
+    const whoLoc = state.me?.is_admin ? 'Set it in the licence portal (license.proviewcrm.co.uk).' : 'Buy the business licence on the TVs page (Business licence), or call Proview on 020 8935 5495.';
     return h('div', { class: 'notice' }, LL.state === 'none'
-      ? `This TV's location needs a licence before its TVs can play. The TV is showing “Location licence required”. ${whoLoc}`
-      : `This TV's location licence expired on ${fmtDate(LL.expires)}. The TV is showing “Location licence expired”. ${whoLoc}`);
+      ? `This TV's business needs a licence before its TVs can play. The TV is showing “Business licence required”. ${whoLoc}`
+      : `This TV's business licence expired on ${fmtDate(LL.expires)}. The TV is showing “Business licence expired”. ${whoLoc}`);
   }
   return null;
 }

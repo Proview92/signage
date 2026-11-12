@@ -75,12 +75,12 @@ export async function buyLocationDialog(site) {
   let plans = {};
   try { plans = (await rpc('licence_buy_plans_by_kind'))?.location || {}; } catch { plans = {}; }
   const entries = Object.entries(plans).sort((a, b) => ORDER.indexOf(a[0]) - ORDER.indexOf(b[0]));
-  if (!entries.length) return toast('Online payment for location licences isn’t available yet. Call Proview on 020 8935 5495 to buy one.', true);
+  if (!entries.length) return toast('Online payment for business licences isn’t available yet. Call Proview on 020 8935 5495 to buy one.', true);
   let pick = entries.find(([k]) => k === 'm12')?.[0] || entries[0][0];
   const buying = !site.license_type || site.license_type === 'trial7';
-  modal({ title: `${buying ? 'Buy a location licence' : 'Renew location licence'}: ${site.name}`, body: [
+  modal({ title: `${buying ? 'Buy a business licence' : 'Renew business licence'}: ${site.name}`, body: [
     h('p', { class: 'muted small', style: { margin: 0 } }, (buying
-      ? 'Every location needs its own licence, and each TV needs its own licence too. Choose a plan. You’ll pay securely with Stripe, and the location is licensed within about 5 minutes.'
+      ? 'Every business needs its own licence, and each TV needs its own licence too. Choose a plan. You’ll pay securely with Stripe, and the business is licensed within about 5 minutes.'
       : 'Choose a plan. Time is added on top of the current licence. You’ll pay securely with Stripe; the licence updates within about 5 minutes.')),
     h('div', { class: 'stack', style: { gap: '8px' } }, entries.map(([k, p]) => h('label', { class: 'row card pad', style: { fontWeight: 600, padding: '12px 14px' } },
       h('input', { type: 'radio', name: 'plan', checked: k === pick, onchange: () => (pick = k) }), h('span', { class: 'grow' }, p.label || k), money(p))))],
