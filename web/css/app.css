@@ -1034,3 +1034,7 @@ input.switch.status:disabled { opacity: .45; cursor: not-allowed; }
 .sort-row.dragging { opacity: .45; }
 .sort-grip { color: #9aa1ad; letter-spacing: -2px; font-weight: 700; user-select: none; }
 .sort-num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+
+/* TV sub-categories on the Screens page (migration 049) */
+.tv-subcat { margin: 0 0 18px; }
+.tv-subcat-head { display: flex; align-items: baseline; margin: 4px 0 10px; padding-left: 10px; border-left: 3px solid #4a6cd0; font-size: 16px; line-height: 22px; }

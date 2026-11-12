@@ -16,15 +16,82 @@ import { sleepBadge, isAsleep } from './sleep-ui.js';
 import { scanDialog, takePendingPair } from './qr-scan.js';
 
 export async function loadClientData(clientId) {
-  const [screens, playlists, rules, sites] = await Promise.all([
+  const [screens, playlists, rules, sites, groups] = await Promise.all([
     q(sb.from('screens').select('*').eq('client_id', clientId).order('name')),
     q(sb.from('playlists').select('id,name,updated_at,slides,settings').eq('client_id', clientId).order('name')),
     q(sb.from('schedule_items').select('*').eq('client_id', clientId).order('priority', { ascending: false })),
     loadSites(clientId),
+    // Sub-categories (migration 049). If the table isn't there yet, the page simply shows no sub-categories.
+    sb.from('screen_groups').select('id,name,sort_order').eq('client_id', clientId).order('sort_order').order('name').then((r) => r.error ? [] : (r.data || [])),
   ]);
   // The order set with "Sort TVs" first; TVs with no order yet follow, by name.
   screens.sort((a, b) => (a.sort_order ?? 1e9) - (b.sort_order ?? 1e9) || String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true }));
-  return { screens, playlists, rules, sites, byId: Object.fromEntries(playlists.map((p) => [p.id, p])) };
+  return { screens, playlists, rules, sites, groups, byId: Object.fromEntries(playlists.map((p) => [p.id, p])) };
+}
+
+/** Owner / Admin and master: make, rename, order and delete TV sub-categories, and choose each TV's sub-category. */
+function subCategoriesDialog(clientId, groups, screens, onDone) {
+  let list = groups.map((g) => ({ key: g.id, id: g.id, name: g.name }));
+  const removed = [];
+  let n = 0;
+  const pick = Object.fromEntries(screens.map((s) => [s.id, s.group_id || '']));
+  const listBox = h('div', { class: 'sort-list', style: { maxHeight: '32vh' } });
+  const tvBox = h('div', { class: 'sort-list', style: { maxHeight: '34vh' } });
+  const addInput = h('input', { class: 'input', placeholder: 'e.g. E10, Gym, Cafe', maxlength: '60',
+    onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } } });
+  const add = () => {
+    const name = addInput.value.trim().replace(/\s+/g, ' ');
+    if (!name) return addInput.focus();
+    if (list.some((g) => g.name.toLowerCase() === name.toLowerCase())) return toast(`There is already a sub-category called “${name}”.`, true);
+    list.push({ key: 'new' + (++n), id: null, name }); addInput.value = ''; paint(); addInput.focus();
+  };
+  const move = (i, to) => { if (to < 0 || to >= list.length) return; const [x] = list.splice(i, 1); list.splice(to, 0, x); paint(); };
+  const paint = () => {
+    listBox.replaceChildren(...(list.length ? list.map((g, i) => h('div', { class: 'sort-row', style: { cursor: 'default' } },
+      h('span', { class: 'sort-num' }, String(i + 1)),
+      h('input', { class: 'input grow', value: g.name, maxlength: '60', 'aria-label': 'Sub-category name', style: { minWidth: 0 },
+        oninput: (e) => { g.name = e.target.value; } }),
+      h('span', { class: 'tiny', style: { whiteSpace: 'nowrap' } }, (() => { const c = Object.values(pick).filter((v) => v === g.key).length; return `${c} TV${c === 1 ? '' : 's'}`; })()),
+      h('button', { class: 'btn sm icon', type: 'button', disabled: i === 0, 'aria-label': 'Move up', title: 'Move up', onclick: () => move(i, i - 1) }, '↑'),
+      h('button', { class: 'btn sm icon', type: 'button', disabled: i === list.length - 1, 'aria-label': 'Move down', title: 'Move down', onclick: () => move(i, i + 1) }, '↓'),
+      h('button', { class: 'btn sm icon', type: 'button', 'aria-label': `Delete ${g.name}`, title: 'Delete (its TVs move to Other TVs)',
+        onclick: () => { list.splice(i, 1); if (g.id) removed.push(g.id); for (const k in pick) if (pick[k] === g.key) pick[k] = ''; paint(); } }, icon('x'))))
+      : [h('div', { class: 'muted small', style: { padding: '6px 2px' } }, 'No sub-categories yet. Add one below.')]));
+    tvBox.replaceChildren(...screens.map((s) => h('label', { class: 'sort-row', style: { cursor: 'default' } },
+      h('span', { class: 'grow', style: { fontWeight: 600, minWidth: 0 } }, s.name || 'Unnamed TV'),
+      h('select', { class: 'input', style: { width: 'auto', maxWidth: '55%' }, 'aria-label': `Sub-category for ${s.name || 'TV'}`,
+        onchange: (e) => { pick[s.id] = e.target.value; paint(); } },
+        h('option', { value: '', selected: !pick[s.id] }, '— Other TVs —'),
+        ...list.map((g) => h('option', { value: g.key, selected: pick[s.id] === g.key }, g.name.trim() || 'Untitled'))))));
+  };
+  paint();
+  modal({ title: 'Sub-categories', wide: true, body: [
+    h('p', { class: 'muted small', style: { margin: 0 } }, 'Group this business’s TVs under headings on the Screens page, for example by floor, area or room. Everyone in the business sees them.'),
+    listBox,
+    h('div', { class: 'row', style: { gap: '8px' } }, addInput, h('button', { class: 'btn', type: 'button', onclick: add }, icon('plus'), 'Add sub-category')),
+    h('h3', { style: { margin: '10px 0 0' } }, 'Which TVs go where'),
+    tvBox],
+    actions: [
+      { label: 'Cancel' },
+      { label: 'Save', class: 'primary', onClick: async () => {
+        for (const g of list) { g.name = g.name.trim().replace(/\s+/g, ' '); if (!g.name) { toast('Every sub-category needs a name.', true); return false; } }
+        try {
+          for (const id of removed) await rpc('delete_screen_group', { p_client: clientId, p_id: id });
+          const idOf = {};
+          for (const g of list) {
+            const old = groups.find((x) => x.id === g.id);
+            idOf[g.key] = (!g.id || old?.name !== g.name) ? await rpc('save_screen_group', { p_client: clientId, p_id: g.id, p_name: g.name }) : g.id;
+          }
+          if (list.length) await rpc('set_screen_group_order', { p_client: clientId, p_ids: list.map((g) => idOf[g.key]) });
+          const byTarget = {};
+          for (const s of screens) {
+            const want = pick[s.id] ? idOf[pick[s.id]] : null;
+            if ((want || null) !== (s.group_id || null) || (s.group_id && removed.includes(s.group_id))) (byTarget[want || ''] ||= []).push(s.id);
+          }
+          for (const [gid, ids] of Object.entries(byTarget)) await rpc('set_screens_group', { p_client: clientId, p_screen_ids: ids, p_group: gid || null });
+        } catch (e) { toast(e.message || String(e), true); onDone?.(); return false; }
+        toast('Sub-categories saved'); onDone?.();
+      } }] });
 }
 
 /** Owner / Admin and master: put the business's TVs in their own order (arrows, or drag a row). */
@@ -374,6 +441,18 @@ export async function screensPage({ main, go }) {
     if (noSite.length) groups.push({ id: 'none', title: sites.length ? 'No location' : null, items: noSite });
     if (filter !== 'all') groups = groups.filter((g) => g.id === filter);
 
+    // TVs of one location, under their sub-category headings (TVs in none: "Other TVs"; no headings at all when unused).
+    const subSections = (items) => {
+      const cards = (list) => h('div', { class: 'cards' }, list.map((s) => card(s, data.rules, data.byId)));
+      const gs = (data.groups || []).filter((x) => items.some((s) => s.group_id === x.id));
+      if (!gs.length) return cards(items);
+      const rest = items.filter((s) => !gs.some((x) => x.id === s.group_id));
+      const sub = (title, list) => h('div', { class: 'tv-subcat' },
+        h('h3', { class: 'tv-subcat-head' }, title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${list.length} TV${list.length === 1 ? '' : 's'} · ${list.filter(isOnline).length} online`)),
+        cards(list));
+      return h('div', {}, ...gs.map((x) => sub(x.name, items.filter((s) => s.group_id === x.id))), rest.length ? sub('Other TVs', rest) : null);
+    };
+
     const walls = wallsOf(screens);
     const wallSection = walls.length ? h('section', { style: { marginBottom: '26px' } },
       h('h2', { style: { marginBottom: '10px' } }, 'Video walls'),
@@ -388,8 +467,9 @@ export async function screensPage({ main, go }) {
       g.title ? h('div', { class: 'row between', style: { marginBottom: '10px' } },
         h('h2', {}, g.title, h('span', { class: 'tiny', style: { marginLeft: '8px', fontWeight: 500 } }, `${g.items.length} TV${g.items.length === 1 ? '' : 's'} · ${g.items.filter(isOnline).length} online`)),
         h('div', { class: 'row', style: { gap: '4px' } },
+          canManage() && g.items.length ? h('button', { class: 'btn sm ghost', title: 'Group TVs under headings such as floor, area or room', onclick: () => subCategoriesDialog(state.clientId, data.groups || [], screens, refresh) }, icon('plus'), 'Sub-categories') : null,
           canManage() && g.items.length >= 2 ? h('button', { class: 'btn sm ghost', title: 'Choose the order the TVs are listed in', onclick: () => sortTvsDialog(g.items, refresh) }, h('span', { 'aria-hidden': 'true', style: { fontWeight: 700 } }, '↕'), 'Sort TVs') : null)) : null,
-      g.items.length ? h('div', { class: 'cards' }, g.items.map((s) => card(s, data.rules, data.byId)))
+      g.items.length ? subSections(g.items)
         : h('div', { class: 'card pad muted small' }, 'No TVs at this location yet.'))));
   };
   const refresh = async () => { data = await loadClientData(state.clientId); paint(); };
