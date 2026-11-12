@@ -201,7 +201,8 @@ async function prune() {
 
 // ------------------------------------------------------------ playback
 // The TV plays only if its own licence AND its location's licence are valid (migration 045).
-function isExpired() { return screen?.claimed && !tvCanPlay(screen); }
+// a paused business (migration 052: screens.suspended) stops its TVs like an ended licence
+function isExpired() { return screen?.claimed && (!tvCanPlay(screen) || !!screen.suspended); }
 
 // ------------------------------------------------------------ sleep hours
 // Set on the dashboard (screens.sleep / sleep_override). While asleep: black screen, playback stopped,
@@ -274,7 +275,10 @@ function evaluate() {
       currentKey = 'expired'; player?.clear(); nowPlaying = 'licence expired';
       $('expired-name').textContent = screen.name;
       const tvState = licenseState(screen).state;
-      if (['expired', 'none'].includes(tvState)) {
+      if (screen.suspended) {
+        $('expired-title').textContent = 'Paused';
+        $('expired-msg').textContent = 'is paused. Contact Proview on 020 8935 5495 to resume it.';
+      } else if (['expired', 'none'].includes(tvState)) {
         $('expired-title').textContent = tvState === 'none' ? 'Licence required' : 'Licence expired';
         $('expired-msg').textContent = tvState === 'none' ? 'needs a licence before it can play.' : 'has ended.';
       } else {

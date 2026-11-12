@@ -99,6 +99,18 @@ async function render() {
   // Always have a valid business selected (never "none" for someone who belongs to one).
   if (state.me.clients.length && !state.me.clients.some((c) => c.id === state.clientId)) setClient(state.me.clients[0].id);
 
+  // Paused by Proview (migration 052): its people see only this; the master still opens it.
+  { const pc = state.me.clients.find((c) => c.id === state.clientId);
+    if (pc?.suspended && !state.me.is_admin) {
+      const others = state.me.clients.filter((c) => c.id !== pc.id && !c.suspended);
+      return root.replaceChildren(h('div', { class: 'auth-wrap', style: { minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '24px' } },
+        h('div', { class: 'card pad stack', style: { maxWidth: '440px', gap: '12px', textAlign: 'center' } },
+          h('h2', { style: { margin: 0 } }, 'This business is paused'),
+          h('p', { class: 'muted', style: { margin: 0 } }, `${pc.name} has been paused by Proview. Your content is kept safe, but it can't be used and its TVs don't play until it's resumed.`),
+          h('p', { style: { margin: 0 } }, 'Call Proview on ', h('a', { href: 'tel:02089355495' }, '020 8935 5495'), ' to reactivate it.'),
+          others.length ? h('button', { class: 'btn primary', onclick: () => { setClient(others[0].id); render(); } }, `Open ${others[0].name}`) : null,
+          h('button', { class: 'btn', onclick: () => signOut() }, 'Sign out'))));
+    } }
   // A scanned TV code is waiting: Screens of the open business opens Add a TV with it.
   if (hasPendingPair() && path !== 'screens') return go('screens');
 
