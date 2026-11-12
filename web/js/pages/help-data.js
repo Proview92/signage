@@ -67,6 +67,16 @@ export const TV = [
     'Press it and the TV downloads and installs the update. Some TVs ask for a one-time OK on screen.',
     'You can also choose **Check for app update** in the TV menu.',
   ]],
+
+  ['Raspberry Pi players', 'Use a Raspberry Pi instead of an Android TV box.', [
+    'Use a **Raspberry Pi 4 or 5** (2GB or more) with **Raspberry Pi OS (with desktop)**, connected to the internet and to the screen by HDMI.',
+    'On the Pi, open **app.proviewsignage.co.uk/pi** in the browser. It shows one line to copy.',
+    'Open **Terminal** on the Pi, paste the line and press Enter. When it says **Done**, restart the Pi.',
+    'The player now opens full screen every time the Pi is switched on, and shows the pairing code. Pair it from **Screens → Add a TV** like any other TV.',
+  ], [
+    'A Pi always loads the newest player by itself, so there is no app to update.',
+    'To take the player off a Pi, use the Remove line on the same page.',
+  ]],
 ];
 
 export const DASH = [
@@ -145,6 +155,7 @@ export const DASH = [
     'Each card shows what the TV is playing, whether it is online, its licence, and **Unpublished changes** if you edited something but didn’t publish.',
     'Change the playlist straight from the card using the **Playing** drop-down.',
     'Press the pencil next to a TV’s name to rename it.',
+    'Owner / Admins can press **Sort TVs** to choose the order the TVs are listed in: move a TV with the arrows or drag it, then press **Save order**. Everyone in the business sees that order.',
     'Each business starts with one location, named after the business; it is set up for you. Locations can’t be added or deleted here: Businesses are set up by Proview, and Proview links two businesses together in the licence portal; their TVs then show together here, grouped by location. Someone in more than one business switches business with the menu in the header.',
     'Click a TV to open its own page.',
   ]],
@@ -183,13 +194,16 @@ export const DASH = [
     'Remove a wall at any time: each TV goes back to its own picture and nothing is deleted.',
   ]],
 
-  ['Users and roles', 'Invite people and control what they can do.', [
-    'Go to **Users** and press invite. Enter their email, choose a role, tick the locations they can see and the features they can use.',
-    '**Owner / Admin**: every feature, adds TVs, manages users. **Manager**: only their locations and features, publishes without approval. **Staff**: only their locations and features.',
-    'Press **Edit access** next to a person to change their role, locations or features. Nobody can change their own access.',
+  ['Users and roles', 'Add people and control what they can do.', [
+    'Go to **Users** and press **Add user**. Enter their name, email and a password (press **Suggest** for a random one), and their mobile if you like. Fields with a red * must be filled in.',
+    'Choose their role. **Owner / Admin**: every feature, adds TVs, manages users. **Manager**: only the features you switch on, publishes without approval. **Staff**: only the features you switch on.',
+    'For a Manager or Staff, switch each feature on or off under **What they can see and use**. Anything switched off is hidden and blocked for them.',
+    'Press **Add user**. No email is sent: their login works straight away. Copy the login details shown and pass them on yourself.',
+    'Prefer them to set their own password? Press **Invite by email** instead. Send the invite email, or copy the link and send it yourself (WhatsApp, text…).',
+    'Press **Edit** next to a person to change their name, mobile, role or features. Nobody can change their own access.',
+    'Press **Password** next to a person to type a new password for them, or to email them a reset link so they choose their own.',
+    'Use the switch on a person’s row to deactivate their account (red) or activate it again (green). A deactivated person can’t sign in to the business; their role and access are kept for when you switch them back on. An Owner / Admin can only be deactivated by Proview.',
     'Playlists and media are shared with all locations unless you pick **Locations** for them (on the playlist’s **Screen & layout** step, or in a file’s details). Managers and Staff only see shared items and items for their locations; what they create is kept to their locations, and shared items are view-only for them (they can duplicate a playlist to make their own copy).',
-    'Send the invite email, or copy the link and send it yourself (WhatsApp, text…).',
-    'Forgotten password? An administrator can press **Reset password**: the person signs in with 123456 and must choose a new password straight away.',
   ]],
 
   ['Notifications', 'The bell keeps you up to date.', [

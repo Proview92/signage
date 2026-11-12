@@ -284,7 +284,7 @@ export async function teamPage({ main }) {
             h('button', { class: 'btn sm', onclick: () => showInviteLink(i, clientTitle(client)) }, icon('send'), 'Resend'),
             h('button', { class: 'btn sm danger', onclick: async () => { await q(sb.from('invites').delete().eq('id', i.id)); refresh(); } }, 'Revoke')))
             : h('div', { class: 'list-row muted small' }, 'No pending invites.'))) : null,
-        h('div', { class: 'notice info' }, 'Owners / Admins see every location and feature. Managers and Staff only see the locations and features you tick. Nobody can change their own access.')));
+        h('div', { class: 'notice info' }, 'Owners / Admins see every location and feature. Managers and Staff only see the features you switch on for them. Nobody can change their own access.')));
   };
   const refresh = async () => { [members, invites, sites] = await load(); paint(); };
   paint();
