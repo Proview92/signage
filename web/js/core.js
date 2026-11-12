@@ -373,10 +373,10 @@ function pruneBusinessCache(me) {
   } catch {}
 }
 
-// ---------------------------------------------------------------- the master inside one customer (MASTER_OPEN_SPEC)
+// ---------------------------------------------------------------- the master inside one location (MASTER_OPEN_SPEC)
 // The Proview master has no view of every business here. The licence portal's "Open in Signage" signs them in
 // with a biz claim; sso-login answers { open: <client id> } and the app keeps it per tab (sessionStorage), so a
-// reload stays in that business and another "Open in Signage" switches. Without it: "Open a customer" page.
+// reload stays in that business and another "Open in Signage" switches. Without it: "Open a location" page.
 export const MASTER_OPEN_KEY = 'pv_master_open';
 export function masterOpenId() { try { return sessionStorage.getItem(MASTER_OPEN_KEY) || null; } catch { return null; } }
 export function setMasterOpen(id) { try { id ? sessionStorage.setItem(MASTER_OPEN_KEY, String(id)) : sessionStorage.removeItem(MASTER_OPEN_KEY); } catch {} }

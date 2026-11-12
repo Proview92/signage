@@ -5,53 +5,30 @@ export async function loadSites(clientId) {
   return sortSites(await q(sb.from('sites').select('*').eq('client_id', clientId)));
 }
 
-/** Add / rename / delete a client's sites. */
+/** Rename a business's locations. Locations are never added or deleted here: a business starts with one, and Proview
+ *  links (or unlinks) locations in the licence portal (LOCATIONS_LINK_SPEC). */
 export async function manageSitesDialog(clientId, clientName, onDone) {
-  let sites = await loadSites(clientId);
+  const sites = await loadSites(clientId);
   const { data: tvs } = await sb.from('screens').select('id,site_id').eq('client_id', clientId);
   const tvCount = (id) => (tvs || []).filter((t) => t.site_id === id).length;
-  const list = h('div', { class: 'stack', style: { gap: '8px' } });
-  const add = h('input', { type: 'text', placeholder: 'New location name, e.g. High Street' });
   let changed = false;
-
-  const paint = () => list.replaceChildren(...(sites.length ? sites.map((s) => {
+  const list = h('div', { class: 'stack', style: { gap: '8px' } }, ...sites.map((s) => {
     const inp = h('input', { type: 'text', value: s.name });
-    const save = async () => {
+    inp.addEventListener('change', async () => {
       const v = inp.value.trim();
       if (!v || v === s.name) return;
       try { await q(sb.from('sites').update({ name: v }).eq('id', s.id)); s.name = v; changed = true; toast('Location renamed'); }
       catch (e) { toast(errMsg(e), true); }
-    };
-    inp.addEventListener('change', save);
+    });
     return h('div', { class: 'row', style: { flexWrap: 'nowrap' } },
       h('div', { class: 'grow' }, inp),
-      h('span', { class: 'tiny', style: { width: '56px', textAlign: 'right' } }, `${tvCount(s.id)} TV${tvCount(s.id) === 1 ? '' : 's'}`),
-      h('button', { class: 'btn sm ghost icon danger', title: 'Delete location', onclick: async () => {
-        const n = tvCount(s.id);
-        if (!(await confirmBox(`Delete “${s.name}”?`, n ? `Its ${n} TV${n === 1 ? '' : 's'} will keep playing, but won't be in a location until you choose one.` : 'This location has no TVs.'))) return;
-        try { await q(sb.from('sites').delete().eq('id', s.id)); sites = sites.filter((x) => x !== s); changed = true; paint(); }
-        catch (e) { toast(errMsg(e), true); }
-      } }, icon('trash')));
-  }) : [h('div', { class: 'muted small' }, 'No locations yet. Add the business’s locations below.')]));
-  paint();
-
-  const addSite = async () => {
-    const v = add.value.trim();
-    if (!v) return;
-    if (sites.some((s) => s.name.toLowerCase() === v.toLowerCase())) return toast('That location already exists', true);
-    try {
-      const s = await q(sb.from('sites').insert({ client_id: clientId, name: v }).select().single());
-      sites = sortSites([...sites, s]); add.value = ''; changed = true; paint(); add.focus();
-    } catch (e) { toast(errMsg(e), true); }
-  };
-  add.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSite(); } });
-
+      h('span', { class: 'tiny', style: { width: '56px', textAlign: 'right' } }, `${tvCount(s.id)} TV${tvCount(s.id) === 1 ? '' : 's'}`));
+  }));
   modal({
     title: `Locations — ${clientName}`,
     body: [
-      h('p', { class: 'muted small', style: { margin: 0 } }, 'Each TV belongs to one location. Media and playlists are shared by all locations unless you choose locations for them.'),
+      h('p', { class: 'muted small', style: { margin: 0 } }, 'Each TV belongs to one location. To link another location to this business, contact Proview.'),
       list,
-      h('div', { class: 'row', style: { flexWrap: 'nowrap' } }, h('div', { class: 'grow' }, add), h('button', { class: 'btn primary', type: 'button', onclick: addSite }, icon('plus'), 'Add location')),
     ],
     onClose: () => changed && onDone?.(),
     actions: [{ label: 'Done', class: 'primary' }],

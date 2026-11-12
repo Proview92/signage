@@ -145,7 +145,7 @@ export const DASH = [
     'Each card shows what the TV is playing, whether it is online, its licence, and **Unpublished changes** if you edited something but didn’t publish.',
     'Change the playlist straight from the card using the **Playing** drop-down.',
     'Press the pencil next to a TV’s name to rename it.',
-    'Each business has one location, named after the business; it is set up for you.',
+    'Each business starts with one location, named after the business; it is set up for you. Locations can’t be added or deleted here: Proview links two locations together in the licence portal, and then the location menu in the header switches between them.',
     'Click a TV to open its own page.',
   ]],
 
@@ -203,10 +203,10 @@ export const DASH = [
     'Renew on the TV’s page with **Renew online**, or contact Proview.',
   ]],
 
-  ['Administrators: opening a customer', 'For Proview staff.', [
-    'Customers are opened from the licence portal (license.proviewcrm.co.uk): on the customer’s page press **Open in Signage**.',
+  ['Administrators: opening a location', 'For Proview staff.', [
+    'Locations are opened from the licence portal (license.proviewcrm.co.uk): on the location’s page press **Open in Signage**.',
     'Signage opens in a new tab inside that one business, with a “Viewing … as Proview” bar and a link back to the licence portal.',
-    'New businesses are added in the licence portal with **New customer**.',
+    'New places are added in the licence portal with **New location**. Two locations are linked (or unlinked) there with **Link with another location…**: their TVs, playlists, media and people then share one business, and owners and managers switch between the locations in the header.',
     'Alert emails and offline alerts for the whole platform are under **Platform settings** at the bottom of the menu.',
   ]],
 ];

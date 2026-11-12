@@ -75,7 +75,7 @@ async function render() {
   }
   // Signed out (or a newer render started) while we were waiting: let that one finish instead.
   if (!state.me || !state.session || my !== renderSeq) return;
-  // Proview master with no customer opened from the licence portal: nothing of any business is loaded.
+  // Proview master with no location opened from the licence portal: nothing of any business is loaded.
   if (state.me.is_admin && state.me.master_home) {
     if (path !== 'platform') return root.replaceChildren(masterHome());
     const main = masterHome(true);
@@ -271,9 +271,9 @@ function shell(section, main) {
   return h('div', { class: 'app' + (sideCollapsed() ? ' collapsed' : '') }, side, h('div', { class: 'main-col' }, top, masterBar(), main), scrim);
 }
 
-// ------------------------------------------------------------ the master inside a customer / not inside one
+// ------------------------------------------------------------ the master inside a location / not inside one
 const LICENCE_PORTAL = 'https://license.proviewcrm.co.uk';
-/** "Viewing <Business> as Proview" under the header, while the master is inside a customer's business. */
+/** "Viewing <Business> as Proview" under the header, while the master is inside a location's business. */
 function masterBar() {
   if (!state.me?.is_admin || !state.me.master_open) return null;
   const c = state.me.clients.find((x) => x.id === state.me.master_open);
@@ -284,8 +284,8 @@ function masterBar() {
 /** Platform settings (alerts & email, offline alerts): the Proview master only, last in the sidebar. No business data. */
 function platformNav(section) {
   if (!state.me?.is_admin) return null;
-  // No customer open: the "Open a customer" page is a menu item too, so Platform settings has a way back.
-  const home = state.me.master_home ? h('a', { href: '#/', class: 'nav-master-home' + (section !== 'platform' ? ' active' : ''), title: 'Open a customer', 'aria-current': section !== 'platform' ? 'page' : null }, icon('clients'), h('span', {}, 'Open a customer')) : null;
+  // No location open: the "Open a location" page is a menu item too, so Platform settings has a way back.
+  const home = state.me.master_home ? h('a', { href: '#/', class: 'nav-master-home' + (section !== 'platform' ? ' active' : ''), title: 'Open a location', 'aria-current': section !== 'platform' ? 'page' : null }, icon('clients'), h('span', {}, 'Open a location')) : null;
   return [h('div', { class: 'nav-sep' }, 'Proview'), home,
     h('a', { href: '#/platform', class: 'nav-platform' + (section === 'platform' ? ' active' : ''), title: 'Platform settings', 'aria-current': section === 'platform' ? 'page' : null }, icon('cog'), h('span', {}, 'Platform settings'))];
 }
@@ -296,16 +296,16 @@ async function platformPage({ main, rerender }) {
   main.replaceChildren(body);
   return body;
 }
-/** The master signed in here without opening a customer: one simple page, no business data.
+/** The master signed in here without opening a location: one simple page, no business data.
  *  asShell = true: the same shell with Platform settings open (returns its <main>). */
 function masterHome(asShell = false) {
   const missing = state.me.master_missing;
   const main = h('main', { class: 'main' },
     h('div', { class: 'card pad stack pv-master-home' },
-      h('h1', {}, 'Open a customer from the licence portal'),
+      h('h1', {}, 'Open a location from the licence portal'),
       h('p', { class: 'muted', style: { margin: 0 } }, missing
-        ? 'That business couldn’t be found here. It may have been deleted. Open the customer again from the licence portal.'
-        : 'As Proview you open a customer’s Signage from their page in the licence portal (Open in Signage). It opens here, inside that business.'),
+        ? 'That business couldn’t be found here. It may have been deleted, or linked into another location. Open the location again from the licence portal.'
+        : 'As Proview you open a location’s Signage from its page in the licence portal (Open in Signage). It opens here, inside that business.'),
       h('div', {}, h('a', { class: 'btn primary', href: LICENCE_PORTAL }, 'Go to license.proviewcrm.co.uk'))));
   const side = h('aside', { class: 'side' },
     h('div', { class: 'brand' }, brandMark(), wordmark(APP)),
@@ -469,7 +469,7 @@ async function pvSso(token) {
   const r = await fetch(cfg.SUPABASE_URL + '/functions/v1/sso-login', { method: 'POST', headers: { 'content-type': 'application/json', apikey: cfg.SUPABASE_ANON_KEY }, body: JSON.stringify({ assertion: token }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.token_hash) throw new Error(j.error || 'Sign-in with your Proview account failed. Please try again.');
-  // The master opened a customer from the licence portal: open exactly that business (kept per tab). A hand-off
+  // The master opened a location from the licence portal: open exactly that business (kept per tab). A hand-off
   // without one (an old link, or a non-master) clears it; sso-login only sends "open" for the master.
   setMasterOpen(j.open || null);
   const cur = (await sb.auth.getSession()).data.session?.user;
