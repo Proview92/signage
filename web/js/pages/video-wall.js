@@ -87,11 +87,12 @@ export function wallDialog({ wall = null, screens, playlists, onDone }) {
       const s = screens.find((x) => x.id === sid);
       try { const r = await publishOrRequest('screen', sid, s?.name || ''); if (r.pending) pending++; else ok++; } catch (e) { failed.push(s?.name || sid); if (!s?.license_type) noLicence++; else why = why || (e?.message || ''); }
     }
-    // Say why a TV was skipped: almost always it has no licence (each TV needs its own).
-    const reason = noLicence === failed.length ? (failed.length === 1 ? 'it has no licence yet' : 'they have no licence yet') : noLicence ? 'no licence, or: ' + why : why;
+// Say plainly which TVs need a licence (each TV needs its own before it plays).
+    const need = failed.length === 1 ? `${failed[0]} needs to be licensed` : `${failed.slice(0, -1).join(', ')} and ${failed[failed.length - 1]} need to be licensed`;
     toast(pending ? `Wall saved. Sent to your manager for approval.`
       : !failed.length ? `Wall saved and published to ${ok} TV${ok === 1 ? '' : 's'}`
-      : `Wall saved${ok ? ` and published to ${ok} TV${ok === 1 ? '' : 's'}` : ''}, but not sent to ${failed.join(', ')}: ${reason || 'publishing failed'}.${noLicence ? ' Each TV in a wall needs its own licence before it plays.' : ''}`, failed.length > 0);
+      : noLicence === failed.length ? `Wall saved, but not playing yet. ${need} before the wall can play. Add a licence for ${failed.length === 1 ? 'it' : 'each of them'}, then save the wall again.`
+      : `Wall saved${ok ? ` and published to ${ok} TV${ok === 1 ? '' : 's'}` : ''}, but not sent to ${failed.join(', ')}: ${why || 'publishing failed'}.`, failed.length > 0);
     onDone?.();
   };
 
