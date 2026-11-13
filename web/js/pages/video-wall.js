@@ -82,12 +82,16 @@ export function wallDialog({ wall = null, screens, playlists, onDone }) {
     }
     // Every TV must play the same thing at the same time, so schedule rules are cleared.
     await q(sb.from('schedule_items').delete().in('screen_id', ids));
-    let ok = 0, pending = 0; const failed = [];
+    let ok = 0, pending = 0, noLicence = 0, why = ''; const failed = [];
     for (const sid of [...ids, ...leaving.map((s) => s.id)]) {
       const s = screens.find((x) => x.id === sid);
-      try { const r = await publishOrRequest('screen', sid, s?.name || ''); if (r.pending) pending++; else ok++; } catch { failed.push(s?.name || sid); }
+      try { const r = await publishOrRequest('screen', sid, s?.name || ''); if (r.pending) pending++; else ok++; } catch (e) { failed.push(s?.name || sid); if (!s?.license_type) noLicence++; else why = why || (e?.message || ''); }
     }
-    toast(pending ? `Wall saved. Sent to your manager for approval.` : `Wall saved and published to ${ok} TV${ok === 1 ? '' : 's'}${failed.length ? ` (failed: ${failed.join(', ')})` : ''}`, failed.length > 0);
+    // Say why a TV was skipped: almost always it has no licence (each TV needs its own).
+    const reason = noLicence === failed.length ? (failed.length === 1 ? 'it has no licence yet' : 'they have no licence yet') : noLicence ? 'no licence, or: ' + why : why;
+    toast(pending ? `Wall saved. Sent to your manager for approval.`
+      : !failed.length ? `Wall saved and published to ${ok} TV${ok === 1 ? '' : 's'}`
+      : `Wall saved${ok ? ` and published to ${ok} TV${ok === 1 ? '' : 's'}` : ''}, but not sent to ${failed.join(', ')}: ${reason || 'publishing failed'}.${noLicence ? ' Each TV in a wall needs its own licence before it plays.' : ''}`, failed.length > 0);
     onDone?.();
   };
 
