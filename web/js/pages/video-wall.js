@@ -88,10 +88,10 @@ export function wallDialog({ wall = null, screens, playlists, onDone }) {
       try { const r = await publishOrRequest('screen', sid, s?.name || ''); if (r.pending) pending++; else ok++; } catch (e) { failed.push(s?.name || sid); if (!s?.license_type) noLicence++; else why = why || (e?.message || ''); }
     }
 // Say plainly which TVs need a licence (each TV needs its own before it plays).
-    const need = failed.length === 1 ? `${failed[0]} needs to be licensed` : `${failed.slice(0, -1).join(', ')} and ${failed[failed.length - 1]} need to be licensed`;
+    const needLic = failed.length === 1 ? `${failed[0]} needs to be licensed` : `${failed.slice(0, -1).join(', ')} and ${failed[failed.length - 1]} need to be licensed`;
     toast(pending ? `Wall saved. Sent to your manager for approval.`
       : !failed.length ? `Wall saved and published to ${ok} TV${ok === 1 ? '' : 's'}`
-      : noLicence === failed.length ? `Wall saved, but not playing yet. ${need} before the wall can play. Add a licence for ${failed.length === 1 ? 'it' : 'each of them'}, then save the wall again.`
+      : noLicence === failed.length ? `Wall saved, but not playing yet. ${needLic} before the wall can play. Add a licence for ${failed.length === 1 ? 'it' : 'each of them'}, then save the wall again.`
       : `Wall saved${ok ? ` and published to ${ok} TV${ok === 1 ? '' : 's'}` : ''}, but not sent to ${failed.join(', ')}: ${why || 'publishing failed'}.`, failed.length > 0);
     onDone?.();
   };
