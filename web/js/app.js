@@ -129,7 +129,7 @@ async function render() {
     if (my !== renderSeq) { if (typeof out === 'function') out(); return; }
     if (typeof out === 'function') cleanup = out;
   } catch (e) {
-    console.error(e);
+    if (!goneKind(e)) console.error(e);
     main.replaceChildren(errorPage(e));
   }
 }
@@ -746,7 +746,22 @@ function setupNeeded() {
       h('p', { class: 'muted' }, 'Add your Supabase project URL and anon key to web/config.js, then reload. See README.md for the full setup.')));
 }
 
+// 'TV' / 'playlist' when the error is just "that TV or playlist isn't there"; otherwise null.
+function goneKind(e) {
+  const kind = /^#\/screen\//.test(location.hash) ? 'TV' : /^#\/playlist\//.test(location.hash) ? 'playlist' : null;
+  const gone = e?.code === 'PGRST116' || e?.code === '22P02' || /row not found|0 rows|single JSON object|invalid input syntax for type uuid/i.test(e?.message || '');
+  return kind && gone ? kind : null;
+}
+
 function errorPage(e) {
+  // A link to a TV or playlist that has been deleted (or was never valid): say so, instead of a database error.
+  const kind = goneKind(e);
+  if (kind) {
+    const back = kind === 'TV' ? '#/screens' : '#/playlists';
+    return h('div', { class: 'card pad stack' }, h('h2', {}, `This ${kind} can’t be found`),
+      h('p', { class: 'muted', style: { margin: 0 } }, `It may have been removed, or the link is wrong.`),
+      h('div', {}, h('a', { class: 'btn primary', href: back }, kind === 'TV' ? 'Back to Screens' : 'Back to Playlists')));
+  }
   return h('div', { class: 'card pad stack' }, h('h2', {}, 'Something went wrong'), h('div', { class: 'notice' }, errMsg(e)),
     h('div', {}, h('button', { class: 'btn', onclick: () => render() }, 'Try again')));
 }
