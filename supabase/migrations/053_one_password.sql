@@ -40,7 +40,9 @@ begin
   if h is null or h !~ '^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$' then h := null; end if;
   -- a temporary password an admin set (Signage's "Reset password" to 123456, must be changed at the next sign-in) or
   -- the random one it is replaced with when it expires: never copied to other sites
-  if coalesce(new.raw_app_meta_data->>'must_change_password', '') = 'true' or coalesce(new.raw_app_meta_data->>'temp_password_expired', '') = 'true' then
+  -- (admin_reset_password / expire_temp_passwords also set signage.admin_reset = '1' for their update)
+  if coalesce(current_setting('signage.admin_reset', true), '') = '1'
+     or coalesce(new.raw_app_meta_data->>'must_change_password', '') = 'true' or coalesce(new.raw_app_meta_data->>'temp_password_expired', '') = 'true' then
     h := null;
     if tg_op = 'UPDATE' then return null; end if;
   end if;

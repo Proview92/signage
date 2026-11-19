@@ -42,8 +42,11 @@ begin
   update auth.users set encrypted_password = '' where id = own;
   select count(*) into n from hub_private.pw_changes where email = t || '-owner@example.invalid' and kind = 'set';
   out := out || ((case when n = 1 then 'PASS' else 'FAIL' end) || ' same hash, other columns and an empty password are not recorded (' || n || ')');
+  -- as Signage's admin_reset_password / expire_temp_passwords do: they set signage.admin_reset = '1' for the update
+  perform set_config('signage.admin_reset', '1', true);
   update auth.users set encrypted_password = h3, raw_app_meta_data = '{"must_change_password": true}'::jsonb where id = own;   -- an admin's temporary password
   update auth.users set encrypted_password = h1, raw_app_meta_data = '{"temp_password_expired": true}'::jsonb where id = own;  -- ... replaced when it expires
+  perform set_config('signage.admin_reset', '', true);
   select count(*) into n from hub_private.pw_changes where email = t || '-owner@example.invalid' and kind = 'set';
   out := out || ((case when n = 1 then 'PASS' else 'FAIL' end) || ' a temporary password (must change at next sign-in) is never recorded (' || n || ')');
   update auth.users set raw_app_meta_data = '{}'::jsonb where id = own;
