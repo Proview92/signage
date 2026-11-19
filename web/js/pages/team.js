@@ -1,4 +1,4 @@
-// Users: Owner / Admin (and the Proview admin) invite people, set their role, pick their sites,
+// Users: Admins (and the Proview master) invite people, set their role, pick their sites,
 // switch features on or off, and remove them. The database enforces all of this (migration 030).
 import { clientTitle, headChips } from '../core.js';
 import { sb, state, h, icon, q, rpc, toast, modal, field, select, confirmBox, copyText, timeAgo, canManage, currentClient, errMsg, FEATURES, featureDefault, roleLabel, passwordToggle } from '../core.js';
@@ -9,9 +9,9 @@ const req = (label) => h('span', {}, label, h('span', { style: { color: '#d92d20
 export const inviteLink = (token) => `${location.origin}${location.pathname}#/join/${token}`;
 
 const ROLE_OPTIONS = [
-  ['manager', 'Owner / Admin — every location, every feature, manages users'],
-  ['site_manager', 'Manager — chosen locations and features, publishes without approval'],
-  ['editor', 'Staff — chosen locations and features'],
+  ['admin', 'Admin — every location, every feature, manages users'],
+  ['manager', 'Manager — chosen locations and features, publishes without approval'],
+  ['staff', 'Staff — chosen locations and features'],
 ];
 
 /** Invite dialog: emails the invite from PROVIEW SIGNAGE (autoSend), with Copy link as a fallback. */
@@ -46,15 +46,15 @@ export function showInviteLink(inv, clientName, { autoSend = false } = {}) {
  * Returns { el, value() } where value() gives the row fields to save.
  */
 const ROLE_CARDS = [
-  ['manager', 'Owner / Admin', 'Everything, and manages users'],
-  ['site_manager', 'Manager', 'Chosen features, publishes without approval'],
-  ['editor', 'Staff', 'Chosen features'],
+  ['admin', 'Admin', 'Everything, and manages users'],
+  ['manager', 'Manager', 'Chosen features, publishes without approval'],
+  ['staff', 'Staff', 'Chosen features'],
 ];
 const FEATURE_ICON = { screens: 'screens', schedule: 'calendar', playlists: 'playlists', media: 'media', billing: 'chart' };
 const shortLabel = (l) => l.split(' (')[0].replace(' & ', ' and ');
 
 function accessEditor(a, sites) {
-  let role = a.role === null ? null : (a.role || 'editor');   // null = nothing picked yet, they must choose
+  let role = a.role === null ? null : (a.role || 'staff');   // null = nothing picked yet, they must choose
   let all = a.site_ids == null;
   const chosen = new Set(a.site_ids || []);
   const feats = { ...(a.features || {}) };
@@ -81,14 +81,14 @@ function accessEditor(a, sites) {
   const scoped = h('div', { class: 'stack' },
     sites.length > 1 ? h('div', {}, h('div', { class: 'sec-label' }, 'Locations they can use'), siteBox) : null,
     h('div', {}, h('div', { class: 'sec-label' }, 'What they can see and use'), featBox, h('div', { class: 'tiny', style: { marginTop: '6px' } }, 'Anything switched off is hidden and blocked for them.')));
-  const fullNote = h('div', { class: 'notice info small' }, 'Owner / Admins see every location and every feature, and can add and edit users.');
-  const paintRole = () => { scoped.classList.toggle('hidden', !role || role === 'manager'); fullNote.classList.toggle('hidden', role !== 'manager'); };
+  const fullNote = h('div', { class: 'notice info small' }, 'Admins see every location and every feature, and can add and edit users.');
+  const paintRole = () => { scoped.classList.toggle('hidden', !role || role === 'admin'); fullNote.classList.toggle('hidden', role !== 'admin'); };
   paintRole();
 
   const el = h('div', { class: 'stack' }, h('div', {}, h('div', { class: 'sec-label' }, req('Role')), roleBox), scoped, fullNote);
   const value = () => {
     if (!role) throw new Error('Choose a role');
-    if (role === 'manager') return { role, site_ids: null, features: {} };
+    if (role === 'admin') return { role, site_ids: null, features: {} };
     if (!all && !chosen.size && sites.length > 1) throw new Error('Switch on at least one location, or All locations');
     const features = {};
     for (const [k] of FEATURES) features[k] = on(k);
@@ -98,7 +98,7 @@ function accessEditor(a, sites) {
 }
 
 function accessSummary(m, sites) {
-  if (m.role === 'manager') return 'All locations · all features';
+  if (m.role === 'admin') return 'All locations · all features';
   const siteTxt = m.site_ids == null ? 'All locations' : (m.site_ids.map((id) => sites.find((s) => s.id === id)?.name).filter(Boolean).join(', ') || 'No locations');
   const off = FEATURES.filter(([k]) => !(typeof (m.features || {})[k] === 'boolean' ? m.features[k] : featureDefault(k)));
   return `${siteTxt} · ${off.length ? 'No access to: ' + off.map(([, l]) => l.split(' (')[0]).join(', ') : 'all features'}`;
@@ -143,7 +143,7 @@ export async function addUserDialog(clientId, clientName, onDone) {
 export async function inviteDialog(clientId, clientName, onDone) {
   const sites = await loadSites(clientId).catch(() => []);
   const email = h('input', { type: 'email', placeholder: 'name@company.com' });
-  const acc = accessEditor({ role: 'editor', site_ids: null, features: {} }, sites);
+  const acc = accessEditor({ role: 'staff', site_ids: null, features: {} }, sites);
   modal({ title: `Invite someone to ${clientName}`, wide: true, body: [field(req('Email address'), email), acc.el],
     actions: [{ label: 'Cancel' }, { label: 'Send invite', class: 'primary', onClick: async () => {
       const e = email.value.trim().toLowerCase();
@@ -242,24 +242,24 @@ export async function teamPage({ main }) {
           h('div', { class: 'list' }, members.length ? members.map((m) => {
             const me = m.user_id === state.me.user_id;
             const active = m.active !== false;
-            // Owner / Admins can only be switched off by the Proview master account.
-            const canToggle = manage && !me && (state.me.is_admin || m.role !== 'manager');
+            // Admins can only be switched off by the Proview master account.
+            const canToggle = manage && !me && (state.me.is_admin || m.role !== 'admin');
             const sw = h('input', { type: 'checkbox', class: 'switch status', checked: active, disabled: !canToggle,
               'aria-label': active ? 'Active: switch off to deactivate' : 'Deactivated: switch on to activate',
               onchange: async (e) => {
                 const on = e.target.checked;
-                const owner = m.role === 'manager';
-                const others = members.filter((x) => x.role !== 'manager' && x.active !== false).length;
+                const owner = m.role === 'admin';
+                const others = members.filter((x) => x.role !== 'admin' && x.active !== false).length;
                 const msg = owner && others
-                  ? `${m.full_name || m.email} is an Owner / Admin, so the ${others} Manager and Staff account${others === 1 ? '' : 's'} in ${clientTitle(client)} will be deactivated too. Switching this Owner / Admin back on switches them back on as well.`
+                  ? `${m.full_name || m.email} is an Admin, so the ${others} Manager and Staff account${others === 1 ? '' : 's'} in ${clientTitle(client)} will be deactivated too. Switching this Owner / Admin back on switches them back on as well.`
                   : `${m.full_name || m.email} won’t be able to use ${clientTitle(client)} until you switch them back on. Their role and access are kept.`;
                 if (!on && !(await confirmBox('Deactivate this account?', msg, 'Deactivate'))) { e.target.checked = true; return; }
                 e.target.disabled = true;
-                try { await rpc('set_user_active', { p_client: state.clientId, p_user: m.user_id, p_active: on }); toast(owner ? (on ? 'Owner / Admin activated, with their team' : 'Owner / Admin and their team deactivated') : (on ? 'Account activated' : 'Account deactivated')); }
+                try { await rpc('set_user_active', { p_client: state.clientId, p_user: m.user_id, p_active: on }); toast(owner ? (on ? 'Admin activated, with their team' : 'Owner / Admin and their team deactivated') : (on ? 'Account activated' : 'Account deactivated')); }
                 catch (err) { toast(errMsg(err), true); }
                 refresh();
               } });
-            const statusTitle = me ? 'You can’t deactivate your own account' : !canToggle && manage ? 'Only Proview can deactivate an Owner / Admin' : active ? 'Active: switch off to deactivate' : 'Deactivated: switch on to activate';
+            const statusTitle = me ? 'You can’t deactivate your own account' : !canToggle && manage ? 'Only Proview can deactivate an Admin' : active ? 'Active: switch off to deactivate' : 'Deactivated: switch on to activate';
             return h('div', { class: 'list-row' + (active ? '' : ' user-off') },
               h('div', { class: 'grow' }, h('div', { style: { fontWeight: 600 } }, m.full_name || m.email || 'Unknown', me ? h('span', { class: 'tiny' }, '  (you)') : null),
                 m.full_name || m.mobile ? h('div', { class: 'small muted' }, [m.full_name && m.email, m.mobile].filter(Boolean).join(' · ')) : null,

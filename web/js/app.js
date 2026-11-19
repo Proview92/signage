@@ -87,7 +87,7 @@ async function render() {
   if (!state.me.is_admin && !state.me.clients.length) {
     // Added to a business but given no sites: not linked to anything yet (never the set-up screen).
     if (state.me.no_site_clients) return signOut(NOT_LINKED);
-    // Switched off by their Owner / Admin (or Proview): say so, rather than offering to set up a business.
+    // Switched off by their business admin (or Proview): say so, rather than offering to set up a business.
     try { if (await rpc('am_i_deactivated')) return signOut(DEACTIVATED); } catch {}
     if (my !== renderSeq) return;
     // Invited by email (no link opened): join those businesses instead of setting up a new one.
@@ -213,7 +213,7 @@ function sideMe(r) {
   const name = email.split('@')[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ') || state.me.full_name || state.me.name || 'Me';
   const initials = name.replace(/[^\p{L}\p{N}\s._-]/gu,' ').split(/[\s._-]+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
   const sub = (state.me.is_admin ? 'Proview admin' : roleLabel(r) || 'Staff') + (state.clientId && state.me.clients.length ? ' · ' + clientTitle(state.me.clients.find((c) => c.id === state.clientId)) : '');
-  const canTeam = state.clientId && (state.me.is_admin || r === 'admin' || r === 'manager');
+  const canTeam = state.clientId && (state.me.is_admin || r === 'admin');
   return h(canTeam ? 'a' : 'div', { class: 'side-me', href: canTeam ? '#/team' : undefined, title: email },
     h('span', { class: 'side-av' }, initials),
     h('span', { class: 'side-me-t' }, h('b', {}, name), h('span', {}, sub)),
@@ -262,7 +262,7 @@ function shell(section, main) {
     h('div', { class: 'sp' }),
     window.PVHub ? window.PVHub.tray({ dot: statusDot(), bell: bell('icon') }) : bell('icon'),
     // back to dashboard.proviewcrm.co.uk: managers and admins only (editors don't get it)
-    (window.PVHub && window.PVHub.dashLink && window.PVHub.dashLink(['admin', 'manager'].includes(role()))) || null,
+    (window.PVHub && window.PVHub.dashLink && window.PVHub.dashLink(['master', 'admin'].includes(role()))) || null,
     topMe);
   startHub(go);
   const scrim = h('div', { class: 'nav-scrim', onclick: toggleNav });
@@ -519,7 +519,7 @@ async function authPage(inviteToken, startSignup = false) {
   const paint = () => {
     title.textContent = mode === 'signup' ? 'Create your account' : 'Sign in';
     sub.textContent = invite && !invite.used
-      ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'manager' ? 'an owner / admin' : invite.role === 'site_manager' ? 'a manager' : 'staff'}.`
+      ? `You've been invited to manage screens for ${invite.client} as ${invite.role === 'admin' ? 'an admin' : invite.role === 'manager' ? 'a manager' : 'staff'}.`
       : mode === 'signup' ? 'Set up your business, then buy a licence for each TV. Invited by someone? Use the email address your invite was sent to.' : 'Manage your screens, media and schedules.';
     submit.textContent = mode === 'signup' ? 'Create account' : 'Sign in';
     swap.textContent = mode === 'signup' ? 'I already have an account' : 'Create an account';

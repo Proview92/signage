@@ -29,7 +29,7 @@ export async function loadClientData(clientId) {
   return { screens, playlists, rules, sites, groups, byId: Object.fromEntries(playlists.map((p) => [p.id, p])) };
 }
 
-/** Owner / Admin and master: make, rename, order and delete TV sub-categories, and choose each TV's sub-category. */
+/** Admin and master: make, rename, order and delete TV sub-categories, and choose each TV's sub-category. */
 function subCategoriesDialog(clientId, groups, screens, onDone) {
   let list = groups.map((g) => ({ key: g.id, id: g.id, name: g.name }));
   const removed = [];
@@ -94,7 +94,7 @@ function subCategoriesDialog(clientId, groups, screens, onDone) {
       } }] });
 }
 
-/** Owner / Admin and master: put the business's TVs in their own order (arrows, or drag a row). */
+/** Admin and master: put the business's TVs in their own order (arrows, or drag a row). */
 function sortTvsDialog(screens, onDone) {
   let list = [...screens];
   const box = h('div', { class: 'sort-list' });

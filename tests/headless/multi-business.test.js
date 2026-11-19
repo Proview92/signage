@@ -16,9 +16,9 @@ const INIT = {
   screens: [{ id: 's-a1', client_id: A, site_id: SA1, name: 'Alpha Counter TV', claimed: true, license_type: 'm12', license_expires_at: '2027-06-01T00:00:00Z', last_seen: new Date().toISOString(), content: {}, device_info: {} },
             { id: 's-a2', client_id: A, site_id: SA2, name: 'Alpha Platform TV', claimed: true, license_type: 'm12', license_expires_at: '2027-06-01T00:00:00Z', last_seen: new Date().toISOString(), content: {}, device_info: {} },
             { id: 's-b1', client_id: B, site_id: SB1, name: 'Bros Grill TV', claimed: true, license_type: 'm12', license_expires_at: '2027-06-01T00:00:00Z', content: {}, device_info: {} }],
-  client_members: [{ client_id: A, user_id: 'u-multi', role: 'manager', site_ids: null, features: {} },
-                   { client_id: B, user_id: 'u-multi', role: 'manager', site_ids: null, features: {} },
-                   { client_id: A, user_id: 'u-solo', role: 'manager', site_ids: null, features: {} }],
+  client_members: [{ client_id: A, user_id: 'u-multi', role: 'admin', site_ids: null, features: {} },
+                   { client_id: B, user_id: 'u-multi', role: 'admin', site_ids: null, features: {} },
+                   { client_id: A, user_id: 'u-solo', role: 'admin', site_ids: null, features: {} }],
   playlists: [], media: [], notifications: [], schedule_items: [], approval_requests: [], team_messages: [], overrides: [], profiles: [],
 };
 const tables = {};
@@ -29,12 +29,12 @@ const memb = (u, cid) => tables.client_members.find((m) => m.user_id === u?.id &
 const rls = (t, r, u) => {
   if (!u) return false; const ids = mineIds(u); if (!ids) return true;
   const cid = t === 'clients' ? r.id : r.client_id; if (cid === undefined) return true; if (!ids.includes(cid)) return false;
-  if (t === 'sites') { const m = memb(u, cid); return m.role === 'manager' || !Array.isArray(m.site_ids) || m.site_ids.includes(r.id); }
+  if (t === 'sites') { const m = memb(u, cid); return m.role === 'admin' || !Array.isArray(m.site_ids) || m.site_ids.includes(r.id); }
   return true;
 };
 const whoami = (_, u) => ({ user_id: u.id, email: u.email, is_admin: !!u.is_admin,
   clients: tables.clients.filter((c) => u.is_admin || mineIds(u).includes(c.id)).map((c) => { const m = memb(u, c.id);
-    return { ...c, trial_only: false, has_licence: true, role: u.is_admin ? m?.role || 'admin' : m.role, site_ids: u.is_admin || m.role === 'manager' ? null : m.site_ids, features: {} }; })
+    return { ...c, trial_only: false, has_licence: true, role: u.is_admin ? m?.role || 'admin' : m.role, site_ids: u.is_admin || m.role === 'admin' ? null : m.site_ids, features: {} }; })
     .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())) });
 const SSO = { 'as-master-A': [master, A] };
 const mock = H.makeMock({
@@ -121,7 +121,7 @@ const NO_LOC_WORDS = (v) => !v.opts.some((o) => /All my locations|All locations|
     // 3) fallback when A is unusable: switched off in A (not in whoami), or no location they can see in A
     for (const [why, change] of [
       ['switched off in Cafe Alpha', (t) => { t.client_members = t.client_members.filter((m) => !(m.user_id === 'u-multi' && m.client_id === A)); }],
-      ['no location in Cafe Alpha', (t) => { const m = t.client_members.find((x) => x.user_id === 'u-multi' && x.client_id === A); m.role = 'editor'; m.site_ids = []; }],
+      ['no location in Cafe Alpha', (t) => { const m = t.client_members.find((x) => x.user_id === 'u-multi' && x.client_id === A); m.role = 'staff'; m.site_ids = []; }],
       ['Cafe Alpha has no locations', (t) => { t.sites = t.sites.filter((s) => s.client_id !== A); t.screens = t.screens.filter((s) => s.client_id !== A); }]]) {
       reset(change);
       const { page, errors, ctx } = await H.openApp(b, { base: BASE, supaHost: SUPA, mock, seed: { [SKEY]: H.storedSession('tok-multi', multi), [lastKey]: JSON.stringify({ client: A }), 'signage.client': A } });

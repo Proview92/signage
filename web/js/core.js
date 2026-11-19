@@ -241,11 +241,11 @@ export const sortSites = (ss) => [...ss].sort((a, b) => a.name.localeCompare(b.n
 
 // ---------------------------------------------------------------- roles
 export function currentClient() { return state.me?.clients.find((c) => c.id === state.clientId) || null; }
-export function role() { return state.me?.is_admin ? 'admin' : currentClient()?.role || null; }
-export const canManage = () => ['admin', 'manager'].includes(role());
+export function role() { return state.me?.is_admin ? 'master' : currentClient()?.role || null; }
+export const canManage = () => ['master', 'admin'].includes(role());
 
-// Proview access model. Stored roles: 'manager' = Owner / Admin (whole business), 'site_manager' = Manager,
-// 'editor' = Staff. Managers and Staff have site_ids (null = all sites) and features ({key:false} = off).
+// Proview access model (standard roles, 20 Nov 2026): 'admin' (whole business, manages users), 'manager' and
+// 'staff'; role() is 'master' for the Proview master. Managers and Staff have site_ids (null = all sites) and features ({key:false} = off).
 // Keep FEATURES in step with supabase/migrations/030_access_model.sql (the database enforces them).
 export const FEATURES = [
   ['screens', 'TV settings (name, location, sleep, reload, video wall)'],
@@ -255,10 +255,10 @@ export const FEATURES = [
   ['billing', 'Licence payments (buy / renew online)'],
 ];
 const FEATURE_OFF_BY_DEFAULT = ['billing'];
-export const ROLE_LABEL = { admin: 'Proview admin', manager: 'Owner / Admin', site_manager: 'Manager', editor: 'Staff' };
+export const ROLE_LABEL = { master: 'Proview master', admin: 'Admin', manager: 'Manager', staff: 'Staff' };
 export const roleLabel = (r) => ROLE_LABEL[r] || r || '';
 export const featureDefault = (f) => !FEATURE_OFF_BY_DEFAULT.includes(f);
-/** Owners, admins and the Proview master have every feature; Managers/Staff follow their switches. */
+/** Admins and the Proview master have every feature; Managers/Staff follow their switches. */
 export function hasFeature(f) {
   if (canManage()) return true;
   const c = currentClient();
@@ -416,7 +416,7 @@ export async function refreshMe() {
   // (with none left they're signed out with "ask your owner or Proview", never offered a trial).
   if (!me.is_admin) {
     const all = me.clients || [];
-    me.clients = all.filter((c) => !(c.role !== 'manager' && Array.isArray(c.site_ids) && c.site_ids.length === 0));
+    me.clients = all.filter((c) => !(c.role !== 'admin' && Array.isArray(c.site_ids) && c.site_ids.length === 0));
     me.no_site_clients = all.length - me.clients.length;
   }
   if (me.is_admin) {   // is_admin() couldn't be asked first: still show only the opened business
