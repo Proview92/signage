@@ -185,7 +185,7 @@ function passwordDialog(m) {
     try {
       await rpc('set_user_password', { p_client: state.clientId, p_user: m.user_id, p_password: pass.value });
       pass.type = 'text';
-      say(`✓ Password changed. ${m.email} has been signed out everywhere and can sign in with the new password now. No email was sent, so pass it on yourself.`, 'ok');
+      say(`✓ Password changed. ${m.email} has been signed out everywhere and can sign in with the new password now. The password is the same on all Proview sites, so this is their password everywhere. No email was sent, so pass it on yourself.`, 'ok');
     } catch (e) { say(errMsg(e), 'bad'); }
     setBtn.disabled = false;
   } }, 'Set password');
@@ -194,7 +194,7 @@ function passwordDialog(m) {
     try {
       const { error } = await sb.auth.resetPasswordForEmail(m.email, { redirectTo: location.origin + location.pathname });
       if (error) throw error;
-      say(`✓ Reset link emailed to ${m.email}. They click it and choose their own new password. Their current password keeps working until they do.`, 'ok');
+      say(`✓ Reset link emailed to ${m.email}. They click it and choose their own new password, which works on all Proview sites. Their current password keeps working until they do.`, 'ok');
     } catch (e) { say(errMsg(e), 'bad'); }
     linkBtn.disabled = false;
   } }, icon('send'), 'Email a reset link');

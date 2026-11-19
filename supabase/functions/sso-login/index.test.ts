@@ -16,11 +16,13 @@ const now = () => Math.floor(Date.now() / 1000);
 const claims = (email: string, extra: Record<string, unknown> = {}) =>
   ({ iss: "proview-account", aud: APP, email, mode: "login", iat: now(), exp: now() + 120, jti: crypto.randomUUID(), ...extra });
 
-// people in this app: master (profiles.is_admin), an owner, and a staff login
+// people in this app (as sso_entitled answers): master (profiles.is_admin), an owner, and a staff login
 const PEOPLE: Record<string, { id: string; admin: boolean; ok: boolean; reason?: string }> = {
   "master@proview.test": { id: "u-master", admin: true, ok: true },
   "owner@cafe.test": { id: "u-owner", admin: false, ok: true },
-  "staff@cafe.test": { id: "u-staff", admin: false, ok: false, reason: "This is an editor login in Signage." },
+  // one password (19 Nov 2026): sso_entitled admits staff too; a login on hold is refused
+  "staff@cafe.test": { id: "u-staff", admin: false, ok: true },
+  "held@cafe.test": { id: "u-held", admin: false, ok: false, reason: "This login is on hold. Contact Proview." },
 };
 const used = new Set<string>();
 Deno.env.set("SUPABASE_URL", "http://mock.local");
@@ -80,9 +82,14 @@ Deno.test("biz on a non-master assertion is ignored", async () => {
   assertEquals(r.status, 200); assertEquals(r.body.token_hash, "hash-owner@cafe.test"); assert(!("open" in r.body));
 });
 
-Deno.test("staff stay refused, with or without biz", async () => {
+Deno.test("staff are signed in (one password), and a biz on their assertion is ignored", async () => {
   const r = await call(await sign(claims("staff@cafe.test", { biz: "c-111" })));
-  assertEquals(r.status, 403); assert(!r.body.token_hash && !r.body.open);
+  assertEquals(r.status, 200); assertEquals(r.body.token_hash, "hash-staff@cafe.test"); assert(!("open" in r.body));
+});
+
+Deno.test("a login on hold stays refused, with its reason", async () => {
+  const r = await call(await sign(claims("held@cafe.test")));
+  assertEquals(r.status, 403); assert(!r.body.token_hash); assertEquals(r.body.error, "This login is on hold. Contact Proview.");
 });
 
 Deno.test("signature is really checked: wrong key, tampered biz, wrong audience", async () => {

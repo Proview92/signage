@@ -2,9 +2,11 @@
 //
 // dashboard.proviewcrm.co.uk signs a short-lived Ed25519 assertion "this person controls
 // <email>" (only after they signed in to their confirmed Proview account). This function checks
-// the signature, checks the email is an owner/manager here (public.sso_entitled), and returns a
+// the signature, checks the email is a member of a business here, staff included (public.sso_entitled; one
+// password, 19 Nov 2026: everyone with an email login opens their apps from the dashboard, the app still decides what
+// each role sees; a login on hold is refused), and returns a
 // one-time magic-link token the app exchanges for a normal session with
-// supabase.auth.verifyOtp({ token_hash, type: "magiclink" }). Staff-level users are refused.
+// supabase.auth.verifyOtp({ token_hash, type: "magiclink" }). PIN-only staff have no email login and are not changed.
 //
 //   POST { assertion } → { token_hash, email }      (assertion mode "login", single use)
 //   POST { assertion } → { ok, reason }             (assertion mode "check": can this person sign in?)

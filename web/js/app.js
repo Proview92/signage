@@ -513,7 +513,7 @@ async function authPage(inviteToken, startSignup = false) {
   const forgot = h('button', { class: 'btn ghost sm', type: 'button', onclick: async () => {
     if (!email.value) return toast('Enter your email first', true);
     const { error } = await sb.auth.resetPasswordForEmail(email.value, { redirectTo: location.origin + location.pathname });
-    error ? toast(errMsg(error), true) : toast('Password reset email sent');
+    error ? toast(errMsg(error), true) : toast('Password reset email sent. Your password is the same on all Proview sites, so the new one works everywhere.');
   } }, 'Forgot password?');
 
   const paint = () => {
@@ -676,7 +676,7 @@ function changePasswordPage() {
   } },
     h('img', { src: 'icon-app.svg', alt: 'PROVIEW', style: { height: '56px', alignSelf: 'center' } }),
     h('h1', { style: { textAlign: 'center', margin: '6px 0 0' } }, 'Choose a new password'),
-    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Your password was reset by an administrator. Set a new one for ${state.session.user.email} to continue.`),
+    h('p', { class: 'muted', style: { textAlign: 'center', margin: 0 } }, `Your password was reset by an administrator. Set a new one for ${state.session.user.email} to continue. Your password is the same on all Proview sites, so this changes it everywhere.`),
     field('New password', passwordToggle(pass)),
     field('Confirm new password', passwordToggle(pass2)),
     msg, submit,
@@ -791,7 +791,7 @@ setTimeout(async () => {
     state.session = session;
     if (event === 'PASSWORD_RECOVERY') {
       promptBox('Choose a new password', 'New password (8+ characters)', { type: 'password', okLabel: 'Save password', minLength: 8 })
-        .then((p) => p && sb.auth.updateUser({ password: p }).then(({ error }) => toast(error ? errMsg(error) : 'Password updated', !!error)));
+        .then((p) => p && sb.auth.updateUser({ password: p }).then(({ error }) => toast(error ? errMsg(error) : 'Password updated. It is the same on all Proview sites, so use it everywhere.', !!error)));
     }
     if (had && !session) { clearBusinessCache(); setMasterOpen(null); }   // signed out (here, in another tab, or the session ended)
     if (had !== !!session) { state.me = null; render(); }
